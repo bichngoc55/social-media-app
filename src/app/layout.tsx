@@ -19,10 +19,18 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | bugbook",
-    default: "bugbook",
+    template: "%s | Loopy",
+    default: "Loopy",
   },
   description: "The social media app for powernerds",
+  icons: {
+    icon: [
+      { url: "/logo-image.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo-image.png", sizes: "16x16", type: "image/png" },
+    ],
+    shortcut: "/logo-image.png",
+    apple: "/logo-image.png",
+  },
 };
 
 export default function RootLayout({
