@@ -31,6 +31,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.2",
     "ky": "^1.4.0",
     "lucia": "^3.2.0",
     "lucide-react": "^0.402.0",

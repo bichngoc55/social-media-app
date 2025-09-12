@@ -57,6 +57,7 @@ export default function FollowButton({
     <Button
       variant={data.isFollowedByUser ? "secondary" : "default"}
       onClick={() => mutate()}
+      className="btn-glow transition-all duration-300"
     >
       {data.isFollowedByUser ? "Unfollow" : "Follow"}
     </Button>
