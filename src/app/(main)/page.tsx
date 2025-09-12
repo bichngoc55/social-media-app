@@ -10,7 +10,7 @@ export default function Home() {
       <div className="w-full min-w-0 space-y-5">
         <PostEditor />
         <Tabs defaultValue="for-you">
-          <TabsList>
+          <TabsList className="card-glass">
             <TabsTrigger value="for-you">For you</TabsTrigger>
             <TabsTrigger value="following">Following</TabsTrigger>
           </TabsList>

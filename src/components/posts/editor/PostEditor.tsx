@@ -76,7 +76,7 @@ export default function PostEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl bg-card p-5 shadow-sm">
+    <div className="flex flex-col gap-5 rounded-2xl card-glass p-6 slide-up post-hover-lift">
       <div className="flex gap-5">
         <UserAvatar avatarUrl={user.avatarUrl} className="hidden sm:inline" />
         <div {...rootProps} className="w-full">
@@ -112,7 +112,7 @@ export default function PostEditor() {
           onClick={onSubmit}
           loading={mutation.isPending}
           disabled={!input.trim() || isUploading}
-          className="min-w-20"
+          className="min-w-20 btn-glow bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
         >
           Post
         </LoadingButton>
@@ -137,7 +137,7 @@ function AddAttachmentsButton({
       <Button
         variant="ghost"
         size="icon"
-        className="text-primary hover:text-primary"
+        className="text-primary hover:text-primary btn-glow rounded-full hover:bg-white/20 transition-all duration-300"
         disabled={disabled}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -209,6 +209,7 @@ function AttachmentPreview({
           alt="Attachment preview"
           width={500}
           height={500}
+          unoptimized
           className="size-fit max-h-[30rem] rounded-2xl"
         />
       ) : (

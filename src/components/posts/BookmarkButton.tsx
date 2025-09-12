@@ -64,11 +64,14 @@ export default function BookmarkButton({
   });
 
   return (
-    <button onClick={() => mutate()} className="flex items-center gap-2">
+    <button 
+      onClick={() => mutate()} 
+      className="flex items-center gap-2 btn-glow rounded-full px-3 py-2 hover:bg-white/20 transition-all duration-300"
+    >
       <Bookmark
         className={cn(
-          "size-5",
-          data.isBookmarkedByUser && "fill-primary text-primary",
+          "size-5 transition-all duration-300",
+          data.isBookmarkedByUser && "fill-primary text-primary scale-110",
         )}
       />
     </button>

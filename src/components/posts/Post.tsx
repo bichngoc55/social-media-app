@@ -26,7 +26,7 @@ export default function Post({ post }: PostProps) {
   const [showComments, setShowComments] = useState(false);
 
   return (
-    <article className="group/post space-y-3 rounded-2xl bg-card p-5 shadow-sm">
+    <article className="group/post space-y-3 rounded-2xl card-glass p-6 fade-in post-hover-lift">
       <div className="flex justify-between gap-3">
         <div className="flex flex-wrap gap-3">
           <UserTooltip user={post.user}>
@@ -121,10 +121,12 @@ function MediaPreview({ media }: MediaPreviewProps) {
   if (media.type === "IMAGE") {
     return (
       <Image
+        key={media.id}
         src={media.url}
         alt="Attachment"
         width={500}
         height={500}
+        unoptimized
         className="mx-auto size-fit max-h-[30rem] rounded-2xl"
       />
     );
@@ -152,8 +154,11 @@ interface CommentButtonProps {
 
 function CommentButton({ post, onClick }: CommentButtonProps) {
   return (
-    <button onClick={onClick} className="flex items-center gap-2">
-      <MessageSquare className="size-5" />
+    <button 
+      onClick={onClick} 
+      className="flex items-center gap-2 btn-glow rounded-full px-3 py-2 hover:bg-white/20 transition-all duration-300"
+    >
+      <MessageSquare className="size-5 transition-all duration-300" />
       <span className="text-sm font-medium tabular-nums">
         {post._count.comments}{" "}
         <span className="hidden sm:inline">comments</span>
