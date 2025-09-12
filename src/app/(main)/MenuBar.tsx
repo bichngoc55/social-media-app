@@ -23,7 +23,22 @@ export default async function MenuBar({ className }: MenuBarProps) {
         read: false,
       },
     }),
-    (await streamServerClient.getUnreadCount(user.id)).total_unread_count,
+    (async () => {
+      try {
+        // Ensure user exists in Stream Chat before getting unread count
+        await streamServerClient.upsertUser({
+          id: user.id,
+          username: user.username,
+          name: user.displayName,
+          image: user.avatarUrl,
+        });
+        const result = await streamServerClient.getUnreadCount(user.id);
+        return result.total_unread_count;
+      } catch (error) {
+        console.error("Error getting unread count:", error);
+        return 0;
+      }
+    })(),
   ]);
 
   return (
