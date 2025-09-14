@@ -1,11 +1,18 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearchPostgres"]
+  previewFeatures = ["fullTextSearch"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -17,16 +24,17 @@ model User {
   googleId              String?        @unique
   avatarUrl             String?
   bio                   String?
-  createdAt             DateTime       @default(now())
-  bookmarks             Bookmark[]
-  comments              Comment[]
+  sessions              Session[]
+  posts                 Post[]
   following             Follow[]       @relation("Following")
   followers             Follow[]       @relation("Followers")
   likes                 Like[]
-  issuedNotifications   Notification[] @relation("Issuer")
+  bookmarks             Bookmark[]
+  comments              Comment[]
   receivedNotifications Notification[] @relation("Recipient")
-  posts                 Post[]
-  sessions              Session[]
+  issuedNotifications   Notification[] @relation("Issuer")
+
+  createdAt DateTime @default(now())
 
   @@map("users")
 }
@@ -42,8 +50,8 @@ model Session {
 
 model Follow {
   followerId  String
-  followingId String
   follower    User   @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
   following   User   @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
@@ -54,57 +62,66 @@ model Post {
   id                  String         @id @default(cuid())
   content             String
   userId              String
-  createdAt           DateTime       @default(now())
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments         Media[]
+  likes               Like[]
   bookmarks           Bookmark[]
   comments            Comment[]
-  likes               Like[]
   linkedNotifications Notification[]
-  attachments         Media[]
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 
   @@map("posts")
 }
 
 model Media {
-  id        String    @id @default(cuid())
-  postId    String?
-  type      MediaType
-  url       String
-  createdAt DateTime  @default(now())
-  post      Post?     @relation(fields: [postId], references: [id])
+  id     String    @id @default(cuid())
+  postId String?
+  post   Post?     @relation(fields: [postId], references: [id], onDelete: SetNull)
+  type   MediaType
+  url    String
+
+  createdAt DateTime @default(now())
 
   @@map("post_media")
 }
 
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
 model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  userId    String
-  postId    String
+  id      String @id @default(cuid())
+  content String
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId  String
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("comments")
 }
 
 model Like {
   userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@map("likes")
 }
 
 model Bookmark {
-  id        String   @id @default(cuid())
-  userId    String
-  postId    String
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@map("bookmarks")
@@ -113,21 +130,17 @@ model Bookmark {
 model Notification {
   id          String           @id @default(cuid())
   recipientId String
+  recipient   User             @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
   issuerId    String
+  issuer      User             @relation("Issuer", fields: [issuerId], references: [id], onDelete: Cascade)
   postId      String?
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   type        NotificationType
   read        Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  issuer      User             @relation("Issuer", fields: [issuerId], references: [id], onDelete: Cascade)
-  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
-  recipient   User             @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 
   @@map("notifications")
-}
-
-enum MediaType {
-  IMAGE
-  VIDEO
 }
 
 enum NotificationType {
