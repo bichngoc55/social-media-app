@@ -17,6 +17,7 @@ model User {
   googleId              String?        @unique
   avatarUrl             String?
   bio                   String?
+  emailVerified         Boolean        @default(false)
   createdAt             DateTime       @default(now())
   bookmarks             Bookmark[]
   comments              Comment[]
@@ -27,6 +28,9 @@ model User {
   receivedNotifications Notification[] @relation("Recipient")
   posts                 Post[]
   sessions              Session[]
+  emailVerifications    EmailVerification[]
+  deviceSessions        DeviceSession[]
+  twoFactorAuths        TwoFactorAuth[]
 
   @@map("users")
 }
@@ -128,6 +132,47 @@ model Notification {
 enum MediaType {
   IMAGE
   VIDEO
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  otp       String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceId    String   // Unique identifier for device
+  deviceName  String   // User-friendly device name
+  userAgent   String   // Browser/device info
+  ipAddress   String?  // IP address
+  isTrusted   Boolean  @default(false)
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@map("device_sessions")
+}
+
+model TwoFactorAuth {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  otp       String
+  deviceId  String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_auths")
 }
 
 enum NotificationType {

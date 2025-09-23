@@ -37,15 +37,54 @@ export async function GET(req: NextRequest) {
           Authorization: `Bearer ${tokens.accessToken}`,
         },
       })
-      .json<{ id: string; name: string }>();
+      .json<{ id: string; name: string; email: string }>();
 
-    const existingUser = await prisma.user.findUnique({
+    // Tìm user theo googleId trước
+    let existingUser = await prisma.user.findUnique({
       where: {
         googleId: googleUser.id,
       },
+      select: {
+        id: true,
+        emailVerified: true,
+        email: true,
+      },
     });
 
+    // Nếu không tìm thấy theo googleId, tìm theo email
+    if (!existingUser && googleUser.email) {
+      existingUser = await prisma.user.findUnique({
+        where: {
+          email: googleUser.email.toLowerCase(),
+        },
+        select: {
+          id: true,
+          emailVerified: true,
+          email: true,
+        },
+      });
+
+      // Nếu tìm thấy user theo email, cập nhật googleId
+      if (existingUser) {
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { 
+            googleId: googleUser.id,
+            emailVerified: true, // Google users tự động xác thực email
+          },
+        });
+      }
+    }
+
     if (existingUser) {
+      // Đảm bảo Google users luôn được xác thực email
+      if (!existingUser.emailVerified) {
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { emailVerified: true },
+        });
+      }
+      
       const session = await lucia.createSession(existingUser.id, {});
       const sessionCookie = lucia.createSessionCookie(session.id);
       cookies().set(
@@ -71,7 +110,9 @@ export async function GET(req: NextRequest) {
           id: userId,
           username,
           displayName: googleUser.name,
+          email: googleUser.email?.toLowerCase(),
           googleId: googleUser.id,
+          emailVerified: true, // Google users tự động xác thực email
         },
       });
       await streamServerClient.upsertUser({
