@@ -18,6 +18,29 @@ export async function GET(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Kiểm tra xem có bị chặn không
+    const isBlocked = await prisma.userBlock.findFirst({
+      where: {
+        OR: [
+          {
+            blockerId: user.id,
+            blockedId: userId,
+          },
+          {
+            blockerId: userId,
+            blockedId: user.id,
+          },
+        ],
+      },
+    });
+
+    if (isBlocked) {
+      return Response.json({ 
+        posts: [], 
+        nextCursor: null 
+      });
+    }
+
     const posts = await prisma.post.findMany({
       where: { userId },
       include: getPostDataInclude(user.id),
