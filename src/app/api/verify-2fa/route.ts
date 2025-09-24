@@ -1,12 +1,12 @@
 import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
-import { getDeviceInfo } from "@/lib/device";
+import { generateDeviceId, getDeviceName } from "@/lib/device";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, otp } = await request.json();
+    const { email, otp, deviceInfo: clientDeviceInfo } = await request.json();
 
     if (!email || !otp) {
       return NextResponse.json({ 
@@ -14,11 +14,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Lấy thông tin thiết bị
-    const deviceInfo = await getDeviceInfo();
+    // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ headers
+    const deviceInfo = clientDeviceInfo || (() => {
+      const headersList = headers();
+      const userAgent = headersList.get('user-agent') || 'Unknown';
+      const ipAddress = headersList.get('x-forwarded-for') || 
+                       headersList.get('x-real-ip') || 
+                       undefined;
+      return {
+        deviceId: generateDeviceId(userAgent),
+        deviceName: getDeviceName(userAgent),
+        userAgent,
+        ipAddress,
+      };
+    })();
+    console.log("2FA Verify - Device Info:", deviceInfo);
 
     // Tìm verification record
-    const verification = await prisma.twoFactorAuth.findFirst({
+    console.log("Looking for 2FA record with:", {
+      email: email.toLowerCase(),
+      otp,
+      deviceId: deviceInfo.deviceId,
+    });
+
+    // Tìm OTP record - thử với deviceId trước, nếu không có thì tìm theo email + OTP
+    let verification = await prisma.twoFactorAuth.findFirst({
       where: {
         email: email.toLowerCase(),
         otp,
@@ -38,10 +58,44 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Nếu không tìm thấy với deviceId, thử tìm theo email + OTP (fallback)
+    if (!verification) {
+      console.log("Not found with deviceId, trying fallback...");
+      verification = await prisma.twoFactorAuth.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          otp,
+          used: false,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+            },
+          },
+        },
+      });
+    }
+
+    console.log("Found verification record:", verification);
+
     if (!verification) {
       return NextResponse.json({ 
         error: "Invalid or expired OTP" 
       }, { status: 400 });
+    }
+
+    // Nếu tìm thấy record nhưng deviceId khác, cập nhật deviceId
+    if (verification.deviceId !== deviceInfo.deviceId) {
+      console.log("Updating deviceId from", verification.deviceId, "to", deviceInfo.deviceId);
+      await prisma.twoFactorAuth.update({
+        where: { id: verification.id },
+        data: { deviceId: deviceInfo.deviceId },
+      });
     }
 
     // Đánh dấu OTP đã sử dụng
