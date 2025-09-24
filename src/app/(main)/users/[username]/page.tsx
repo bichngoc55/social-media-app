@@ -1,4 +1,5 @@
 import { validateRequest } from "@/auth";
+import BlockReportButtons from "@/components/BlockReportButtons";
 import FollowButton from "@/components/FollowButton";
 import FollowerCount from "@/components/FollowerCount";
 import Linkify from "@/components/Linkify";
@@ -117,7 +118,14 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
         {user.id === loggedInUserId ? (
           <EditProfileButton user={user} />
         ) : (
+        <div className="flex flex-col gap-2">
           <FollowButton userId={user.id} initialState={followerInfo} />
+          <BlockReportButtons
+            userId={user.id}
+            username={user.username}
+            isBlocked={user.blockedByUsers.length > 0}
+          />
+        </div>
         )}
       </div>
       {user.bio && (

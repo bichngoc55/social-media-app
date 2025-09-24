@@ -16,6 +16,14 @@ export function getUserDataSelect(loggedInUserId: string) {
         followerId: true,
       },
     },
+    blockedByUsers: {
+      where: {
+        blockerId: loggedInUserId,
+      },
+      select: {
+        id: true,
+      },
+    },
     _count: {
       select: {
         posts: true,
