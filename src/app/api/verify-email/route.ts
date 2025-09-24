@@ -1,6 +1,8 @@
+import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +73,13 @@ export async function POST(request: NextRequest) {
 
     // Gửi email chào mừng
     await sendWelcomeEmail(email, verification.user.displayName);
+
+    // Tạo session cho user sau khi xác thực email thành công
+    console.log("Creating session for user:", verification.user.id);
+    const session = await lucia.createSession(verification.user.id, {});
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    console.log("Session created successfully");
 
     return NextResponse.json({ 
       success: true, 

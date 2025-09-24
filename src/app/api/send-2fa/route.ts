@@ -1,18 +1,32 @@
 import prisma from "@/lib/prisma";
 import { generateOTP, send2FAEmail } from "@/lib/email";
-import { getDeviceInfo } from "@/lib/device";
+import { generateDeviceId, getDeviceName } from "@/lib/device";
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email, deviceInfo: clientDeviceInfo } = await request.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // Lấy thông tin thiết bị
-    const deviceInfo = await getDeviceInfo();
+    // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ headers
+    const deviceInfo = clientDeviceInfo || (() => {
+      const headersList = headers();
+      const userAgent = headersList.get('user-agent') || 'Unknown';
+      const ipAddress = headersList.get('x-forwarded-for') || 
+                       headersList.get('x-real-ip') || 
+                       undefined;
+      return {
+        deviceId: generateDeviceId(userAgent),
+        deviceName: getDeviceName(userAgent),
+        userAgent,
+        ipAddress,
+      };
+    })();
+    console.log("2FA Send - Device Info:", deviceInfo);
 
     // Tìm user theo email
     const user = await prisma.user.findUnique({
@@ -50,6 +64,13 @@ export async function POST(request: NextRequest) {
         error: "This device is already trusted" 
       }, { status: 400 });
     }
+
+    // Xóa TẤT CẢ OTP cũ của user này (không chỉ theo deviceId)
+    await prisma.twoFactorAuth.deleteMany({
+      where: {
+        userId: user.id,
+      },
+    });
 
     // Tạo OTP mới
     const otp = generateOTP();
