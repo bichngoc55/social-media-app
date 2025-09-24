@@ -15,7 +15,34 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Lấy danh sách user bị chặn
+    const blockedUsers = await prisma.userBlock.findMany({
+      where: {
+        OR: [
+          { blockerId: user.id }, // User mình chặn
+          { blockedId: user.id },  // User chặn mình
+        ],
+      },
+      select: {
+        blockerId: true,
+        blockedId: true,
+      },
+    });
+
+    const blockedUserIds = new Set([
+      ...blockedUsers.map(b => b.blockedId),
+      ...blockedUsers.map(b => b.blockerId),
+    ]);
+    
+    // Loại bỏ chính mình khỏi danh sách
+    blockedUserIds.delete(user.id);
+
     const posts = await prisma.post.findMany({
+      where: {
+        userId: {
+          notIn: Array.from(blockedUserIds),
+        },
+      },
       include: getPostDataInclude(user.id),
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,

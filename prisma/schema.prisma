@@ -31,6 +31,10 @@ model User {
   emailVerifications    EmailVerification[]
   deviceSessions        DeviceSession[]
   twoFactorAuths        TwoFactorAuth[]
+  blockedUsers          UserBlock[]    @relation("Blocker")
+  blockedByUsers        UserBlock[]    @relation("Blocked")
+  reportsIssued         Report[]       @relation("Reporter")
+  reportsReceived       Report[]       @relation("Reported")
 
   @@map("users")
 }
@@ -64,6 +68,7 @@ model Post {
   likes               Like[]
   linkedNotifications Notification[]
   attachments         Media[]
+  reports             Report[]
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("posts")
@@ -175,8 +180,57 @@ model TwoFactorAuth {
   @@map("two_factor_auths")
 }
 
+model UserBlock {
+  id          String   @id @default(cuid())
+  blockerId   String   // User who blocks
+  blockedId   String   // User who is blocked
+  reason      String?  // Optional reason for blocking
+  createdAt   DateTime @default(now())
+  blocker     User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked     User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@map("user_blocks")
+}
+
+model Report {
+  id          String      @id @default(cuid())
+  reporterId  String      // User who reports
+  reportedId  String      // User who is reported
+  postId      String?     // Optional: report specific post
+  type        ReportType  // Type of violation
+  reason      String      // Detailed reason
+  status      ReportStatus @default(PENDING)
+  adminNotes  String?     // Admin notes
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  reporter    User        @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported    User        @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
 enum NotificationType {
   LIKE
   FOLLOW
   COMMENT
+}
+
+enum ReportType {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  VIOLENCE
+  NUDITY
+  COPYRIGHT
+  IMPERSONATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
 }
