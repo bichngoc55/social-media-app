@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
+import { generateDeviceId, getDeviceName } from "@/lib/device";
 
 export default function Verify2FAForm() {
   const router = useRouter();
@@ -38,10 +39,21 @@ export default function Verify2FAForm() {
     setIsLoading(true);
     
     try {
+      // Lấy device info từ client
+      const deviceInfo = {
+        deviceId: generateDeviceId(navigator.userAgent),
+        deviceName: getDeviceName(navigator.userAgent),
+        userAgent: navigator.userAgent,
+        ipAddress: undefined,
+      };
+      
       const response = await fetch("/api/verify-2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          deviceInfo: deviceInfo
+        }),
       });
       
       const result = await response.json();

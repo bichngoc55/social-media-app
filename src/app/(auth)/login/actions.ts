@@ -3,10 +3,10 @@
 import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import { loginSchema, LoginValues } from "@/lib/validation";
-import { getDeviceInfo } from "@/lib/device";
+import { generateDeviceId, getDeviceName } from "@/lib/device";
 import bcrypt from "bcryptjs";
 import { isRedirectError } from "next/dist/client/components/redirect";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function login(
@@ -55,11 +55,22 @@ export async function login(
       };
     }
 
-    // Lấy thông tin thiết bị
-    const deviceInfo = await getDeviceInfo();
+    // Lấy thông tin thiết bị từ headers
+    const headersList = await headers();
+    const userAgent = headersList.get('user-agent') || 'Unknown';
+    const ipAddress = headersList.get('x-forwarded-for') || 
+                     headersList.get('x-real-ip') || 
+                     'unknown';
+    
+    const deviceInfo = {
+      deviceId: generateDeviceId(userAgent),
+      deviceName: getDeviceName(userAgent),
+      userAgent,
+      ipAddress: ipAddress === 'unknown' ? undefined : ipAddress,
+    };
 
     // Kiểm tra xem thiết bị đã được tin tưởng chưa
-    const trustedDevice = await prisma.deviceSession.findUnique({
+    let trustedDevice = await prisma.deviceSession.findUnique({
       where: {
         userId_deviceId: {
           userId: existingUser.id,
@@ -68,13 +79,33 @@ export async function login(
       },
     });
 
+    // Nếu chưa có deviceSession, tạo mới (chưa tin tưởng)
+    if (!trustedDevice) {
+      trustedDevice = await prisma.deviceSession.create({
+        data: {
+          userId: existingUser.id,
+          deviceId: deviceInfo.deviceId,
+          deviceName: deviceInfo.deviceName,
+          userAgent: deviceInfo.userAgent,
+          ipAddress: deviceInfo.ipAddress,
+          isTrusted: false, // Chưa tin tưởng
+        },
+      });
+    }
+
     // Nếu thiết bị chưa được tin tưởng, yêu cầu 2FA
-    if (!trustedDevice?.isTrusted) {
-      // Gửi 2FA email
+    if (!trustedDevice.isTrusted) {
+      // Gửi 2FA email với device info
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-2fa`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: existingUser.email }),
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Device-Info": JSON.stringify(deviceInfo)
+        },
+        body: JSON.stringify({ 
+          email: existingUser.email,
+          deviceInfo: deviceInfo
+        }),
       });
 
       if (!response.ok) {

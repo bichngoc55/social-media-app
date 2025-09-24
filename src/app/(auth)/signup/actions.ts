@@ -17,6 +17,14 @@ export async function signUp(
   try {
     const { username, email, password } = signUpSchema.parse(credentials);
 
+    // Validation email server-side
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return {
+        error: "Email không hợp lệ",
+      };
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const userId = generateIdFromEntropySize(10);
