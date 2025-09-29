@@ -24,7 +24,6 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ["utfs.io"],
     remotePatterns: [
       {
         protocol: "https",

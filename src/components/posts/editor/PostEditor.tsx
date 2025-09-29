@@ -3,21 +3,29 @@
 import { useSession } from "@/app/(main)/SessionProvider";
 import LoadingButton from "@/components/LoadingButton";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UserAvatar from "@/components/UserAvatar";
 import { cn } from "@/lib/utils";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useDropzone } from "@uploadthing/react";
-import { ImageIcon, Loader2, X } from "lucide-react";
+import { Globe, ImageIcon, Lock, Loader2, Users, X } from "lucide-react";
 import Image from "next/image";
-import { ClipboardEvent, useRef } from "react";
+import { ClipboardEvent, useRef, useState } from "react";
 import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
 
 export default function PostEditor() {
   const { user } = useSession();
+  const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">("PUBLIC");
 
   const mutation = useSubmitPostMutation();
 
@@ -46,6 +54,7 @@ export default function PostEditor() {
         placeholder: "What's crack-a-lackin'?",
       }),
     ],
+    immediatelyRender: false, // Fix hydration mismatch
   });
 
   const input =
@@ -58,11 +67,13 @@ export default function PostEditor() {
       {
         content: input,
         mediaIds: attachments.map((a) => a.mediaId).filter(Boolean) as string[],
+        privacy,
       },
       {
         onSuccess: () => {
           editor?.commands.clearContent();
           resetMediaUploads();
+          setPrivacy("PUBLIC"); // Reset về mặc định
         },
       },
     );
@@ -97,27 +108,101 @@ export default function PostEditor() {
           removeAttachment={removeAttachment}
         />
       )}
-      <div className="flex items-center justify-end gap-3">
-        {isUploading && (
-          <>
-            <span className="text-sm">{uploadProgress ?? 0}%</span>
-            <Loader2 className="size-5 animate-spin text-primary" />
-          </>
-        )}
-        <AddAttachmentsButton
-          onFilesSelected={startUpload}
-          disabled={isUploading || attachments.length >= 5}
-        />
-        <LoadingButton
-          onClick={onSubmit}
-          loading={mutation.isPending}
-          disabled={!input.trim() || isUploading}
-          className="min-w-20 btn-glow bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-        >
-          Post
-        </LoadingButton>
+      <div className="flex items-center justify-between">
+        <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
+        <div className="flex items-center gap-3">
+          {isUploading && (
+            <>
+              <span className="text-sm">{uploadProgress ?? 0}%</span>
+              <Loader2 className="size-5 animate-spin text-primary" />
+            </>
+          )}
+          <AddAttachmentsButton
+            onFilesSelected={startUpload}
+            disabled={isUploading || attachments.length >= 5}
+          />
+          <LoadingButton
+            onClick={onSubmit}
+            loading={mutation.isPending}
+            disabled={!input.trim() || isUploading}
+            className="min-w-20 btn-glow bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            Post
+          </LoadingButton>
+        </div>
       </div>
     </div>
+  );
+}
+
+interface PrivacySelectorProps {
+  privacy: "DRAFT" | "FOLLOWERS" | "PUBLIC";
+  onPrivacyChange: (privacy: "DRAFT" | "FOLLOWERS" | "PUBLIC") => void;
+}
+
+function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
+  const getPrivacyIcon = (privacyLevel: string) => {
+    switch (privacyLevel) {
+      case "DRAFT":
+        return <Lock className="h-4 w-4" />;
+      case "FOLLOWERS":
+        return <Users className="h-4 w-4" />;
+      case "PUBLIC":
+        return <Globe className="h-4 w-4" />;
+      default:
+        return <Globe className="h-4 w-4" />;
+    }
+  };
+
+  const getPrivacyText = (privacyLevel: string) => {
+    switch (privacyLevel) {
+      case "DRAFT":
+        return "Nháp";
+      case "FOLLOWERS":
+        return "Người theo dõi";
+      case "PUBLIC":
+        return "Công khai";
+      default:
+        return "Công khai";
+    }
+  };
+
+  return (
+    <Select value={privacy} onValueChange={onPrivacyChange}>
+      <SelectTrigger className="w-fit gap-2 border-0 bg-transparent hover:bg-white/10 transition-colors">
+        {getPrivacyIcon(privacy)}
+        <span className="text-sm font-medium">{getPrivacyText(privacy)}</span>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="PUBLIC">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Công khai</div>
+              <div className="text-xs text-muted-foreground">Mọi người có thể thấy</div>
+            </div>
+          </div>
+        </SelectItem>
+        <SelectItem value="FOLLOWERS">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Người theo dõi</div>
+              <div className="text-xs text-muted-foreground">Chỉ người theo dõi thấy</div>
+            </div>
+          </div>
+        </SelectItem>
+        <SelectItem value="DRAFT">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            <div>
+              <div className="font-medium">Nháp</div>
+              <div className="text-xs text-muted-foreground">Chỉ mình bạn thấy</div>
+            </div>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
 

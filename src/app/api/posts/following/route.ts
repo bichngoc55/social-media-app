@@ -43,16 +43,46 @@ export async function GET(req: NextRequest) {
     // Loại bỏ chính mình khỏi danh sách
     blockedUserIds.delete(user.id);
 
-    // Lấy posts từ user đang follow, loại trừ user bị chặn
-    const validFollowingIds = followingUsers
-      .map(f => f.followingId)
-      .filter(id => !blockedUserIds.has(id));
+    // Lấy posts từ user đang follow + chính mình, loại trừ user bị chặn
+    const validFollowingIds = [
+      ...followingUsers.map(f => f.followingId),
+      user.id // Thêm chính mình
+    ].filter(id => !blockedUserIds.has(id));
 
     const posts = await prisma.post.findMany({
       where: {
-        userId: {
-          in: validFollowingIds,
-        },
+        AND: [
+          {
+            userId: {
+              in: validFollowingIds,
+            },
+          },
+          {
+            OR: [
+              // Public posts từ following users
+              { privacy: "PUBLIC" },
+              // Followers posts từ following users HOẶC chính mình
+              {
+                AND: [
+                  { privacy: "FOLLOWERS" },
+                  { 
+                    OR: [
+                      { userId: { in: validFollowingIds } },
+                      { userId: user.id } // Chính mình
+                    ]
+                  },
+                ],
+              },
+              // Draft posts chỉ của chính mình (nếu follow chính mình)
+              {
+                AND: [
+                  { privacy: "DRAFT" },
+                  { userId: user.id },
+                ],
+              },
+            ],
+          },
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
