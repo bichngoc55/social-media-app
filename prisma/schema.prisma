@@ -62,6 +62,7 @@ model Post {
   id                  String         @id @default(cuid())
   content             String
   userId              String
+  privacy             PostPrivacy    @default(PUBLIC)
   createdAt           DateTime       @default(now())
   bookmarks           Bookmark[]
   comments            Comment[]
@@ -137,6 +138,12 @@ model Notification {
 enum MediaType {
   IMAGE
   VIDEO
+}
+
+enum PostPrivacy {
+  DRAFT     // Chỉ mình tác giả thấy
+  FOLLOWERS // Chỉ followers thấy  
+  PUBLIC    // Mọi người thấy
 }
 
 model EmailVerification {
