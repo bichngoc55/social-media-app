@@ -2,7 +2,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { NotificationData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { NotificationType } from "@prisma/client";
-import { Heart, MessageCircle, User2 } from "lucide-react";
+import { Heart, MessageCircle, User2, UserPlus, Tag } from "lucide-react";
 import Link from "next/link";
 
 interface NotificationProps {
@@ -27,6 +27,16 @@ export default function Notification({ notification }: NotificationProps) {
     LIKE: {
       message: `${notification.issuer.displayName} liked your post`,
       icon: <Heart className="size-7 fill-red-500 text-red-500" />,
+      href: `/posts/${notification.postId}`,
+    },
+    TAG: {
+      message: `${notification.issuer.displayName} tagged you in a post`,
+      icon: <Tag className="size-7 text-blue-500" />,
+      href: `/posts/${notification.postId}`,
+    },
+    TAG_REQUEST: {
+      message: `${notification.issuer.displayName} wants to tag you in a post`,
+      icon: <UserPlus className="size-7 text-orange-500" />,
       href: `/posts/${notification.postId}`,
     },
   };
