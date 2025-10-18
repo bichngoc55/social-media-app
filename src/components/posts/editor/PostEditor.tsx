@@ -22,10 +22,12 @@ import { ClipboardEvent, useRef, useState } from "react";
 import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
+import UserTagging from "../UserTagging";
 
 export default function PostEditor() {
   const { user } = useSession();
   const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">("PUBLIC");
+  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
 
   const mutation = useSubmitPostMutation();
 
@@ -109,7 +111,10 @@ export default function PostEditor() {
         />
       )}
       <div className="flex items-center justify-between">
-        <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
+        <div className="flex items-center gap-3">
+          <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
+          {/* UserTagging disabled in PostEditor - will be available after post creation */}
+        </div>
         <div className="flex items-center gap-3">
           {isUploading && (
             <>

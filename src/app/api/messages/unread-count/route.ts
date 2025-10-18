@@ -30,6 +30,12 @@ export async function GET() {
       return Response.json(data);
     } catch (streamError) {
       console.error("Stream Chat error:", streamError);
+      
+      // Check if it's a timeout error
+      if (streamError instanceof Error && streamError.message.includes('timeout')) {
+        console.warn("Stream Chat timeout - returning 0 unread count");
+      }
+      
       // Return 0 unread count if Stream Chat fails
       const data: MessageCountInfo = {
         unreadCount: 0,

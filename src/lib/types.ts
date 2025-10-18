@@ -82,6 +82,16 @@ export function getCommentDataInclude(loggedInUserId: string) {
     user: {
       select: getUserDataSelect(loggedInUserId),
     },
+    replies: {
+      include: {
+        user: {
+          select: getUserDataSelect(loggedInUserId),
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    },
   } satisfies Prisma.CommentInclude;
 }
 

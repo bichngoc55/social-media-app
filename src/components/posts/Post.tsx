@@ -15,6 +15,7 @@ import UserTooltip from "../UserTooltip";
 import BookmarkButton from "./BookmarkButton";
 import LikeButton from "./LikeButton";
 import PostMoreButton from "./PostMoreButton";
+import UserTagging from "./UserTagging";
 
 interface PostProps {
   post: PostData;
@@ -80,14 +81,23 @@ export default function Post({ post }: PostProps) {
             onClick={() => setShowComments(!showComments)}
           />
         </div>
-        <BookmarkButton
-          postId={post.id}
-          initialState={{
-            isBookmarkedByUser: post.bookmarks.some(
-              (bookmark) => bookmark.userId === user.id,
-            ),
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <BookmarkButton
+            postId={post.id}
+            initialState={{
+              isBookmarkedByUser: post.bookmarks.some(
+                (bookmark) => bookmark.userId === user.id,
+              ),
+            }}
+          />
+          {user.id === post.userId && (
+            <UserTagging 
+              postId={post.id}
+              onTaggedUsers={() => {}} // Refresh post data
+              className="relative"
+            />
+          )}
+        </div>
       </div>
       {showComments && <Comments post={post} />}
     </article>

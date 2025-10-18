@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useToast } from "../ui/use-toast";
 import { deleteComment, submitComment } from "./actions";
+import kyInstance from "@/lib/ky";
 
 export function useSubmitCommentMutation(postId: string) {
   const { toast } = useToast();
@@ -99,6 +100,38 @@ export function useDeleteCommentMutation() {
       toast({
         variant: "destructive",
         description: "Failed to delete comment. Please try again.",
+      });
+    },
+  });
+
+  return mutation;
+}
+
+export function useSubmitReplyMutation(postId: string) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
+      const response = await kyInstance.post(`/api/posts/${postId}/comments/${commentId}/reply`, {
+        json: { content }
+      });
+      return response.json();
+    },
+    onSuccess: async () => {
+      // Invalidate comments to refresh the list
+      const queryKey: QueryKey = ["comments", postId];
+      await queryClient.invalidateQueries({ queryKey });
+
+      toast({
+        description: "Reply posted",
+      });
+    },
+    onError(error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        description: "Failed to post reply. Please try again.",
       });
     },
   });

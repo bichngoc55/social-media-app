@@ -9,32 +9,33 @@ datasource db {
 }
 
 model User {
-  id                    String         @id
-  username              String         @unique
+  id                    String              @id
+  username              String              @unique
   displayName           String
-  email                 String?        @unique
+  email                 String?             @unique
   passwordHash          String?
-  googleId              String?        @unique
+  googleId              String?             @unique
   avatarUrl             String?
   bio                   String?
-  emailVerified         Boolean        @default(false)
-  createdAt             DateTime       @default(now())
+  createdAt             DateTime            @default(now())
+  emailVerified         Boolean             @default(false)
   bookmarks             Bookmark[]
   comments              Comment[]
-  following             Follow[]       @relation("Following")
-  followers             Follow[]       @relation("Followers")
-  likes                 Like[]
-  issuedNotifications   Notification[] @relation("Issuer")
-  receivedNotifications Notification[] @relation("Recipient")
-  posts                 Post[]
-  sessions              Session[]
-  emailVerifications    EmailVerification[]
   deviceSessions        DeviceSession[]
+  emailVerifications    EmailVerification[]
+  following             Follow[]            @relation("Following")
+  followers             Follow[]            @relation("Followers")
+  likes                 Like[]
+  issuedNotifications   Notification[]      @relation("Issuer")
+  receivedNotifications Notification[]      @relation("Recipient")
+  post_tags             post_tags[]
+  posts                 Post[]
+  reportsReceived       Report[]            @relation("Reported")
+  reportsIssued         Report[]            @relation("Reporter")
+  sessions              Session[]
   twoFactorAuths        TwoFactorAuth[]
-  blockedUsers          UserBlock[]    @relation("Blocker")
-  blockedByUsers        UserBlock[]    @relation("Blocked")
-  reportsIssued         Report[]       @relation("Reporter")
-  reportsReceived       Report[]       @relation("Reported")
+  blockedByUsers        UserBlock[]         @relation("Blocked")
+  blockedUsers          UserBlock[]         @relation("Blocker")
 
   @@map("users")
 }
@@ -62,15 +63,16 @@ model Post {
   id                  String         @id @default(cuid())
   content             String
   userId              String
-  privacy             PostPrivacy    @default(PUBLIC)
   createdAt           DateTime       @default(now())
+  privacy             PostPrivacy    @default(PUBLIC)
   bookmarks           Bookmark[]
   comments            Comment[]
   likes               Like[]
   linkedNotifications Notification[]
   attachments         Media[]
-  reports             Report[]
+  post_tags           post_tags[]
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports             Report[]
 
   @@map("posts")
 }
@@ -91,9 +93,12 @@ model Comment {
   content   String
   userId    String
   postId    String
+  parentId  String?  // For replies
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
 
   @@map("comments")
 }
@@ -135,17 +140,6 @@ model Notification {
   @@map("notifications")
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
-}
-
-enum PostPrivacy {
-  DRAFT     // Chỉ mình tác giả thấy
-  FOLLOWERS // Chỉ followers thấy  
-  PUBLIC    // Mọi người thấy
-}
-
 model EmailVerification {
   id        String   @id @default(cuid())
   userId    String
@@ -159,16 +153,16 @@ model EmailVerification {
 }
 
 model DeviceSession {
-  id          String   @id @default(cuid())
-  userId      String
-  deviceId    String   // Unique identifier for device
-  deviceName  String   // User-friendly device name
-  userAgent   String   // Browser/device info
-  ipAddress   String?  // IP address
-  isTrusted   Boolean  @default(false)
-  lastUsedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  deviceId   String
+  deviceName String
+  userAgent  String
+  ipAddress  String?
+  isTrusted  Boolean  @default(false)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, deviceId])
   @@map("device_sessions")
@@ -188,40 +182,66 @@ model TwoFactorAuth {
 }
 
 model UserBlock {
-  id          String   @id @default(cuid())
-  blockerId   String   // User who blocks
-  blockedId   String   // User who is blocked
-  reason      String?  // Optional reason for blocking
-  createdAt   DateTime @default(now())
-  blocker     User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
-  blocked     User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  reason    String?
+  createdAt DateTime @default(now())
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
   @@map("user_blocks")
 }
 
 model Report {
-  id          String      @id @default(cuid())
-  reporterId  String      // User who reports
-  reportedId  String      // User who is reported
-  postId      String?     // Optional: report specific post
-  type        ReportType  // Type of violation
-  reason      String      // Detailed reason
-  status      ReportStatus @default(PENDING)
-  adminNotes  String?     // Admin notes
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  reporter    User        @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reported    User        @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
-  post        Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  reporterId String
+  reportedId String
+  postId     String?
+  type       ReportType
+  reason     String
+  status     ReportStatus @default(PENDING)
+  adminNotes String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  post       Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reported   User         @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  reporter   User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@map("reports")
+}
+
+model post_tags {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  status    TagStatus @default(PENDING)
+  createdAt DateTime  @default(now())
+  posts     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  users     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_tags")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum PostPrivacy {
+  DRAFT
+  FOLLOWERS
+  PUBLIC
 }
 
 enum NotificationType {
   LIKE
   FOLLOW
   COMMENT
+  TAG
+  TAG_REQUEST
 }
 
 enum ReportType {
@@ -240,4 +260,10 @@ enum ReportStatus {
   REVIEWED
   RESOLVED
   DISMISSED
+}
+
+enum TagStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
