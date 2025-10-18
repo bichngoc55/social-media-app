@@ -13,14 +13,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { loginSchema, LoginValues } from "@/lib/validation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import { login } from "./actions";
 
 export default function LoginForm() {
   const [error, setError] = useState<string>();
-
   const [isPending, startTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
+  // Hiển thị thông báo nếu user vừa xác thực email
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      toast({
+        title: "Thành công!",
+        description: "Email đã được xác thực. Bạn có thể đăng nhập bây giờ.",
+      });
+    }
+  }, [searchParams, toast]);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
