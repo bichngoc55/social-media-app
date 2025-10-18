@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "../ui/use-toast";
-import { deletePost } from "./actions";
+import { deletePost, toggleBookmark, updatePostPrivacy } from "./actions";
 
 export function useDeletePostMutation() {
   const { toast } = useToast();
@@ -57,4 +57,33 @@ export function useDeletePostMutation() {
   });
 
   return mutation;
+}
+
+export function useDeletePost() {
+  return useDeletePostMutation();
+}
+
+export function useToggleBookmark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: toggleBookmark,
+    onSuccess: (postId) => {
+      // Invalidate all post-related queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["post-feed"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
+}
+
+export function useUpdatePostPrivacy() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updatePostPrivacy,
+    onSuccess: (postId) => {
+      // Invalidate all post-related queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["post-feed"] });
+    },
+  });
 }

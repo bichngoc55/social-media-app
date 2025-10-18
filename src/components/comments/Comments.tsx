@@ -55,7 +55,7 @@ export default function Comments({ post }: CommentsProps) {
       )}
       <div className="divide-y">
         {comments.map((comment) => (
-          <Comment key={comment.id} comment={comment} />
+          <Comment key={comment.id} comment={comment} post={post} />
         ))}
       </div>
     </div>

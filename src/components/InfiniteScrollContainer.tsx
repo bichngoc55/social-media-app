@@ -1,4 +1,5 @@
 import { useInView } from "react-intersection-observer";
+import { useCallback, useRef } from "react";
 
 interface InfiniteScrollContainerProps extends React.PropsWithChildren {
   onBottomReached: () => void;
@@ -10,11 +11,22 @@ export default function InfiniteScrollContainer({
   onBottomReached,
   className,
 }: InfiniteScrollContainerProps) {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  const debouncedOnBottomReached = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      onBottomReached();
+    }, 100); // 100ms debounce
+  }, [onBottomReached]);
+
   const { ref } = useInView({
     rootMargin: "200px",
     onChange(inView) {
       if (inView) {
-        onBottomReached();
+        debouncedOnBottomReached();
       }
     },
   });

@@ -41,8 +41,33 @@ export async function GET(
       });
     }
 
+    // Kiểm tra relationship với user
+    const isOwnProfile = userId === user.id;
+    const isFollowing = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: user.id,
+          followingId: userId,
+        },
+      },
+    });
+
     const posts = await prisma.post.findMany({
-      where: { userId },
+      where: {
+        AND: [
+          { userId },
+          {
+            OR: [
+              // Public posts - mọi người thấy
+              { privacy: "PUBLIC" },
+              // Followers posts - chỉ followers thấy HOẶC chính chủ
+              ...(isFollowing || isOwnProfile ? [{ privacy: "FOLLOWERS" as const }] : []),
+              // Draft posts - chỉ chính chủ thấy
+              ...(isOwnProfile ? [{ privacy: "DRAFT" as const }] : []),
+            ],
+          },
+        ],
+      },
       include: getPostDataInclude(user.id),
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
