@@ -4,7 +4,8 @@ import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import streamServerClient from "@/lib/stream";
 import { signUpSchema, SignUpValues } from "@/lib/validation";
-import { hash } from "@node-rs/argon2";
+import { generateOTP, sendOTPEmail } from "@/lib/email";
+import bcrypt from "bcryptjs";
 import { generateIdFromEntropySize } from "lucia";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { cookies } from "next/headers";
@@ -16,12 +17,15 @@ export async function signUp(
   try {
     const { username, email, password } = signUpSchema.parse(credentials);
 
-    const passwordHash = await hash(password, {
-      memoryCost: 19456,
-      timeCost: 2,
-      outputLen: 32,
-      parallelism: 1,
-    });
+    // Validation email server-side
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return {
+        error: "Email không hợp lệ",
+      };
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
 
     const userId = generateIdFromEntropySize(10);
 
@@ -63,6 +67,7 @@ export async function signUp(
           displayName: username,
           email,
           passwordHash,
+          emailVerified: false, // Email chưa được xác thực
         },
       });
       await streamServerClient.upsertUser({
@@ -72,15 +77,31 @@ export async function signUp(
       });
     });
 
-    const session = await lucia.createSession(userId, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes,
-    );
+    // Tạo và gửi OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
 
-    return redirect("/");
+    // Lưu OTP vào database
+    await prisma.emailVerification.create({
+      data: {
+        userId,
+        email: email.toLowerCase(),
+        otp,
+        expiresAt,
+      },
+    });
+
+    // Gửi email OTP
+    const emailResult = await sendOTPEmail(email, otp);
+    
+    if (!emailResult.success) {
+      return {
+        error: "Không thể gửi email xác thực. Vui lòng thử lại.",
+      };
+    }
+
+    // Redirect đến trang xác thực email
+    return redirect(`/verify-email?email=${encodeURIComponent(email)}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
     console.error(error);
