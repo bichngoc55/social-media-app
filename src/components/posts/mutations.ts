@@ -36,7 +36,7 @@ export function useDeletePostMutation() {
               posts: page.posts.filter((p) => p.id !== deletedPost.id),
             })),
           };
-        },
+        }
       );
 
       toast({

@@ -26,7 +26,7 @@ export default function UserPosts({ userId }: UserPostsProps) {
       kyInstance
         .get(
           `/api/users/${userId}/posts`,
-          pageParam ? { searchParams: { cursor: pageParam } } : {},
+          pageParam ? { searchParams: { cursor: pageParam } } : {}
         )
         .json<PostsPage>(),
     initialPageParam: null as string | null,

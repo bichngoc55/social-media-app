@@ -18,9 +18,9 @@ export async function GET() {
         name: user.displayName,
         image: user.avatarUrl,
       });
-      
+
       const { total_unread_count } = await streamServerClient.getUnreadCount(
-        user.id,
+        user.id
       );
 
       const data: MessageCountInfo = {
@@ -30,12 +30,15 @@ export async function GET() {
       return Response.json(data);
     } catch (streamError) {
       console.error("Stream Chat error:", streamError);
-      
+
       // Check if it's a timeout error
-      if (streamError instanceof Error && streamError.message.includes('timeout')) {
+      if (
+        streamError instanceof Error &&
+        streamError.message.includes("timeout")
+      ) {
         console.warn("Stream Chat timeout - returning 0 unread count");
       }
-      
+
       // Return 0 unread count if Stream Chat fails
       const data: MessageCountInfo = {
         unreadCount: 0,

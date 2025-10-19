@@ -40,14 +40,14 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
         }}
       />
     ),
-    [onClose],
+    [onClose]
   );
 
   return (
     <div
       className={cn(
         "size-full flex-col border-e md:flex md:w-72",
-        open ? "flex" : "hidden",
+        open ? "flex" : "hidden"
       )}
     >
       <MenuHeader onClose={onClose} />

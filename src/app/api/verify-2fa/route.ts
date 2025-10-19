@@ -9,25 +9,31 @@ export async function POST(request: NextRequest) {
     const { email, otp, deviceInfo: clientDeviceInfo } = await request.json();
 
     if (!email || !otp) {
-      return NextResponse.json({ 
-        error: "Email and OTP are required" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Email and OTP are required",
+        },
+        { status: 400 }
+      );
     }
 
     // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ headers
-    const deviceInfo = clientDeviceInfo || (() => {
-      const headersList = headers();
-      const userAgent = headersList.get('user-agent') || 'Unknown';
-      const ipAddress = headersList.get('x-forwarded-for') || 
-                       headersList.get('x-real-ip') || 
-                       undefined;
-      return {
-        deviceId: generateDeviceId(userAgent),
-        deviceName: getDeviceName(userAgent),
-        userAgent,
-        ipAddress,
-      };
-    })();
+    const deviceInfo =
+      clientDeviceInfo ||
+      (() => {
+        const headersList = headers();
+        const userAgent = headersList.get("user-agent") || "Unknown";
+        const ipAddress =
+          headersList.get("x-forwarded-for") ||
+          headersList.get("x-real-ip") ||
+          undefined;
+        return {
+          deviceId: generateDeviceId(userAgent),
+          deviceName: getDeviceName(userAgent),
+          userAgent,
+          ipAddress,
+        };
+      })();
     console.log("2FA Verify - Device Info:", deviceInfo);
 
     // Tìm verification record
@@ -84,14 +90,22 @@ export async function POST(request: NextRequest) {
     console.log("Found verification record:", verification);
 
     if (!verification) {
-      return NextResponse.json({ 
-        error: "Invalid or expired OTP" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Invalid or expired OTP",
+        },
+        { status: 400 }
+      );
     }
 
     // Nếu tìm thấy record nhưng deviceId khác, cập nhật deviceId
     if (verification.deviceId !== deviceInfo.deviceId) {
-      console.log("Updating deviceId from", verification.deviceId, "to", deviceInfo.deviceId);
+      console.log(
+        "Updating deviceId from",
+        verification.deviceId,
+        "to",
+        deviceInfo.deviceId
+      );
       await prisma.twoFactorAuth.update({
         where: { id: verification.id },
         data: { deviceId: deviceInfo.deviceId },
@@ -137,18 +151,24 @@ export async function POST(request: NextRequest) {
     // Tạo session cho user
     const session = await lucia.createSession(verification.user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: "2FA verified successfully",
       deviceName: deviceInfo.deviceName,
     });
-
   } catch (error) {
     console.error("Error verifying 2FA:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

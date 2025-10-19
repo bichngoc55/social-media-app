@@ -17,21 +17,27 @@ export async function POST(
 
     // Không thể chặn chính mình
     if (loggedInUser.id === userId) {
-      return NextResponse.json({ 
-        error: "Cannot block yourself" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Cannot block yourself",
+        },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra user có tồn tại không
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, displayName: true }
+      select: { id: true, displayName: true },
     });
 
     if (!targetUser) {
-      return NextResponse.json({ 
-        error: "User not found" 
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "User not found",
+        },
+        { status: 404 }
+      );
     }
 
     // Kiểm tra xem đã block chưa
@@ -63,17 +69,19 @@ export async function POST(
     // Note: Follow relationships will be handled by the frontend
     // when checking if users can see each other's content
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `You have blocked ${targetUser.displayName}`,
-      block 
+      block,
     });
-
   } catch (error) {
     console.error("Error blocking user:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -97,20 +105,25 @@ export async function DELETE(
     });
 
     if (deletedBlock.count === 0) {
-      return NextResponse.json({ 
-        error: "User is not blocked" 
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "User is not blocked",
+        },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "User has been unblocked" 
+    return NextResponse.json({
+      success: true,
+      message: "User has been unblocked",
     });
-
   } catch (error) {
     console.error("Error unblocking user:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

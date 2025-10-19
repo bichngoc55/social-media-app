@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   try {
     const tokens = await google.validateAuthorizationCode(
       code,
-      storedCodeVerifier,
+      storedCodeVerifier
     );
 
     const googleUser = await kyInstance
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       if (existingUser) {
         await prisma.user.update({
           where: { id: existingUser.id },
-          data: { 
+          data: {
             googleId: googleUser.id,
             emailVerified: true, // Google users tự động xác thực email
           },
@@ -84,13 +84,13 @@ export async function GET(req: NextRequest) {
           data: { emailVerified: true },
         });
       }
-      
+
       const session = await lucia.createSession(existingUser.id, {});
       const sessionCookie = lucia.createSessionCookie(session.id);
       cookies().set(
         sessionCookie.name,
         sessionCookie.value,
-        sessionCookie.attributes,
+        sessionCookie.attributes
       );
       return new Response(null, {
         status: 302,
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
-      sessionCookie.attributes,
+      sessionCookie.attributes
     );
 
     return new Response(null, {

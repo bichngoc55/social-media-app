@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      blockedUsers: blockedUsers.map(block => ({
+      blockedUsers: blockedUsers.map((block) => ({
         id: block.blocked.id,
         username: block.blocked.username,
         displayName: block.blocked.displayName,
@@ -62,11 +62,13 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-
   } catch (error) {
     console.error("Error fetching blocked users:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

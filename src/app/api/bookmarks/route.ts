@@ -20,7 +20,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    const posts = bookmarks.map(bookmark => bookmark.post);
+    const posts = bookmarks.map((bookmark) => bookmark.post);
 
     return Response.json(posts);
   } catch (error) {
