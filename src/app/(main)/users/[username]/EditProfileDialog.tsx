@@ -70,7 +70,7 @@ export default function EditProfileDialog({
           setCroppedAvatar(null);
           onOpenChange(false);
         },
-      },
+      }
     );
   }
 
@@ -156,7 +156,7 @@ function AvatarInput({ src, onImageCropped }: AvatarInputProps) {
       100,
       0,
       (uri) => setImageToCrop(uri as File),
-      "file",
+      "file"
     );
   }
 

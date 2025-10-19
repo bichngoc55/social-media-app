@@ -18,7 +18,7 @@ export default function Verify2FAForm() {
   const { toast } = useToast();
   const email = searchParams.get("email") || "";
   const deviceName = searchParams.get("device") || "Thiết bị mới";
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -37,7 +37,7 @@ export default function Verify2FAForm() {
 
   const onSubmit = async (data: VerifyEmailValues) => {
     setIsLoading(true);
-    
+
     try {
       // Lấy device info từ client
       const deviceInfo = {
@@ -46,27 +46,38 @@ export default function Verify2FAForm() {
         userAgent: navigator.userAgent,
         ipAddress: undefined,
       };
-      
+
       const response = await fetch("/api/verify-2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          deviceInfo: deviceInfo
+          deviceInfo: deviceInfo,
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        toast({ title: "Thành công!", description: "Xác thực 2FA thành công! Thiết bị đã được tin tưởng." });
+        toast({
+          title: "Thành công!",
+          description: "Xác thực 2FA thành công! Thiết bị đã được tin tưởng.",
+        });
         router.push("/");
       } else {
         setError("otp", { message: result.error || "Có lỗi xảy ra" });
-        toast({ title: "Lỗi", description: result.error || "Có lỗi xảy ra", variant: "destructive" });
+        toast({
+          title: "Lỗi",
+          description: result.error || "Có lỗi xảy ra",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast({ title: "Lỗi", description: "Có lỗi xảy ra, vui lòng thử lại", variant: "destructive" });
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra, vui lòng thử lại",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -74,22 +85,25 @@ export default function Verify2FAForm() {
 
   const handleResendOTP = async () => {
     if (countdown > 0) return;
-    
+
     setIsResending(true);
-    
+
     try {
       const response = await fetch("/api/send-2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        toast({ title: "Thành công!", description: "Mã xác thực mới đã được gửi!" });
+        toast({
+          title: "Thành công!",
+          description: "Mã xác thực mới đã được gửi!",
+        });
         setCountdown(60); // 60 giây countdown
-        
+
         // Countdown timer
         const timer = setInterval(() => {
           setCountdown((prev) => {
@@ -101,18 +115,26 @@ export default function Verify2FAForm() {
           });
         }, 1000);
       } else {
-        toast({ title: "Lỗi", description: result.error || "Không thể gửi mã xác thực", variant: "destructive" });
+        toast({
+          title: "Lỗi",
+          description: result.error || "Không thể gửi mã xác thực",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      toast({ title: "Lỗi", description: "Có lỗi xảy ra, vui lòng thử lại", variant: "destructive" });
+      toast({
+        title: "Lỗi",
+        description: "Có lỗi xảy ra, vui lòng thử lại",
+        variant: "destructive",
+      });
     } finally {
       setIsResending(false);
     }
   };
 
   return (
-    <div className="card-glass p-8 space-y-6">
-      <div className="text-center space-y-2">
+    <div className="card-glass space-y-6 p-8">
+      <div className="space-y-2 text-center">
         <Shield className="mx-auto size-12 text-primary" />
         <h2 className="text-xl font-semibold">Thiết bị mới được phát hiện</h2>
         <p className="text-sm text-muted-foreground">
@@ -124,7 +146,7 @@ export default function Verify2FAForm() {
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground size-4" />
+            <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 transform text-muted-foreground" />
             <Input
               id="email"
               type="email"
@@ -153,11 +175,7 @@ export default function Verify2FAForm() {
           )}
         </div>
 
-        <Button
-          type="submit"
-          className="w-full btn-glow"
-          disabled={isLoading}
-        >
+        <Button type="submit" className="btn-glow w-full" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
@@ -169,7 +187,7 @@ export default function Verify2FAForm() {
         </Button>
       </form>
 
-      <div className="text-center space-y-2">
+      <div className="space-y-2 text-center">
         <p className="text-sm text-muted-foreground">
           Không nhận được mã xác thực?
         </p>

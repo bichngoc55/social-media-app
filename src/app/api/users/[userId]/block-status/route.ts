@@ -38,11 +38,13 @@ export async function GET(
       isBlockedByThem: !!isBlockedByThem,
       blockReason: isBlockedByMe?.reason || null,
     });
-
   } catch (error) {
     console.error("Error checking block status:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

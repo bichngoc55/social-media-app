@@ -38,7 +38,7 @@ export function useSubmitCommentMutation(postId: string) {
               ],
             };
           }
-        },
+        }
       );
 
       queryClient.invalidateQueries({
@@ -88,7 +88,7 @@ export function useDeleteCommentMutation() {
               comments: page.comments.filter((c) => c.id !== deletedComment.id),
             })),
           };
-        },
+        }
       );
 
       toast({
@@ -112,10 +112,19 @@ export function useSubmitReplyMutation(postId: string) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
-      const response = await kyInstance.post(`/api/posts/${postId}/comments/${commentId}/reply`, {
-        json: { content }
-      });
+    mutationFn: async ({
+      commentId,
+      content,
+    }: {
+      commentId: string;
+      content: string;
+    }) => {
+      const response = await kyInstance.post(
+        `/api/posts/${postId}/comments/${commentId}/reply`,
+        {
+          json: { content },
+        }
+      );
       return response.json();
     },
     onSuccess: async () => {

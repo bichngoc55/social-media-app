@@ -2,6 +2,7 @@
 
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
+import { sendNotification, processMentions } from "@/lib/socket";
 import { getCommentDataInclude, PostData } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
 
@@ -18,28 +19,50 @@ export async function submitComment({
 
   const { content: contentValidated } = createCommentSchema.parse({ content });
 
-  const [newComment] = await prisma.$transaction([
-    prisma.comment.create({
-      data: {
-        content: contentValidated,
-        postId: post.id,
-        userId: user.id,
-      },
-      include: getCommentDataInclude(user.id),
-    }),
-    ...(post.user.id !== user.id
-      ? [
-          prisma.notification.create({
-            data: {
-              issuerId: user.id,
-              recipientId: post.user.id,
-              postId: post.id,
-              type: "COMMENT",
-            },
-          }),
-        ]
-      : []),
-  ]);
+  // const [newComment] = await prisma.$transaction([
+  //   prisma.comment.create({
+  //     data: {
+  //       content: contentValidated,
+  //       postId: post.id,
+  //       userId: user.id,
+  //     },
+  //     include: getCommentDataInclude(user.id),
+  //   }),
+  //   ...(post.user.id !== user.id
+  //     ? [
+  //         prisma.notification.create({
+  //           data: {
+  //             issuerId: user.id,
+  //             recipientId: post.user.id,
+  //             postId: post.id,
+  //             type: "COMMENT",
+  //           },
+  //         }),
+  //       ]
+  //     : []),
+  // ]);
+  const newComment = await prisma.comment.create({
+    data: {
+      content: contentValidated,
+      postId: post.id,
+      userId: user.id,
+    },
+    include: getCommentDataInclude(user.id),
+  });
+
+  const mentionMatches = contentValidated.match(/@(\w+)/g) || [];
+  const mentionedUsernames = mentionMatches.map((match) =>
+    match.slice(1).toLowerCase()
+  );
+
+  await processMentions(contentValidated, user.id, post.id, newComment.id);
+
+  const isPostAuthorMentioned = mentionedUsernames.includes(
+    post.user.username.toLowerCase()
+  );
+  if (post.user.id !== user.id && !isPostAuthorMentioned) {
+    await sendNotification(post.user.id, user.id, "COMMENT", post.id);
+  }
 
   return newComment;
 }

@@ -7,6 +7,7 @@ import { Reply, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
 import UserAvatar from "../UserAvatar";
 import UserTooltip from "../UserTooltip";
+import Linkify from "../Linkify";
 import CommentMoreButton from "./CommentMoreButton";
 import CommentInput from "./CommentInput";
 
@@ -16,7 +17,11 @@ interface CommentProps {
   showReplies?: boolean;
 }
 
-export default function Comment({ comment, post, showReplies = true }: CommentProps) {
+export default function Comment({
+  comment,
+  post,
+  showReplies = true,
+}: CommentProps) {
   const { user } = useSession();
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showRepliesList, setShowRepliesList] = useState(false);
@@ -47,8 +52,11 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
               {formatRelativeDate(comment.createdAt)}
             </span>
           </div>
-          <div className="mt-1">{comment.content}</div>
-          
+          {!comment.parentId && (
+            <div className="mt-1">
+              <Linkify>{comment.content}</Linkify>
+            </div>
+          )}
           {/* Reply button - only show for top-level comments */}
           {showReplies && !comment.parentId && (
             <div className="mt-2 flex items-center gap-4">
@@ -58,10 +66,10 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
                 onClick={() => setShowReplyInput(!showReplyInput)}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
               >
-                <Reply className="h-4 w-4 mr-1" />
+                <Reply className="mr-1 h-4 w-4" />
                 Reply
               </Button>
-              
+
               {/* Show replies toggle */}
               {hasReplies && (
                 <Button
@@ -71,11 +79,12 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
                 >
                   {showRepliesList ? (
-                    <ChevronDown className="h-4 w-4 mr-1" />
+                    <ChevronDown className="mr-1 h-4 w-4" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 mr-1" />
+                    <ChevronRight className="mr-1 h-4 w-4" />
                   )}
-                  {comment.replies?.length} {comment.replies?.length === 1 ? 'reply' : 'replies'}
+                  {comment.replies?.length}{" "}
+                  {comment.replies?.length === 1 ? "reply" : "replies"}
                 </Button>
               )}
             </div>
@@ -83,9 +92,9 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
 
           {/* Reply input */}
           {showReplyInput && (
-            <div className="mt-3 ml-8">
-              <CommentInput 
-                post={post} 
+            <div className="ml-8 mt-3">
+              <CommentInput
+                post={post}
                 parentComment={comment}
                 onSuccess={() => setShowReplyInput(false)}
               />
@@ -94,14 +103,14 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
 
           {/* Replies list */}
           {showRepliesList && hasReplies && (
-            <div className="mt-3 ml-8 space-y-2 border-l-2 border-muted pl-4">
+            <div className="ml-8 mt-3 space-y-2 border-l-2 border-muted pl-4">
               {comment.replies?.map((reply) => (
-                <Comment 
-                  key={reply.id} 
+                <Comment
+                  key={reply.id}
                   comment={{
                     ...reply,
-                    replies: [] // Replies don't have nested replies
-                  }} 
+                    replies: [], // Replies don't have nested replies
+                  }}
                   post={post}
                   showReplies={false} // Replies don't have nested replies
                 />
@@ -109,13 +118,16 @@ export default function Comment({ comment, post, showReplies = true }: CommentPr
             </div>
           )}
         </div>
-        
+
         {comment.user.id === user.id && (
           <CommentMoreButton
             comment={comment}
             className="ms-auto opacity-0 transition-opacity group-hover/comment:opacity-100"
           />
         )}
+        {/* <div>
+          <Linkify>{comment.content}</Linkify>
+        </div> */}
       </div>
     </div>
   );

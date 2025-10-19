@@ -17,7 +17,7 @@ export default function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const email = searchParams.get("email") || "";
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -36,14 +36,15 @@ export default function VerifyEmailForm() {
 
   const onSubmit = async (data: VerifyEmailValues) => {
     setIsLoading(true);
-    
+
     try {
       const result = await verifyEmailAction(data);
-      
+
       if (result.success) {
         toast({
           title: "Thành công!",
-          description: "Email đã được xác thực thành công! Bạn đã được đăng nhập.",
+          description:
+            "Email đã được xác thực thành công! Bạn đã được đăng nhập.",
         });
         router.push("/");
       } else {
@@ -67,25 +68,25 @@ export default function VerifyEmailForm() {
 
   const handleResendOTP = async () => {
     if (countdown > 0) return;
-    
+
     setIsResending(true);
-    
+
     try {
       const response = await fetch("/api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         toast({
           title: "Thành công!",
           description: "Mã OTP mới đã được gửi!",
         });
         setCountdown(60); // 60 giây countdown
-        
+
         // Countdown timer
         const timer = setInterval(() => {
           setCountdown((prev) => {
@@ -115,12 +116,12 @@ export default function VerifyEmailForm() {
   };
 
   return (
-    <div className="card-glass p-8 space-y-6">
+    <div className="card-glass space-y-6 p-8">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground size-4" />
+            <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 transform text-muted-foreground" />
             <Input
               id="email"
               type="email"
@@ -149,11 +150,7 @@ export default function VerifyEmailForm() {
           )}
         </div>
 
-        <Button
-          type="submit"
-          className="w-full btn-glow"
-          disabled={isLoading}
-        >
+        <Button type="submit" className="btn-glow w-full" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
@@ -165,10 +162,8 @@ export default function VerifyEmailForm() {
         </Button>
       </form>
 
-      <div className="text-center space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Không nhận được mã OTP?
-        </p>
+      <div className="space-y-2 text-center">
+        <p className="text-sm text-muted-foreground">Không nhận được mã OTP?</p>
         <Button
           variant="outline"
           onClick={handleResendOTP}

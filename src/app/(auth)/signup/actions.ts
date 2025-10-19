@@ -12,7 +12,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function signUp(
-  credentials: SignUpValues,
+  credentials: SignUpValues
 ): Promise<{ error: string }> {
   try {
     const { username, email, password } = signUpSchema.parse(credentials);
@@ -93,7 +93,7 @@ export async function signUp(
 
     // Gửi email OTP
     const emailResult = await sendOTPEmail(email, otp);
-    
+
     if (!emailResult.success) {
       return {
         error: "Không thể gửi email xác thực. Vui lòng thử lại.",

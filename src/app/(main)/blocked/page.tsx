@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,27 +42,32 @@ export default function BlockedUsersPage() {
   });
   const { toast } = useToast();
 
-  const fetchBlockedUsers = async (page = 1) => {
-    try {
-      const response = await fetch(`/api/users/blocked?page=${page}&limit=10`);
-      const data: BlockedUsersResponse = await response.json();
+  const fetchBlockedUsers = useCallback(
+    async (page = 1) => {
+      try {
+        const response = await fetch(
+          `/api/users/blocked?page=${page}&limit=10`
+        );
+        const data: BlockedUsersResponse = await response.json();
 
-      if (!response.ok) {
-        throw new Error((data as any).error || "Có lỗi xảy ra");
+        if (!response.ok) {
+          throw new Error((data as any).error || "Có lỗi xảy ra");
+        }
+
+        setBlockedUsers(data.blockedUsers);
+        setPagination(data.pagination);
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: error instanceof Error ? error.message : "Có lỗi xảy ra",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-
-      setBlockedUsers(data.blockedUsers);
-      setPagination(data.pagination);
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [toast]
+  );
 
   const handleUnblockUser = async (userId: string, username: string) => {
     setIsUnblocking(userId);
@@ -77,8 +82,8 @@ export default function BlockedUsersPage() {
         throw new Error(data.error || "Có lỗi xảy ra");
       }
 
-      setBlockedUsers(prev => prev.filter(user => user.id !== userId));
-      setPagination(prev => ({
+      setBlockedUsers((prev) => prev.filter((user) => user.id !== userId));
+      setPagination((prev) => ({
         ...prev,
         total: prev.total - 1,
       }));
@@ -100,7 +105,7 @@ export default function BlockedUsersPage() {
 
   useEffect(() => {
     fetchBlockedUsers();
-  }, []);
+  }, [fetchBlockedUsers]);
 
   if (isLoading) {
     return (
@@ -116,7 +121,10 @@ export default function BlockedUsersPage() {
             <CardContent>
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 rounded-lg border p-4"
+                  >
                     <Skeleton className="h-12 w-12 rounded-full" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-32" />
@@ -149,9 +157,9 @@ export default function BlockedUsersPage() {
           </CardHeader>
           <CardContent>
             {blockedUsers.length === 0 ? (
-              <div className="text-center py-8">
-                <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
+              <div className="py-8 text-center">
+                <UserX className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="mb-2 text-lg font-semibold">
                   Chưa có người dùng nào bị chặn
                 </h3>
                 <p className="text-muted-foreground">
@@ -163,34 +171,35 @@ export default function BlockedUsersPage() {
                 {blockedUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex items-center gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
                   >
                     <UserAvatar
                       avatarUrl={user.avatarUrl}
                       size={48}
                       className="rounded-full"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
                         <Link
                           href={`/users/${user.username}`}
-                          className="font-semibold hover:underline truncate"
+                          className="truncate font-semibold hover:underline"
                         >
                           {user.displayName}
                         </Link>
-                        <span className="text-muted-foreground text-sm">
+                        <span className="text-sm text-muted-foreground">
                           @{user.username}
                         </span>
                       </div>
                       {user.bio && (
-                        <p className="text-sm text-muted-foreground truncate mb-2">
+                        <p className="mb-2 truncate text-sm text-muted-foreground">
                           {user.bio}
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          Chặn ngày {formatDate(new Date(user.blockedAt), "dd/MM/yyyy")}
+                          Chặn ngày{" "}
+                          {formatDate(new Date(user.blockedAt), "dd/MM/yyyy")}
                         </div>
                         {user.blockReason && (
                           <div className="flex items-center gap-1">
@@ -205,7 +214,7 @@ export default function BlockedUsersPage() {
                       size="sm"
                       onClick={() => handleUnblockUser(user.id, user.username)}
                       disabled={isUnblocking === user.id}
-                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      className="text-green-600 hover:bg-green-50 hover:text-green-700"
                     >
                       {isUnblocking === user.id ? (
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

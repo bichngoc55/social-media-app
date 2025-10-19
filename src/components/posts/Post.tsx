@@ -27,7 +27,7 @@ export default function Post({ post }: PostProps) {
   const [showComments, setShowComments] = useState(false);
 
   return (
-    <article className="group/post space-y-3 rounded-2xl card-glass p-6 fade-in post-hover-lift">
+    <article className="group/post card-glass post-hover-lift space-y-3 rounded-2xl p-6 fade-in">
       <div className="flex justify-between gap-3">
         <div className="flex flex-wrap gap-3">
           <UserTooltip user={post.user}>
@@ -86,12 +86,12 @@ export default function Post({ post }: PostProps) {
             postId={post.id}
             initialState={{
               isBookmarkedByUser: post.bookmarks.some(
-                (bookmark) => bookmark.userId === user.id,
+                (bookmark) => bookmark.userId === user.id
               ),
             }}
           />
           {user.id === post.userId && (
-            <UserTagging 
+            <UserTagging
               postId={post.id}
               onTaggedUsers={() => {}} // Refresh post data
               className="relative"
@@ -113,7 +113,7 @@ function MediaPreviews({ attachments }: MediaPreviewsProps) {
     <div
       className={cn(
         "flex flex-col gap-3",
-        attachments.length > 1 && "sm:grid sm:grid-cols-2",
+        attachments.length > 1 && "sm:grid sm:grid-cols-2"
       )}
     >
       {attachments.map((m) => (
@@ -164,9 +164,9 @@ interface CommentButtonProps {
 
 function CommentButton({ post, onClick }: CommentButtonProps) {
   return (
-    <button 
-      onClick={onClick} 
-      className="flex items-center gap-2 btn-glow rounded-full px-3 py-2 hover:bg-white/20 transition-all duration-300"
+    <button
+      onClick={onClick}
+      className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-white/20"
     >
       <MessageSquare className="size-5 transition-all duration-300" />
       <span className="text-sm font-medium tabular-nums">
