@@ -26,7 +26,9 @@ import UserTagging from "../UserTagging";
 
 export default function PostEditor() {
   const { user } = useSession();
-  const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">("PUBLIC");
+  const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">(
+    "PUBLIC"
+  );
   const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
 
   const mutation = useSubmitPostMutation();
@@ -77,7 +79,7 @@ export default function PostEditor() {
           resetMediaUploads();
           setPrivacy("PUBLIC"); // Reset về mặc định
         },
-      },
+      }
     );
   }
 
@@ -89,7 +91,7 @@ export default function PostEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl card-glass p-6 slide-up post-hover-lift">
+    <div className="card-glass slide-up post-hover-lift flex flex-col gap-5 rounded-2xl p-6">
       <div className="flex gap-5">
         <UserAvatar avatarUrl={user.avatarUrl} className="hidden sm:inline" />
         <div {...rootProps} className="w-full">
@@ -97,7 +99,7 @@ export default function PostEditor() {
             editor={editor}
             className={cn(
               "max-h-[20rem] w-full overflow-y-auto rounded-2xl bg-background px-5 py-3",
-              isDragActive && "outline-dashed",
+              isDragActive && "outline-dashed"
             )}
             onPaste={onPaste}
           />
@@ -130,7 +132,7 @@ export default function PostEditor() {
             onClick={onSubmit}
             loading={mutation.isPending}
             disabled={!input.trim() || isUploading}
-            className="min-w-20 btn-glow bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="btn-glow min-w-20 border-0 bg-gradient-to-r from-pink-400 to-purple-500 text-white shadow-lg transition-all duration-300 hover:from-pink-500 hover:to-purple-600 hover:shadow-xl"
           >
             Post
           </LoadingButton>
@@ -174,7 +176,7 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
 
   return (
     <Select value={privacy} onValueChange={onPrivacyChange}>
-      <SelectTrigger className="w-fit gap-2 border-0 bg-transparent hover:bg-white/10 transition-colors">
+      <SelectTrigger className="w-fit gap-2 border-0 bg-transparent transition-colors hover:bg-white/10">
         {getPrivacyIcon(privacy)}
         <span className="text-sm font-medium">{getPrivacyText(privacy)}</span>
       </SelectTrigger>
@@ -184,7 +186,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
             <Globe className="h-4 w-4" />
             <div>
               <div className="font-medium">Công khai</div>
-              <div className="text-xs text-muted-foreground">Mọi người có thể thấy</div>
+              <div className="text-xs text-muted-foreground">
+                Mọi người có thể thấy
+              </div>
             </div>
           </div>
         </SelectItem>
@@ -193,7 +197,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
             <Users className="h-4 w-4" />
             <div>
               <div className="font-medium">Người theo dõi</div>
-              <div className="text-xs text-muted-foreground">Chỉ người theo dõi thấy</div>
+              <div className="text-xs text-muted-foreground">
+                Chỉ người theo dõi thấy
+              </div>
             </div>
           </div>
         </SelectItem>
@@ -202,7 +208,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
             <Lock className="h-4 w-4" />
             <div>
               <div className="font-medium">Nháp</div>
-              <div className="text-xs text-muted-foreground">Chỉ mình bạn thấy</div>
+              <div className="text-xs text-muted-foreground">
+                Chỉ mình bạn thấy
+              </div>
             </div>
           </div>
         </SelectItem>
@@ -227,7 +235,7 @@ function AddAttachmentsButton({
       <Button
         variant="ghost"
         size="icon"
-        className="text-primary hover:text-primary btn-glow rounded-full hover:bg-white/20 transition-all duration-300"
+        className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-white/20 hover:text-primary"
         disabled={disabled}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -264,7 +272,7 @@ function AttachmentPreviews({
     <div
       className={cn(
         "flex flex-col gap-3",
-        attachments.length > 1 && "sm:grid sm:grid-cols-2",
+        attachments.length > 1 && "sm:grid sm:grid-cols-2"
       )}
     >
       {attachments.map((attachment) => (

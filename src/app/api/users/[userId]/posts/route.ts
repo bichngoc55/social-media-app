@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params: { userId } }: { params: { userId: string } },
+  { params: { userId } }: { params: { userId: string } }
 ) {
   try {
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
@@ -35,9 +35,9 @@ export async function GET(
     });
 
     if (isBlocked) {
-      return Response.json({ 
-        posts: [], 
-        nextCursor: null 
+      return Response.json({
+        posts: [],
+        nextCursor: null,
       });
     }
 
@@ -61,7 +61,9 @@ export async function GET(
               // Public posts - mọi người thấy
               { privacy: "PUBLIC" },
               // Followers posts - chỉ followers thấy HOẶC chính chủ
-              ...(isFollowing || isOwnProfile ? [{ privacy: "FOLLOWERS" as const }] : []),
+              ...(isFollowing || isOwnProfile
+                ? [{ privacy: "FOLLOWERS" as const }]
+                : []),
               // Draft posts - chỉ chính chủ thấy
               ...(isOwnProfile ? [{ privacy: "DRAFT" as const }] : []),
             ],

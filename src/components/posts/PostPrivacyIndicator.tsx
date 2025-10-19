@@ -5,9 +5,9 @@ interface PostPrivacyIndicatorProps {
   className?: string;
 }
 
-export default function PostPrivacyIndicator({ 
-  privacy, 
-  className = "h-4 w-4 text-muted-foreground" 
+export default function PostPrivacyIndicator({
+  privacy,
+  className = "h-4 w-4 text-muted-foreground",
 }: PostPrivacyIndicatorProps) {
   const getPrivacyConfig = (privacyLevel: string) => {
     switch (privacyLevel) {
@@ -15,25 +15,25 @@ export default function PostPrivacyIndicator({
         return {
           icon: Lock,
           tooltip: "Chỉ mình bạn thấy",
-          color: "text-orange-500"
+          color: "text-orange-500",
         };
       case "FOLLOWERS":
         return {
           icon: Users,
           tooltip: "Chỉ người theo dõi thấy",
-          color: "text-blue-500"
+          color: "text-blue-500",
         };
       case "PUBLIC":
         return {
           icon: Globe,
           tooltip: "Mọi người có thể thấy",
-          color: "text-green-500"
+          color: "text-green-500",
         };
       default:
         return {
           icon: Globe,
           tooltip: "Mọi người có thể thấy",
-          color: "text-green-500"
+          color: "text-green-500",
         };
     }
   };

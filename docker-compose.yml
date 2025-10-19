@@ -4,11 +4,11 @@ services:
     container_name: loopy_postgres_db
     restart: always
     environment:
-      POSTGRES_USER: loopy
-      POSTGRES_PASSWORD: loopy
-      POSTGRES_DB: loopydb
+      POSTGRES_USER: ${POSTGRES_USER:-loopy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loopy}
+      POSTGRES_DB: ${POSTGRES_DB:-loopydb}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - loopy_data:/var/lib/postgresql/data
 

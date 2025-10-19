@@ -1,0 +1,112 @@
+Table users {
+  id string [pk]
+  username string [unique]
+  displayName string
+  email string [unique, null]
+  passwordHash string [null]
+  googleId string [unique, null]
+  avatarUrl string [null]
+  bio string [null]
+  createdAt datetime [default: `now()`]
+}
+
+Table sessions {
+  id string [pk]
+  userId string
+  expiresAt datetime
+}
+
+Table follows {
+  followerId string
+  followingId string
+
+  indexes {
+    (followerId, followingId) [unique]
+  }
+}
+
+Table posts {
+  id string [pk, default: `cuid()`]
+  content string
+  userId string
+  createdAt datetime [default: `now()`]
+}
+
+Table post_media {
+  id string [pk, default: `cuid()`]
+  postId string [null]
+  type MediaType
+  url string
+  createdAt datetime [default: `now()`]
+}
+
+Table comments {
+  id string [pk, default: `cuid()`]
+  content string
+  userId string
+  postId string
+  createdAt datetime [default: `now()`]
+}
+
+Table likes {
+  userId string
+  postId string
+
+  indexes {
+    (userId, postId) [unique]
+  }
+}
+
+Table bookmarks {
+  id string [pk, default: `cuid()`]
+  userId string
+  postId string
+  createdAt datetime [default: `now()`]
+
+  indexes {
+    (userId, postId) [unique]
+  }
+}
+
+Table notifications {
+  id string [pk, default: `cuid()`]
+  recipientId string
+  issuerId string
+  postId string [null]
+  type NotificationType
+  read boolean [default: false]
+  createdAt datetime [default: `now()`]
+}
+
+Enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+Enum NotificationType {
+  LIKE
+  FOLLOW
+  COMMENT
+}
+
+Ref: sessions.userId > users.id
+
+Ref: follows.followerId > users.id
+Ref: follows.followingId > users.id
+
+Ref: posts.userId > users.id
+
+Ref: post_media.postId > posts.id
+
+Ref: comments.userId > users.id
+Ref: comments.postId > posts.id
+
+Ref: likes.userId > users.id
+Ref: likes.postId > posts.id
+
+Ref: bookmarks.userId > users.id
+Ref: bookmarks.postId > posts.id
+
+Ref: notifications.issuerId > users.id
+Ref: notifications.recipientId > users.id
+Ref: notifications.postId > posts.id

@@ -36,17 +36,17 @@ export async function verifyEmailAction(data: VerifyEmailValues) {
     });
 
     if (!verification) {
-      return { 
-        success: false, 
-        error: "Mã OTP không hợp lệ hoặc đã hết hạn" 
+      return {
+        success: false,
+        error: "Mã OTP không hợp lệ hoặc đã hết hạn",
       };
     }
 
     // Kiểm tra xem email đã được xác thực chưa
     if (verification.user.emailVerified) {
-      return { 
-        success: false, 
-        error: "Email đã được xác thực rồi" 
+      return {
+        success: false,
+        error: "Email đã được xác thực rồi",
       };
     }
 
@@ -80,17 +80,20 @@ export async function verifyEmailAction(data: VerifyEmailValues) {
     console.log("Creating session for user:", verification.user.id);
     const session = await lucia.createSession(verification.user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
     console.log("Session created successfully");
 
     return { success: true, message: "Email verified successfully" };
-
   } catch (error) {
     if (isRedirectError(error)) throw error;
     console.error("Error verifying email:", error);
-    return { 
-      success: false, 
-      error: "Có lỗi xảy ra, vui lòng thử lại" 
+    return {
+      success: false,
+      error: "Có lỗi xảy ra, vui lòng thử lại",
     };
   }
 }

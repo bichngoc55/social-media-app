@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -20,15 +20,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  UserX, 
-  Flag, 
+import {
+  UserX,
+  Flag,
   Loader2,
   Shield,
   AlertTriangle,
   MessageSquare,
   Image,
-  Users
+  Users,
 } from "lucide-react";
 
 interface BlockReportButtonsProps {
@@ -41,15 +41,19 @@ const REPORT_TYPES = [
   { value: "SPAM", label: "Spam", icon: MessageSquare },
   { value: "HARASSMENT", label: "Quấy rối", icon: AlertTriangle },
   { value: "HATE_SPEECH", label: "Ngôn từ thù địch", icon: Shield },
-  { value: "INAPPROPRIATE_CONTENT", label: "Nội dung không phù hợp", icon: Image },
+  {
+    value: "INAPPROPRIATE_CONTENT",
+    label: "Nội dung không phù hợp",
+    icon: Image,
+  },
   { value: "FAKE_ACCOUNT", label: "Tài khoản giả", icon: Users },
   { value: "OTHER", label: "Khác", icon: Flag },
 ];
 
-export default function BlockReportButtons({ 
-  userId, 
-  username, 
-  isBlocked
+export default function BlockReportButtons({
+  userId,
+  username,
+  isBlocked,
 }: BlockReportButtonsProps) {
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -91,7 +95,7 @@ export default function BlockReportButtons({
       setIsBlockDialogOpen(false);
       setBlockReason("");
       setCurrentBlockStatus(true);
-      
+
       toast({
         title: "Thành công",
         description: `Đã chặn ${username}`,
@@ -121,7 +125,7 @@ export default function BlockReportButtons({
       }
 
       setCurrentBlockStatus(false);
-      
+
       toast({
         title: "Thành công",
         description: `Đã bỏ chặn ${username}`,
@@ -169,7 +173,7 @@ export default function BlockReportButtons({
       setIsReportDialogOpen(false);
       setReportType("");
       setReportReason("");
-      
+
       toast({
         title: "Thành công",
         description: "Báo cáo đã được gửi thành công",
@@ -194,12 +198,12 @@ export default function BlockReportButtons({
             size="sm"
             onClick={handleUnblockUser}
             disabled={isLoading}
-            className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200 hover:text-green-800 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/30"
+            className="border-green-200 bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Shield className="h-4 w-4 mr-2" />
+              <Shield className="mr-2 h-4 w-4" />
             )}
             Bỏ chặn
           </Button>
@@ -209,21 +213,21 @@ export default function BlockReportButtons({
             size="sm"
             onClick={() => setIsBlockDialogOpen(true)}
             disabled={isLoading}
-            className="bg-red-100 text-red-700 border-red-200 hover:bg-red-200 hover:text-red-800 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+            className="border-red-200 bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
           >
-            <UserX className="h-4 w-4 mr-2" />
+            <UserX className="mr-2 h-4 w-4" />
             Chặn
           </Button>
         )}
-        
+
         <Button
           variant="secondary"
           size="sm"
           onClick={() => setIsReportDialogOpen(true)}
           disabled={isLoading}
-          className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200 hover:text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-900/30"
+          className="border-orange-200 bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30"
         >
-          <Flag className="h-4 w-4 mr-2" />
+          <Flag className="mr-2 h-4 w-4" />
           Báo cáo
         </Button>
       </div>
@@ -237,11 +241,11 @@ export default function BlockReportButtons({
               Chặn người dùng
             </DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn chặn <strong>{username}</strong>? 
-              Người này sẽ không thể xem nội dung của bạn và tương tác với bạn.
+              Bạn có chắc chắn muốn chặn <strong>{username}</strong>? Người này
+              sẽ không thể xem nội dung của bạn và tương tác với bạn.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="block-reason">Lý do chặn (tùy chọn)</Label>
@@ -291,7 +295,7 @@ export default function BlockReportButtons({
               Báo cáo <strong>{username}</strong> vì vi phạm quy tắc cộng đồng.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="report-type">Loại vi phạm</Label>
@@ -314,7 +318,7 @@ export default function BlockReportButtons({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="report-reason">Mô tả chi tiết</Label>
               <Textarea
