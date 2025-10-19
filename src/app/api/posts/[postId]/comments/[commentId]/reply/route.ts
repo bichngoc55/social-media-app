@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params: { postId, commentId } }: { params: { postId: string; commentId: string } }
+  {
+    params: { postId, commentId },
+  }: { params: { postId: string; commentId: string } }
 ) {
   try {
     const { user: loggedInUser } = await validateRequest();
@@ -16,16 +18,19 @@ export async function POST(
     const { content } = await req.json();
 
     if (!content || content.trim().length === 0) {
-      return NextResponse.json({ 
-        error: "Content is required" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Content is required",
+        },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra comment có tồn tại không
     const parentComment = await prisma.comment.findUnique({
       where: { id: commentId },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         postId: true,
         userId: true,
         parentId: true, // Check if this is already a reply
@@ -34,29 +39,39 @@ export async function POST(
             id: true,
             displayName: true,
             username: true,
-          }
-        }
+          },
+        },
       },
     });
 
     if (!parentComment) {
-      return NextResponse.json({ 
-        error: "Comment not found" 
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Comment not found",
+        },
+        { status: 404 }
+      );
     }
 
     // Kiểm tra comment thuộc về post này
     if (parentComment.postId !== postId) {
-      return NextResponse.json({ 
-        error: "Comment does not belong to this post" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Comment does not belong to this post",
+        },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra không thể reply một reply (chỉ cho phép 1 cấp)
     if (parentComment.parentId) {
-      return NextResponse.json({ 
-        error: "Cannot reply to a reply. Only one level of replies is allowed." 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Cannot reply to a reply. Only one level of replies is allowed.",
+        },
+        { status: 400 }
+      );
     }
 
     // Tạo reply
@@ -74,9 +89,9 @@ export async function POST(
             displayName: true,
             username: true,
             avatarUrl: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     // Tạo notification cho comment owner (nếu không phải chính mình)
@@ -91,7 +106,7 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: "Reply created successfully",
       reply: {
@@ -99,13 +114,15 @@ export async function POST(
         content: reply.content,
         createdAt: reply.createdAt,
         user: reply.user,
-      }
+      },
     });
-
   } catch (error) {
     console.error("Error creating reply:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

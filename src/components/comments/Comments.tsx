@@ -18,7 +18,7 @@ export default function Comments({ post }: CommentsProps) {
         kyInstance
           .get(
             `/api/posts/${post.id}/comments`,
-            pageParam ? { searchParams: { cursor: pageParam } } : {},
+            pageParam ? { searchParams: { cursor: pageParam } } : {}
           )
           .json<CommentsPage>(),
       initialPageParam: null as string | null,
@@ -54,9 +54,14 @@ export default function Comments({ post }: CommentsProps) {
         </p>
       )}
       <div className="divide-y">
-        {comments.map((comment) => (
+        {/* {comments.map((comment) => (
           <Comment key={comment.id} comment={comment} post={post} />
-        ))}
+        ))} */}
+        {comments
+          .filter((comment) => !comment.parentId)
+          .map((comment) => (
+            <Comment key={comment.id} comment={comment} post={post} />
+          ))}
       </div>
     </div>
   );

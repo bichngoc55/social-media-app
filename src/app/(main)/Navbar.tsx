@@ -5,15 +5,18 @@ import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-10 card-elevated">
+    <header className="card-elevated sticky top-0 z-10">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-5 px-5 py-3">
-        <Link href="/" className="flex items-center gap-2 text-3xl font-bold gradient-text">
+        <Link
+          href="/"
+          className="gradient-text flex items-center gap-2 text-3xl font-bold"
+        >
           <Image
             src="/logo-image.png"
             alt="Loopy Logo"
             width={60}
             height={60}
-            className="rounded-full hover:scale-110 transition-transform duration-300"
+            className="rounded-full transition-transform duration-300 hover:scale-110"
           />
           Loopy
         </Link>

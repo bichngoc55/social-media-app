@@ -50,12 +50,12 @@ export default function TrendsSidebarClient() {
   if (isLoading) {
     return (
       <div className="sticky top-[5.25rem] hidden h-fit w-72 flex-none space-y-6 md:block lg:w-80">
-        <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-          <div className="text-xl font-bold gradient-text">Who to follow</div>
+        <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+          <div className="gradient-text text-xl font-bold">Who to follow</div>
           <Loader2 className="mx-auto animate-spin" />
         </div>
-        <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-          <div className="text-xl font-bold gradient-text">Trending topics</div>
+        <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+          <div className="gradient-text text-xl font-bold">Trending topics</div>
           <Loader2 className="mx-auto animate-spin" />
         </div>
       </div>
@@ -65,12 +65,12 @@ export default function TrendsSidebarClient() {
   if (error || !data) {
     return (
       <div className="sticky top-[5.25rem] hidden h-fit w-72 flex-none space-y-6 md:block lg:w-80">
-        <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-          <div className="text-xl font-bold gradient-text">Who to follow</div>
+        <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+          <div className="gradient-text text-xl font-bold">Who to follow</div>
           <p className="text-muted-foreground">Unable to load suggestions</p>
         </div>
-        <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-          <div className="text-xl font-bold gradient-text">Trending topics</div>
+        <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+          <div className="gradient-text text-xl font-bold">Trending topics</div>
           <p className="text-muted-foreground">Unable to load trends</p>
         </div>
       </div>
@@ -88,18 +88,21 @@ export default function TrendsSidebarClient() {
 function WhoToFollow({ users }: { users: User[] }) {
   if (users.length === 0) {
     return (
-      <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-        <div className="text-xl font-bold gradient-text">Who to follow</div>
+      <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+        <div className="gradient-text text-xl font-bold">Who to follow</div>
         <p className="text-muted-foreground">No suggestions available</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-      <div className="text-xl font-bold gradient-text">Who to follow</div>
+    <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+      <div className="gradient-text text-xl font-bold">Who to follow</div>
       {users.map((user) => (
-        <div key={user.id} className="flex items-center justify-between gap-3 sidebar-item">
+        <div
+          key={user.id}
+          className="sidebar-item flex items-center justify-between gap-3"
+        >
           <UserTooltip user={user}>
             <Link
               href={`/users/${user.username}`}
@@ -121,7 +124,7 @@ function WhoToFollow({ users }: { users: User[] }) {
             initialState={{
               followers: user._count.followers,
               isFollowedByUser: user.followers.some(
-                ({ followerId }) => followerId === user.id,
+                ({ followerId }) => followerId === user.id
               ),
             }}
           />
@@ -134,21 +137,25 @@ function WhoToFollow({ users }: { users: User[] }) {
 function TrendingTopics({ topics }: { topics: TrendingTopic[] }) {
   if (topics.length === 0) {
     return (
-      <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-        <div className="text-xl font-bold gradient-text">Trending topics</div>
+      <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+        <div className="gradient-text text-xl font-bold">Trending topics</div>
         <p className="text-muted-foreground">No trending topics</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-      <div className="text-xl font-bold gradient-text">Trending topics</div>
+    <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+      <div className="gradient-text text-xl font-bold">Trending topics</div>
       {topics.map(({ hashtag, count }) => {
         const title = hashtag.split("#")[1];
 
         return (
-          <Link key={title} href={`/hashtag/${title}`} className="block sidebar-item">
+          <Link
+            key={title}
+            href={`/hashtag/${title}`}
+            className="sidebar-item block"
+          >
             <p
               className="line-clamp-1 break-all font-semibold hover:underline"
               title={hashtag}

@@ -18,10 +18,10 @@ export default function SearchField() {
   return (
     <form onSubmit={handleSubmit} method="GET" action="/search">
       <div className="relative">
-        <Input 
-          name="q" 
-          placeholder="Search" 
-          className="pe-10 bg-white/20 backdrop-blur-sm border-white/30 focus:bg-white/30 transition-all duration-300 placeholder:text-gray-600" 
+        <Input
+          name="q"
+          placeholder="Search"
+          className="border-white/30 bg-white/20 pe-10 backdrop-blur-sm transition-all duration-300 placeholder:text-gray-600 focus:bg-white/30"
         />
         <SearchIcon className="absolute right-3 top-1/2 size-5 -translate-y-1/2 transform text-gray-600 transition-colors duration-300" />
       </div>

@@ -25,11 +25,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ user });
-
   } catch (error) {
     console.error("Error getting user by email:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

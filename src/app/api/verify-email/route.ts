@@ -9,9 +9,12 @@ export async function POST(request: NextRequest) {
     const { email, otp } = await request.json();
 
     if (!email || !otp) {
-      return NextResponse.json({ 
-        error: "Email and OTP are required" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Email and OTP are required",
+        },
+        { status: 400 }
+      );
     }
 
     // Tìm verification record
@@ -36,16 +39,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification) {
-      return NextResponse.json({ 
-        error: "Invalid or expired OTP" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Invalid or expired OTP",
+        },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra xem email đã được xác thực chưa
     if (verification.user.emailVerified) {
-      return NextResponse.json({ 
-        error: "Email already verified" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Email already verified",
+        },
+        { status: 400 }
+      );
     }
 
     // Cập nhật user và đánh dấu OTP đã sử dụng
@@ -78,18 +87,24 @@ export async function POST(request: NextRequest) {
     console.log("Creating session for user:", verification.user.id);
     const session = await lucia.createSession(verification.user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
     console.log("Session created successfully");
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Email verified successfully" 
+    return NextResponse.json({
+      success: true,
+      message: "Email verified successfully",
     });
-
   } catch (error) {
     console.error("Error verifying email:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

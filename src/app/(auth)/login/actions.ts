@@ -10,7 +10,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function login(
-  credentials: LoginValues,
+  credentials: LoginValues
 ): Promise<{ error: string }> {
   try {
     const { username, password } = loginSchema.parse(credentials);
@@ -40,7 +40,10 @@ export async function login(
       };
     }
 
-    const validPassword = await bcrypt.compare(password, existingUser.passwordHash);
+    const validPassword = await bcrypt.compare(
+      password,
+      existingUser.passwordHash
+    );
 
     if (!validPassword) {
       return {
@@ -51,22 +54,24 @@ export async function login(
     // Kiểm tra email đã được xác thực chưa
     if (!existingUser.emailVerified) {
       return {
-        error: "Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn để lấy mã xác thực.",
+        error:
+          "Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn để lấy mã xác thực.",
       };
     }
 
     // Lấy thông tin thiết bị từ headers
     const headersList = await headers();
-    const userAgent = headersList.get('user-agent') || 'Unknown';
-    const ipAddress = headersList.get('x-forwarded-for') || 
-                     headersList.get('x-real-ip') || 
-                     'unknown';
-    
+    const userAgent = headersList.get("user-agent") || "Unknown";
+    const ipAddress =
+      headersList.get("x-forwarded-for") ||
+      headersList.get("x-real-ip") ||
+      "unknown";
+
     const deviceInfo = {
       deviceId: generateDeviceId(userAgent),
       deviceName: getDeviceName(userAgent),
       userAgent,
-      ipAddress: ipAddress === 'unknown' ? undefined : ipAddress,
+      ipAddress: ipAddress === "unknown" ? undefined : ipAddress,
     };
 
     // Kiểm tra xem thiết bị đã được tin tưởng chưa
@@ -96,17 +101,20 @@ export async function login(
     // Nếu thiết bị chưa được tin tưởng, yêu cầu 2FA
     if (!trustedDevice.isTrusted) {
       // Gửi 2FA email với device info
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-2fa`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Device-Info": JSON.stringify(deviceInfo)
-        },
-        body: JSON.stringify({ 
-          email: existingUser.email,
-          deviceInfo: deviceInfo
-        }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/send-2fa`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Device-Info": JSON.stringify(deviceInfo),
+          },
+          body: JSON.stringify({
+            email: existingUser.email,
+            deviceInfo: deviceInfo,
+          }),
+        }
+      );
 
       if (!response.ok) {
         return {
@@ -115,7 +123,9 @@ export async function login(
       }
 
       // Redirect đến trang 2FA
-      return redirect(`/verify-2fa?email=${encodeURIComponent(existingUser.email!)}&device=${encodeURIComponent(deviceInfo.deviceName)}`);
+      return redirect(
+        `/verify-2fa?email=${encodeURIComponent(existingUser.email!)}&device=${encodeURIComponent(deviceInfo.deviceName)}`
+      );
     }
 
     // Cập nhật lastUsedAt cho thiết bị tin tưởng
@@ -136,7 +146,7 @@ export async function login(
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
-      sessionCookie.attributes,
+      sessionCookie.attributes
     );
 
     return redirect("/");

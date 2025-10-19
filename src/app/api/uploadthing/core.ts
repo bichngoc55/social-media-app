@@ -22,7 +22,7 @@ export const fileRouter = {
 
       if (oldAvatarUrl) {
         const key = oldAvatarUrl.split(
-          `/a/${process.env.UPLOADTHING_APP_ID}/`,
+          `/a/${process.env.UPLOADTHING_APP_ID}/`
         )[1];
 
         await new UTApi().deleteFiles(key);
@@ -30,7 +30,7 @@ export const fileRouter = {
 
       const newAvatarUrl = file.url.replace(
         "/f/",
-        `/a/${process.env.UPLOADTHING_APP_ID}/`,
+        `/a/${process.env.UPLOADTHING_APP_ID}/`
       );
 
       await Promise.all([
@@ -64,10 +64,7 @@ export const fileRouter = {
     .onUploadComplete(async ({ file }) => {
       const media = await prisma.media.create({
         data: {
-          url: file.url.replace(
-            "/f/",
-            `/a/${process.env.UPLOADTHING_APP_ID}/`,
-          ),
+          url: file.url.replace("/f/", `/a/${process.env.UPLOADTHING_APP_ID}/`),
           type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
         },
       });
