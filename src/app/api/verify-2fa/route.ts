@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             displayName: true,
+            role: true, // Thêm role để check admin
           },
         },
       },
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
             select: {
               id: true,
               displayName: true,
+              role: true, // Thêm role để check admin
             },
           },
         },
@@ -161,6 +163,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "2FA verified successfully",
       deviceName: deviceInfo.deviceName,
+      isAdmin: verification.user.role === "ADMIN", // Trả về role để client redirect
     });
   } catch (error) {
     console.error("Error verifying 2FA:", error);

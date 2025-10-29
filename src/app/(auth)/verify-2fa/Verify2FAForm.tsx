@@ -63,7 +63,12 @@ export default function Verify2FAForm() {
           title: "Thành công!",
           description: "Xác thực 2FA thành công! Thiết bị đã được tin tưởng.",
         });
-        router.push("/");
+        // Redirect admin to dashboard, others to home
+        if (result.isAdmin) {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/");
+        }
       } else {
         setError("otp", { message: result.error || "Có lỗi xảy ra" });
         toast({
