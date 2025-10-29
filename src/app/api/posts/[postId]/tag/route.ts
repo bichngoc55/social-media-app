@@ -56,8 +56,10 @@ export async function POST(
     // Kiểm tra users có tồn tại không
     const users = await prisma.user.findMany({
       where: {
-        id: { in: userIds },
-        id: { not: loggedInUser.id }, // Không thể tag chính mình
+        AND: [
+          { id: { in: userIds } },
+          { id: { not: loggedInUser.id } }, // Không thể tag chính mình
+        ],
       },
       select: { id: true, displayName: true, username: true },
     });
