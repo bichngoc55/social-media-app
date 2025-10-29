@@ -24,7 +24,7 @@ export default function useMediaUpload() {
           `attachment_${crypto.randomUUID()}.${extension}`,
           {
             type: file.type,
-          },
+          }
         );
       });
 
@@ -48,7 +48,7 @@ export default function useMediaUpload() {
             mediaId: uploadResult.serverData.mediaId,
             isUploading: false,
           };
-        }),
+        })
       );
     },
     onUploadError(e) {

@@ -42,10 +42,13 @@ async function WhoToFollow() {
   });
 
   return (
-    <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-      <div className="text-xl font-bold gradient-text">Who to follow</div>
+    <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+      <div className="gradient-text text-xl font-bold">Who to follow</div>
       {usersToFollow.map((user) => (
-        <div key={user.id} className="flex items-center justify-between gap-3 sidebar-item">
+        <div
+          key={user.id}
+          className="sidebar-item flex items-center justify-between gap-3"
+        >
           <UserTooltip user={user}>
             <Link
               href={`/users/${user.username}`}
@@ -67,7 +70,7 @@ async function WhoToFollow() {
             initialState={{
               followers: user._count.followers,
               isFollowedByUser: user.followers.some(
-                ({ followerId }) => followerId === user.id,
+                ({ followerId }) => followerId === user.id
               ),
             }}
           />
@@ -95,20 +98,24 @@ const getTrendingTopics = unstable_cache(
   ["trending_topics"],
   {
     revalidate: 3 * 60 * 60,
-  },
+  }
 );
 
 async function TrendingTopics() {
   const trendingTopics = await getTrendingTopics();
 
   return (
-    <div className="space-y-5 rounded-2xl card-glass p-5 fade-in sidebar-card">
-      <div className="text-xl font-bold gradient-text">Trending topics</div>
+    <div className="card-glass sidebar-card space-y-5 rounded-2xl p-5 fade-in">
+      <div className="gradient-text text-xl font-bold">Trending topics</div>
       {trendingTopics.map(({ hashtag, count }) => {
         const title = hashtag.split("#")[1];
 
         return (
-          <Link key={title} href={`/hashtag/${title}`} className="block sidebar-item">
+          <Link
+            key={title}
+            href={`/hashtag/${title}`}
+            className="sidebar-item block"
+          >
             <p
               className="line-clamp-1 break-all font-semibold hover:underline"
               title={hashtag}

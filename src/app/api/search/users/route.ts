@@ -40,7 +40,6 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ users });
-
   } catch (error) {
     console.error("Error searching users:", error);
     return NextResponse.json(

@@ -55,7 +55,7 @@ export default function NewChatDialog({
             : {}),
         },
         { name: 1, username: 1 },
-        { limit: 15 },
+        { limit: 15 }
       ),
   });
 
@@ -110,7 +110,7 @@ export default function NewChatDialog({
                   user={user}
                   onRemove={() => {
                     setSelectedUsers((prev) =>
-                      prev.filter((u) => u.id !== user.id),
+                      prev.filter((u) => u.id !== user.id)
                     );
                   }}
                 />
@@ -129,7 +129,7 @@ export default function NewChatDialog({
                     setSelectedUsers((prev) =>
                       prev.some((u) => u.id === user.id)
                         ? prev.filter((u) => u.id !== user.id)
-                        : [...prev, user],
+                        : [...prev, user]
                     );
                   }}
                 />

@@ -26,9 +26,12 @@ export async function POST(request: NextRequest) {
 
     // Kiểm tra xem email đã được xác thực chưa
     if (user.emailVerified) {
-      return NextResponse.json({ 
-        error: "Email already verified" 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Email already verified",
+        },
+        { status: 400 }
+      );
     }
 
     // Tạo OTP mới
@@ -49,20 +52,25 @@ export async function POST(request: NextRequest) {
     const emailResult = await sendOTPEmail(email, otp);
 
     if (!emailResult.success) {
-      return NextResponse.json({ 
-        error: "Failed to send OTP email" 
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Failed to send OTP email",
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "OTP sent successfully" 
+    return NextResponse.json({
+      success: true,
+      message: "OTP sent successfully",
     });
-
   } catch (error) {
     console.error("Error sending OTP:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

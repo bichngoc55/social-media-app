@@ -22,7 +22,7 @@ export default function FollowingFeed() {
       kyInstance
         .get(
           "/api/posts/following",
-          pageParam ? { searchParams: { cursor: pageParam } } : {},
+          pageParam ? { searchParams: { cursor: pageParam } } : {}
         )
         .json<PostsPage>(),
     initialPageParam: null as string | null,

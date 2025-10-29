@@ -49,7 +49,7 @@ export function useSubmitPostMutation() {
               ],
             };
           }
-        },
+        }
       );
 
       queryClient.invalidateQueries({

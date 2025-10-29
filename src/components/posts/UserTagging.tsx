@@ -15,14 +15,18 @@ interface UserTaggingProps {
   className?: string;
 }
 
-export default function UserTagging({ postId, onTaggedUsers, className }: UserTaggingProps) {
+export default function UserTagging({
+  postId,
+  onTaggedUsers,
+  className,
+}: UserTaggingProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserData[]>([]);
   const [taggedUsers, setTaggedUsers] = useState<UserData[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isTagging, setIsTagging] = useState(false);
-  
+
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const { toast } = useToast();
 
@@ -40,7 +44,9 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const response = await kyInstance.get(`/api/search/users?q=${encodeURIComponent(searchQuery)}`);
+        const response = await kyInstance.get(
+          `/api/search/users?q=${encodeURIComponent(searchQuery)}`
+        );
         const data = await response.json();
         setSearchResults(data.users || []);
       } catch (error) {
@@ -53,7 +59,7 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
   }, [searchQuery]);
 
   const handleUserSelect = (user: UserData) => {
-    if (!taggedUsers.find(u => u.id === user.id)) {
+    if (!taggedUsers.find((u) => u.id === user.id)) {
       setTaggedUsers([...taggedUsers, user]);
     }
     setSearchQuery("");
@@ -61,7 +67,7 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
   };
 
   const handleRemoveUser = (userId: string) => {
-    setTaggedUsers(taggedUsers.filter(u => u.id !== userId));
+    setTaggedUsers(taggedUsers.filter((u) => u.id !== userId));
   };
 
   const handleTagUsers = async () => {
@@ -70,11 +76,11 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
     setIsTagging(true);
     try {
       const response = await kyInstance.post(`/api/posts/${postId}/tag`, {
-        json: { userIds: taggedUsers.map(u => u.id) }
+        json: { userIds: taggedUsers.map((u) => u.id) },
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           description: `Tagged ${taggedUsers.length} user(s)`,
@@ -109,7 +115,7 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg z-50 p-4">
+        <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border bg-background p-4 shadow-lg">
           <div className="space-y-3">
             {/* Search input */}
             <div>
@@ -120,7 +126,7 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
                 className="w-full"
               />
               {isSearching && (
-                <div className="text-sm text-muted-foreground mt-1">
+                <div className="mt-1 text-sm text-muted-foreground">
                   Searching...
                 </div>
               )}
@@ -128,22 +134,26 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
 
             {/* Search results */}
             {searchResults.length > 0 && (
-              <div className="max-h-40 overflow-y-auto space-y-1">
+              <div className="max-h-40 space-y-1 overflow-y-auto">
                 {searchResults.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
+                    className="flex cursor-pointer items-center justify-between rounded p-2 hover:bg-muted"
                     onClick={() => handleUserSelect(user)}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
                         <span className="text-sm font-medium">
                           {user.displayName.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium text-sm">{user.displayName}</div>
-                        <div className="text-xs text-muted-foreground">@{user.username}</div>
+                        <div className="text-sm font-medium">
+                          {user.displayName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          @{user.username}
+                        </div>
                       </div>
                     </div>
                     <Check className="h-4 w-4 text-primary" />
@@ -155,10 +165,14 @@ export default function UserTagging({ postId, onTaggedUsers, className }: UserTa
             {/* Tagged users */}
             {taggedUsers.length > 0 && (
               <div>
-                <div className="text-sm font-medium mb-2">Tagged users:</div>
+                <div className="mb-2 text-sm font-medium">Tagged users:</div>
                 <div className="flex flex-wrap gap-2">
                   {taggedUsers.map((user) => (
-                    <Badge key={user.id} variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      key={user.id}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       {user.displayName}
                       <XIcon
                         className="h-3 w-3 cursor-pointer hover:text-destructive"

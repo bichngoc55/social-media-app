@@ -14,13 +14,13 @@ const nextConfig = {
         tls: false,
       };
     }
-    
+
     // Exclude .node files from client bundle
     config.module.rules.push({
       test: /\.node$/,
-      use: 'ignore-loader',
+      use: "ignore-loader",
     });
-    
+
     return config;
   },
   images: {
@@ -30,6 +30,7 @@ const nextConfig = {
         hostname: "utfs.io",
         pathname: `/**`,
       },
+      { protocol: "https", hostname: "i.pravatar.cc", pathname: "/**" },
     ],
   },
   rewrites: () => {

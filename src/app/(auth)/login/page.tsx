@@ -28,9 +28,11 @@ export default function Page() {
             </Link>
           </div>
         </div>
-        <img
+        <Image
           src="/login-image.jpg"
           alt="Login illustration"
+          width={800}
+          height={600}
           className="hidden w-1/2 object-cover md:block"
         />
       </div>
