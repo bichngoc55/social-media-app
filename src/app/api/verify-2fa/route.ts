@@ -2,7 +2,7 @@ import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import { generateDeviceId, getDeviceName } from "@/lib/device";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,11 +17,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ headers
+    // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ request headers
     const deviceInfo =
       clientDeviceInfo ||
-      (() => {
-        const headersList = headers();
+      (await (async () => {
+        // In route handlers, prefer request.headers to avoid context ambiguity
+        const headersList = request.headers;
         const userAgent = headersList.get("user-agent") || "Unknown";
         const ipAddress =
           headersList.get("x-forwarded-for") ||
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
           userAgent,
           ipAddress,
         };
-      })();
+      })());
     console.log("2FA Verify - Device Info:", deviceInfo);
 
     // Tìm verification record
