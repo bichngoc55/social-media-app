@@ -11,19 +11,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
 import { PostData } from "@/lib/types";
-import { 
-  Bookmark, 
-  Edit, 
-  MoreHorizontal, 
-  Repeat, 
-  Share, 
-  Trash2, 
-  Users, 
-  Globe, 
-  Lock 
+import {
+  Bookmark,
+  Edit,
+  MoreHorizontal,
+  Repeat,
+  Share,
+  Trash2,
+  Users,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { useState, useCallback } from "react";
-import { useDeletePost, useToggleBookmark, useUpdatePostPrivacy } from "./mutations";
+import {
+  useDeletePost,
+  useToggleBookmark,
+  useUpdatePostPrivacy,
+} from "./mutations";
 
 interface PostMenuProps {
   post: PostData;
@@ -40,13 +44,15 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
   const updatePrivacy = useUpdatePostPrivacy();
 
   const isOwnPost = user?.id === post.userId;
-  const isBookmarked = post.bookmarks.some(b => b.userId === user?.id);
+  const isBookmarked = post.bookmarks.some((b) => b.userId === user?.id);
 
   const handleDelete = useCallback(async () => {
-    const confirmed = window.confirm("Bạn có chắc chắn muốn xóa bài đăng này không? Hành động này không thể hoàn tác.");
-    
+    const confirmed = window.confirm(
+      "Bạn có chắc chắn muốn xóa bài đăng này không? Hành động này không thể hoàn tác."
+    );
+
     if (!confirmed) return;
-    
+
     try {
       await deletePost.mutateAsync(post.id);
       toast.success("Bài đăng đã được xóa");
@@ -100,7 +106,9 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
     }
   };
 
-  const handlePrivacyChange = async (newPrivacy: "DRAFT" | "FOLLOWERS" | "PUBLIC") => {
+  const handlePrivacyChange = async (
+    newPrivacy: "DRAFT" | "FOLLOWERS" | "PUBLIC"
+  ) => {
     if (newPrivacy === post.privacy) return;
 
     try {
@@ -154,7 +162,10 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {/* Bookmark */}
-          <DropdownMenuItem onClick={handleBookmark} disabled={toggleBookmark.isPending}>
+          <DropdownMenuItem
+            onClick={handleBookmark}
+            disabled={toggleBookmark.isPending}
+          >
             <Bookmark className="mr-2 h-4 w-4" />
             {isBookmarked ? "Bỏ bookmark" : "Bookmark"}
           </DropdownMenuItem>
@@ -177,7 +188,7 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
           {isOwnPost && (
             <>
               <DropdownMenuSeparator />
-              
+
               {/* Edit */}
               <DropdownMenuItem onClick={onEdit}>
                 <Edit className="mr-2 h-4 w-4" />
@@ -208,20 +219,19 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
                 </div>
               </DropdownMenuItem>
 
-            {/* Delete */}
-            <DropdownMenuItem 
-              onClick={handleDelete} 
-              disabled={deletePost.isPending}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deletePost.isPending ? "Đang xóa..." : "Xóa"}
-            </DropdownMenuItem>
+              {/* Delete */}
+              <DropdownMenuItem
+                onClick={handleDelete}
+                disabled={deletePost.isPending}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deletePost.isPending ? "Đang xóa..." : "Xóa"}
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
     </>
   );
 }

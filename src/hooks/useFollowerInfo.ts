@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function useFollowerInfo(
   userId: string,
-  initialState: FollowerInfo,
+  initialState: FollowerInfo
 ) {
   const query = useQuery({
     queryKey: ["follower-info", userId],

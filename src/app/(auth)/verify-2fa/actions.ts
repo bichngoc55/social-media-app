@@ -9,13 +9,16 @@ export async function verify2FAAction(data: VerifyEmailValues) {
     const validatedData = verifyEmailSchema.parse(data);
 
     // Call API to verify 2FA
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/verify-2fa`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(validatedData),
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/verify-2fa`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(validatedData),
+      }
+    );
 
     const result = await response.json();
 
@@ -26,9 +29,9 @@ export async function verify2FAAction(data: VerifyEmailValues) {
     }
   } catch (error) {
     console.error("Error verifying 2FA:", error);
-    return { 
-      success: false, 
-      error: "Có lỗi xảy ra, vui lòng thử lại" 
+    return {
+      success: false,
+      error: "Có lỗi xảy ra, vui lòng thử lại",
     };
   }
 }

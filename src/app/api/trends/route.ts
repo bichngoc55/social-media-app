@@ -7,7 +7,9 @@ import { NextResponse } from "next/server";
 
 const getTrendingTopics = unstable_cache(
   async () => {
-    const result = await prisma.$queryRaw<{ hashtag: string; count: bigint }[]>` 
+    const result = await prisma.$queryRaw<
+      { hashtag: string; count: bigint }[]
+    >` 
             SELECT LOWER(unnest(regexp_matches(content, '#[[:alnum:]_]+', 'g'))) AS hashtag, COUNT(*) AS count
             FROM posts
             GROUP BY (hashtag)
@@ -23,7 +25,7 @@ const getTrendingTopics = unstable_cache(
   ["trending_topics"],
   {
     revalidate: 3 * 60 * 60,
-  },
+  }
 );
 
 export async function GET() {

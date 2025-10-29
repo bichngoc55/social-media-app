@@ -25,7 +25,10 @@ export async function POST(
 
     // Không cho phép repost chính bài đăng của mình
     if (originalPost.userId === user.id) {
-      return Response.json({ error: "Cannot repost your own post" }, { status: 400 });
+      return Response.json(
+        { error: "Cannot repost your own post" },
+        { status: 400 }
+      );
     }
 
     // Kiểm tra đã repost chưa

@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return Response.json(
         { message: "Invalid authorization header" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -32,8 +32,8 @@ export async function GET(req: Request) {
     new UTApi().deleteFiles(
       unusedMedia.map(
         (m) =>
-          m.url.split(`/a/${process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID}/`)[1],
-      ),
+          m.url.split(`/a/${process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID}/`)[1]
+      )
     );
 
     await prisma.media.deleteMany({

@@ -27,7 +27,7 @@ export default function Notifications() {
       kyInstance
         .get(
           "/api/notifications",
-          pageParam ? { searchParams: { cursor: pageParam } } : {},
+          pageParam ? { searchParams: { cursor: pageParam } } : {}
         )
         .json<NotificationsPage>(),
     initialPageParam: null as string | null,

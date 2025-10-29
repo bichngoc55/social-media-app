@@ -1,8 +1,8 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 // Tạo transporter cho Gmail
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_USER, // Email của bạn
     pass: process.env.EMAIL_APP_PASSWORD, // App Password của Gmail
@@ -16,14 +16,14 @@ export function generateOTP(): string {
 
 // Gửi email OTP
 export async function sendOTPEmail(
-  to: string, 
+  to: string,
   otp: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,
-      subject: 'Xác thực email - Loopy Social Media',
+      subject: "Xác thực email - Loopy Social Media",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #E3AADD 0%, #C8A8E9 50%, #F6BCBA 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
@@ -60,17 +60,17 @@ export async function sendOTPEmail(
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
-    console.error('Error sending OTP email:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to send email' 
+    console.error("Error sending OTP email:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send email",
     };
   }
 }
 
 // Gửi email 2FA cho thiết bị mới
 export async function send2FAEmail(
-  to: string, 
+  to: string,
   displayName: string,
   otp: string,
   deviceName: string,
@@ -80,7 +80,7 @@ export async function send2FAEmail(
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,
-      subject: 'Xác thực đăng nhập từ thiết bị mới - Loopy',
+      subject: "Xác thực đăng nhập từ thiết bị mới - Loopy",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #E3AADD 0%, #C8A8E9 50%, #F6BCBA 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
@@ -104,8 +104,8 @@ export async function send2FAEmail(
             <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <h3 style="margin: 0 0 10px 0; color: #856404;">📱 Thông tin thiết bị:</h3>
               <p style="margin: 5px 0; color: #856404;"><strong>Thiết bị:</strong> ${deviceName}</p>
-              ${ipAddress ? `<p style="margin: 5px 0; color: #856404;"><strong>IP:</strong> ${ipAddress}</p>` : ''}
-              <p style="margin: 5px 0; color: #856404;"><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+              ${ipAddress ? `<p style="margin: 5px 0; color: #856404;"><strong>IP:</strong> ${ipAddress}</p>` : ""}
+              <p style="margin: 5px 0; color: #856404;"><strong>Thời gian:</strong> ${new Date().toLocaleString("vi-VN")}</p>
             </div>
             
             <p style="color: #666; font-size: 14px; margin-bottom: 0;">
@@ -124,24 +124,25 @@ export async function send2FAEmail(
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
-    console.error('Error sending 2FA email:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to send 2FA email' 
+    console.error("Error sending 2FA email:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to send 2FA email",
     };
   }
 }
 
 // Gửi email chào mừng sau khi xác thực thành công
 export async function sendWelcomeEmail(
-  to: string, 
+  to: string,
   displayName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,
-      subject: 'Chào mừng bạn đến với Loopy! 🎊',
+      subject: "Chào mừng bạn đến với Loopy! 🎊",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #E3AADD 0%, #C8A8E9 50%, #F6BCBA 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
@@ -178,10 +179,11 @@ export async function sendWelcomeEmail(
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
-    console.error('Error sending welcome email:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to send welcome email' 
+    console.error("Error sending welcome email:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to send welcome email",
     };
   }
 }

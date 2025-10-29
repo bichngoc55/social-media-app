@@ -87,7 +87,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
   const followerInfo: FollowerInfo = {
     followers: user._count.followers,
     isFollowedByUser: user.followers.some(
-      ({ followerId }) => followerId === loggedInUserId,
+      ({ followerId }) => followerId === loggedInUserId
     ),
   };
 
@@ -118,14 +118,14 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
         {user.id === loggedInUserId ? (
           <EditProfileButton user={user} />
         ) : (
-        <div className="flex flex-col gap-2">
-          <FollowButton userId={user.id} initialState={followerInfo} />
-          <BlockReportButtons
-            userId={user.id}
-            username={user.username}
-            isBlocked={user.blockedByUsers.length > 0}
-          />
-        </div>
+          <div className="flex flex-col gap-2">
+            <FollowButton userId={user.id} initialState={followerInfo} />
+            <BlockReportButtons
+              userId={user.id}
+              username={user.username}
+              isBlocked={user.blockedByUsers.length > 0}
+            />
+          </div>
         )}
       </div>
       {user.bio && (
