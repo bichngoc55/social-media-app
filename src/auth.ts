@@ -63,7 +63,15 @@ export const validateRequest = cache(
       };
     }
 
-    const result = await lucia.validateSession(sessionId);
+    let result: { user: User; session: Session } | { user: null; session: null };
+    try {
+      result = await lucia.validateSession(sessionId);
+    } catch {
+      return {
+        user: null,
+        session: null,
+      };
+    }
 
     try {
       if (result.session && result.session.fresh) {

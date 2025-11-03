@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flag, Search, Check, X, Clock, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import kyInstance from "@/lib/ky";
 import { formatRelativeDate } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Report {
   id: string;
@@ -125,52 +127,72 @@ export default function AdminReportsPage() {
           <Flag className="h-8 w-8" />
           Quản lý Báo cáo
         </h1>
-        <Button variant="outline" asChild>
-          <Link href="/admin/dashboard">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại
-          </Link>
-        </Button>
       </div>
 
-      <div className="flex gap-4">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All status</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="REVIEWED">Reviewed</SelectItem>
-            <SelectItem value="RESOLVED">Resolved</SelectItem>
-            <SelectItem value="DISMISSED">Dismissed</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="SPAM">Spam</SelectItem>
-            <SelectItem value="HARASSMENT">Harassment</SelectItem>
-            <SelectItem value="HATE_SPEECH">Hate Speech</SelectItem>
-            <SelectItem value="VIOLENCE">Violence</SelectItem>
-            <SelectItem value="NUDITY">Nudity</SelectItem>
-            <SelectItem value="COPYRIGHT">Copyright</SelectItem>
-            <SelectItem value="IMPERSONATION">Impersonation</SelectItem>
-            <SelectItem value="OTHER">Other</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="card-glass">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full items-center gap-4 sm:w-auto">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="REVIEWED">Reviewed</SelectItem>
+                <SelectItem value="RESOLVED">Resolved</SelectItem>
+                <SelectItem value="DISMISSED">Dismissed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="SPAM">Spam</SelectItem>
+                <SelectItem value="HARASSMENT">Harassment</SelectItem>
+                <SelectItem value="HATE_SPEECH">Hate Speech</SelectItem>
+                <SelectItem value="VIOLENCE">Violence</SelectItem>
+                <SelectItem value="NUDITY">Nudity</SelectItem>
+                <SelectItem value="COPYRIGHT">Copyright</SelectItem>
+                <SelectItem value="IMPERSONATION">Impersonation</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
-        <div>Loading...</div>
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-20 rounded" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : (
         <>
           <div className="space-y-4">
             {data?.reports.map((report) => (
-              <div key={report.id} className="space-y-3 rounded-lg border p-4">
+              <Card key={report.id}>
+                <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
@@ -286,7 +308,8 @@ export default function AdminReportsPage() {
                     </DialogContent>
                   </Dialog>
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
