@@ -31,6 +31,7 @@ export async function login(
         passwordHash: true,
         emailVerified: true,
         email: true,
+        role: true, // Thêm role để check admin
       },
     });
 
@@ -148,6 +149,11 @@ export async function login(
       sessionCookie.value,
       sessionCookie.attributes
     );
+
+    // Redirect admin to dashboard, others to home
+    if (existingUser.role === "ADMIN") {
+      return redirect("/admin/dashboard");
+    }
 
     return redirect("/");
   } catch (error) {
