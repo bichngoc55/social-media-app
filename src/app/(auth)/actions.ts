@@ -5,21 +5,22 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function logout() {
-  const { session } = await validateRequest();
+  try {
+    const { session } = await validateRequest();
 
-  if (!session) {
-    throw new Error("Unauthorized");
-  }
+    if (session) {
+      try {
+        await lucia.invalidateSession(session.id);
+      } catch {}
+    }
 
-  await lucia.invalidateSession(session.id);
-
-  const sessionCookie = lucia.createBlankSessionCookie();
-
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes
-  );
+    const sessionCookie = lucia.createBlankSessionCookie();
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    );
+  } catch {}
 
   return redirect("/login");
 }

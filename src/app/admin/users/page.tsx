@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import kyInstance from "@/lib/ky";
 import { formatRelativeDate } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface User {
   id: string;
@@ -116,39 +118,59 @@ export default function AdminUsersPage() {
           <Users className="h-8 w-8" />
           Quản lý Người dùng
         </h1>
-        <Button variant="outline" asChild>
-          <Link href="/admin/dashboard">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại
-          </Link>
-        </Button>
       </div>
 
-      <div className="flex gap-4">
-        <Input
-          placeholder="Search users..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            <SelectItem value="USER">User</SelectItem>
-            <SelectItem value="ADMIN">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="card-glass">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full items-center gap-4 sm:w-auto">
+            <Input
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm"
+            />
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
-        <div>Loading...</div>
+        <div className="space-y-4">
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="border-b p-4">
+                <Skeleton className="h-4 w-24" />
+              </div>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 border-b p-4">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-56" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <div className="ms-auto flex gap-2">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <>
-          <div className="rounded-lg border">
-            <table className="w-full">
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <table className="w-full">
               <thead>
                 <tr className="border-b">
                   <th className="p-4 text-left">User</th>
@@ -223,8 +245,9 @@ export default function AdminUsersPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </CardContent>
+          </Card>
 
           {data?.pagination && (
             <div className="flex items-center justify-between">
