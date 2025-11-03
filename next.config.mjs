@@ -30,6 +30,11 @@ const nextConfig = {
         hostname: "utfs.io",
         pathname: `/**`,
       },
+      {
+        protocol: "https",
+        hostname: "uploadthing-prod-sea1.s3.us-west-2.amazonaws.com",
+        pathname: "/**",
+      },
       { protocol: "https", hostname: "i.pravatar.cc", pathname: "/**" },
     ],
   },
