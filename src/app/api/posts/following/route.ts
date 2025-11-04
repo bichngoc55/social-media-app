@@ -15,25 +15,25 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Lấy danh sách user đang follow
-    const followingUsers = await prisma.follow.findMany({
-      where: { followerId: user.id },
-      select: { followingId: true },
-    });
-
-    // Lấy danh sách user bị chặn
-    const blockedUsers = await prisma.userBlock.findMany({
-      where: {
-        OR: [
-          { blockerId: user.id }, // User mình chặn
-          { blockedId: user.id }, // User chặn mình
-        ],
-      },
-      select: {
-        blockerId: true,
-        blockedId: true,
-      },
-    });
+    // Kết hợp các queries để giảm số lần round-trip đến database
+    const [followingUsers, blockedUsers] = await Promise.all([
+      prisma.follow.findMany({
+        where: { followerId: user.id },
+        select: { followingId: true },
+      }),
+      prisma.userBlock.findMany({
+        where: {
+          OR: [
+            { blockerId: user.id }, // User mình chặn
+            { blockedId: user.id }, // User chặn mình
+          ],
+        },
+        select: {
+          blockerId: true,
+          blockedId: true,
+        },
+      }),
+    ]);
 
     const blockedUserIds = new Set([
       ...blockedUsers.map((b) => b.blockedId),

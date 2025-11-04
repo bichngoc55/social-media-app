@@ -136,8 +136,9 @@ function MediaPreview({ media }: MediaPreviewProps) {
         alt="Attachment"
         width={500}
         height={500}
-        unoptimized
         className="mx-auto size-fit max-h-[30rem] rounded-2xl"
+        loading="lazy"
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 500px"
       />
     );
   }

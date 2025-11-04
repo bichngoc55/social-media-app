@@ -28,6 +28,7 @@ async function WhoToFollow() {
 
   const usersToFollow = await prisma.user.findMany({
     where: {
+      role: "USER",
       NOT: {
         id: user.id,
       },

@@ -60,6 +60,8 @@ model Follow {
   following   User   @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
   @@map("follows")
 }
 
@@ -79,6 +81,9 @@ model Post {
   reports             Report[]
   mentions            Mention[]
 
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([privacy, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -106,6 +111,8 @@ model Comment {
   replies   Comment[] @relation("CommentReplies")
   mentions  Mention[]
 
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([parentId])
   @@map("comments")
 }
 
@@ -116,6 +123,8 @@ model Like {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
   @@map("likes")
 }
 
@@ -128,6 +137,7 @@ model Bookmark {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
   @@map("bookmarks")
 }
 
@@ -143,6 +153,8 @@ model Notification {
   post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   recipient   User             @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  @@index([recipientId, read])
+  @@index([recipientId, createdAt(sort: Desc)])
   @@map("notifications")
 }
 
@@ -197,6 +209,8 @@ model UserBlock {
   blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
   @@map("user_blocks")
 }
 
