@@ -1,4 +1,4 @@
-import { PostData } from "@/lib/types";
+import { PostDataLightweight } from "@/lib/types";
 import LoadingButton from "../LoadingButton";
 import { Button } from "../ui/button";
 import {
@@ -12,7 +12,7 @@ import {
 import { useDeletePostMutation } from "./mutations";
 
 interface DeletePostDialogProps {
-  post: PostData;
+  post: PostDataLightweight;
   open: boolean;
   onClose: () => void;
 }

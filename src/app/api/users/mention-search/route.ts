@@ -17,19 +17,21 @@ export async function GET(req: NextRequest) {
       return Response.json([]);
     }
 
-    const followingUsers = await prisma.follow.findMany({
-      where: { followerId: loggedInUser.id },
-      select: { followingId: true },
-    });
+    // Tối ưu: Chạy queries song song
+    const [followingUsers, blockedUsers] = await Promise.all([
+      prisma.follow.findMany({
+        where: { followerId: loggedInUser.id },
+        select: { followingId: true },
+      }),
+      prisma.userBlock.findMany({
+        where: {
+          OR: [{ blockerId: loggedInUser.id }, { blockedId: loggedInUser.id }],
+        },
+        select: { blockerId: true, blockedId: true },
+      }),
+    ]);
 
     const followingIds = followingUsers.map((f) => f.followingId);
-
-    const blockedUsers = await prisma.userBlock.findMany({
-      where: {
-        OR: [{ blockerId: loggedInUser.id }, { blockedId: loggedInUser.id }],
-      },
-      select: { blockerId: true, blockedId: true },
-    });
 
     const blockedUserIds = new Set([
       ...blockedUsers.map((b) => b.blockedId),
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
           },
         ],
       },
-      select: getUserDataSelect(loggedInUser.id),
+      select: getUserDataSelect(loggedInUser.id, true), // Lightweight mode cho search
       orderBy: [{ username: "asc" }],
       take: 10,
     });

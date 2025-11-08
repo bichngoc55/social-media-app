@@ -1,4 +1,4 @@
-import { PostData, CommentData } from "@/lib/types";
+import { PostDataLightweight, CommentData } from "@/lib/types";
 import { Loader2, SendHorizonal } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
@@ -7,7 +7,7 @@ import { useSubmitCommentMutation, useSubmitReplyMutation } from "./mutations";
 import MentionDropdown from "../Mention";
 
 interface CommentInputProps {
-  post: PostData;
+  post: PostDataLightweight;
   parentComment?: CommentData;
   onSuccess?: () => void;
 }

@@ -1,7 +1,12 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getPostDataInclude, PostsPage } from "@/lib/types";
+import { getCachedBlockedUsers, getCachedFollowingUsers } from "@/lib/cache";
 import { NextRequest } from "next/server";
+
+// Tối ưu: Cache route config
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,37 +20,15 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Kết hợp các queries để giảm số lần round-trip đến database
-    const [followingUsers, blockedUsers] = await Promise.all([
-      prisma.follow.findMany({
-        where: { followerId: user.id },
-        select: { followingId: true },
-      }),
-      prisma.userBlock.findMany({
-        where: {
-          OR: [
-            { blockerId: user.id }, // User mình chặn
-            { blockedId: user.id }, // User chặn mình
-          ],
-        },
-        select: {
-          blockerId: true,
-          blockedId: true,
-        },
-      }),
+    // Tối ưu: Sử dụng cached data
+    const [blockedUserIds, followingUserIds] = await Promise.all([
+      getCachedBlockedUsers(user.id),
+      getCachedFollowingUsers(user.id),
     ]);
-
-    const blockedUserIds = new Set([
-      ...blockedUsers.map((b) => b.blockedId),
-      ...blockedUsers.map((b) => b.blockerId),
-    ]);
-
-    // Loại bỏ chính mình khỏi danh sách
-    blockedUserIds.delete(user.id);
 
     // Lấy posts từ user đang follow + chính mình, loại trừ user bị chặn
     const validFollowingIds = [
-      ...followingUsers.map((f) => f.followingId),
+      ...Array.from(followingUserIds),
       user.id, // Thêm chính mình
     ].filter((id) => !blockedUserIds.has(id));
 
@@ -54,7 +37,7 @@ export async function GET(req: NextRequest) {
         AND: [
           {
             userId: {
-              in: validFollowingIds,
+              in: validFollowingIds.length > 0 ? validFollowingIds : [user.id], // Fallback nếu không có following
             },
           },
           {
@@ -84,7 +67,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
       cursor: cursor ? { id: cursor } : undefined,
-      include: getPostDataInclude(user.id),
+      include: getPostDataInclude(user.id, true), // Lightweight mode cho list
     });
 
     const nextCursor = posts.length > pageSize ? posts[pageSize].id : null;
