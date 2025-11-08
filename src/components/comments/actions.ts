@@ -3,14 +3,14 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendNotification, processMentions } from "@/lib/socket";
-import { getCommentDataInclude, PostData } from "@/lib/types";
+import { getCommentDataInclude, PostDataLightweight } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
 
 export async function submitComment({
   post,
   content,
 }: {
-  post: PostData;
+  post: PostDataLightweight;
   content: string;
 }) {
   const { user } = await validateRequest();

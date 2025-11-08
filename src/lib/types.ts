@@ -1,7 +1,11 @@
 import { Prisma } from "@prisma/client";
 
-export function getUserDataSelect(loggedInUserId: string) {
-  return {
+/**
+ * Lightweight user select cho list views (posts, comments)
+ * Không load _count và relations để tăng tốc
+ */
+export function getUserDataSelect(loggedInUserId: string, lightweight = false) {
+  const baseSelect = {
     id: true,
     username: true,
     displayName: true,
@@ -24,6 +28,14 @@ export function getUserDataSelect(loggedInUserId: string) {
         id: true,
       },
     },
+  } satisfies Prisma.UserSelect;
+
+  if (lightweight) {
+    return baseSelect;
+  }
+
+  return {
+    ...baseSelect,
     _count: {
       select: {
         posts: true,
@@ -33,14 +45,75 @@ export function getUserDataSelect(loggedInUserId: string) {
   } satisfies Prisma.UserSelect;
 }
 
+// Full user data with _count (when lightweight=false)
 export type UserData = Prisma.UserGetPayload<{
-  select: ReturnType<typeof getUserDataSelect>;
+  select: {
+    id: true;
+    username: true;
+    displayName: true;
+    avatarUrl: true;
+    bio: true;
+    createdAt: true;
+    followers: {
+      where: {
+        followerId: string;
+      };
+      select: {
+        followerId: true;
+      };
+    };
+    blockedByUsers: {
+      where: {
+        blockerId: string;
+      };
+      select: {
+        id: true;
+      };
+    };
+    _count: {
+      select: {
+        posts: true;
+        followers: true;
+      };
+    };
+  };
 }>;
 
-export function getPostDataInclude(loggedInUserId: string) {
+// Lightweight user data without _count (when lightweight=true)
+export type UserDataLightweight = Prisma.UserGetPayload<{
+  select: {
+    id: true;
+    username: true;
+    displayName: true;
+    avatarUrl: true;
+    bio: true;
+    createdAt: true;
+    followers: {
+      where: {
+        followerId: string;
+      };
+      select: {
+        followerId: true;
+      };
+    };
+    blockedByUsers: {
+      where: {
+        blockerId: string;
+      };
+      select: {
+        id: true;
+      };
+    };
+  };
+}>;
+
+export function getPostDataInclude(
+  loggedInUserId: string,
+  lightweight = false
+) {
   return {
     user: {
-      select: getUserDataSelect(loggedInUserId),
+      select: getUserDataSelect(loggedInUserId, lightweight),
     },
     attachments: true,
     likes: {
@@ -68,24 +141,139 @@ export function getPostDataInclude(loggedInUserId: string) {
   } satisfies Prisma.PostInclude;
 }
 
+// Post data with full user data (lightweight=false)
 export type PostData = Prisma.PostGetPayload<{
-  include: ReturnType<typeof getPostDataInclude>;
+  include: {
+    user: {
+      select: {
+        id: true;
+        username: true;
+        displayName: true;
+        avatarUrl: true;
+        bio: true;
+        createdAt: true;
+        followers: {
+          where: {
+            followerId: string;
+          };
+          select: {
+            followerId: true;
+          };
+        };
+        blockedByUsers: {
+          where: {
+            blockerId: string;
+          };
+          select: {
+            id: true;
+          };
+        };
+        _count: {
+          select: {
+            posts: true;
+            followers: true;
+          };
+        };
+      };
+    };
+    attachments: true;
+    likes: {
+      where: {
+        userId: string;
+      };
+      select: {
+        userId: true;
+      };
+    };
+    bookmarks: {
+      where: {
+        userId: string;
+      };
+      select: {
+        userId: true;
+      };
+    };
+    _count: {
+      select: {
+        likes: true;
+        comments: true;
+      };
+    };
+  };
+}>;
+
+// Post data with lightweight user data (lightweight=true)
+export type PostDataLightweight = Prisma.PostGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true;
+        username: true;
+        displayName: true;
+        avatarUrl: true;
+        bio: true;
+        createdAt: true;
+        followers: {
+          where: {
+            followerId: string;
+          };
+          select: {
+            followerId: true;
+          };
+        };
+        blockedByUsers: {
+          where: {
+            blockerId: string;
+          };
+          select: {
+            id: true;
+          };
+        };
+      };
+    };
+    attachments: true;
+    likes: {
+      where: {
+        userId: string;
+      };
+      select: {
+        userId: true;
+      };
+    };
+    bookmarks: {
+      where: {
+        userId: string;
+      };
+      select: {
+        userId: true;
+      };
+    };
+    _count: {
+      select: {
+        likes: true;
+        comments: true;
+      };
+    };
+  };
 }>;
 
 export interface PostsPage {
-  posts: PostData[];
+  posts: PostDataLightweight[];
   nextCursor: string | null;
 }
 
-export function getCommentDataInclude(loggedInUserId: string) {
+export function getCommentDataInclude(
+  loggedInUserId: string,
+  lightweight = true
+) {
   return {
     user: {
-      select: getUserDataSelect(loggedInUserId),
+      select: getUserDataSelect(loggedInUserId, lightweight), // Lightweight cho comments
     },
     replies: {
       include: {
         user: {
-          select: getUserDataSelect(loggedInUserId),
+          select: getUserDataSelect(loggedInUserId, lightweight),
         },
       },
       orderBy: {
