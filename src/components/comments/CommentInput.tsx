@@ -1,5 +1,5 @@
 import { PostData, CommentData } from "@/lib/types";
-import { Loader2, SendHorizonal, ImageIcon, X } from "lucide-react";
+import { Loader2, SendHorizonal, ImageIcon, X, Smile } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -8,7 +8,12 @@ import MentionDropdown from "../Mention";
 import useCommentMediaUpload from "@/hooks/useCommentMediaUpload";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 interface CommentInputProps {
   post: PostData;
   parentComment?: CommentData;
@@ -27,6 +32,7 @@ export default function CommentInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const {
     startUpload,
@@ -135,6 +141,24 @@ export default function CommentInput({
       );
     }
   }
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    const cursorPosition = inputRef.current?.selectionStart || input.length;
+    const textBefore = input.slice(0, cursorPosition);
+    const textAfter = input.slice(cursorPosition);
+    const newInput = textBefore + emojiData.emoji + textAfter;
+
+    setInput(newInput);
+    setShowEmojiPicker(false);
+
+    // Focus back on input and set cursor position after emoji
+    setTimeout(() => {
+      if (inputRef.current) {
+        const newPosition = cursorPosition + emojiData.emoji.length;
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
+  };
 
   return (
     <div className="relative space-y-2">
@@ -199,6 +223,36 @@ export default function CommentInput({
         >
           <ImageIcon className="h-5 w-5" />
         </Button>
+
+        {/* Emoji Picker */}
+        <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+            >
+              <Smile className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-full border-0 p-0"
+            align="start"
+            side="top"
+          >
+            <EmojiPicker
+              onEmojiClick={handleEmojiClick}
+              width="100%"
+              height={400}
+              searchDisabled={false}
+              skinTonesDisabled
+              previewConfig={{ showPreview: false }}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Input Field */}
         <Input
           ref={inputRef}
           placeholder={
@@ -210,6 +264,7 @@ export default function CommentInput({
           onChange={handleInputChange}
           disabled={isUploading}
         />
+
         <Button
           type="submit"
           variant="ghost"
