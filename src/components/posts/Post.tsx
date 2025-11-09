@@ -37,14 +37,30 @@ export default function Post({ post }: PostProps) {
             </Link>
           </UserTooltip>
           <div>
-            <UserTooltip user={post.user}>
-              <Link
-                href={`/users/${post.user.username}`}
-                className="block font-medium hover:underline"
-              >
-                {post.user.displayName}
-              </Link>
-            </UserTooltip>
+            <div className="flex flex-wrap items-center gap-1">
+              <UserTooltip user={post.user}>
+                <Link
+                  href={`/users/${post.user.username}`}
+                  className="font-medium hover:underline"
+                >
+                  {post.user.displayName}
+                </Link>
+              </UserTooltip>
+              {/* Tagged users - hiển thị ngay bên cạnh tên user */}
+              {(post as any).post_tags &&
+                (post as any).post_tags.length > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {" đang cùng với "}
+                    {(
+                      (post as any).post_tags as Array<{
+                        users: { displayName: string };
+                      }>
+                    )
+                      .map((tag) => tag.users.displayName)
+                      .join(", ")}
+                  </span>
+                )}
+            </div>
             <Link
               href={`/posts/${post.id}`}
               className="block text-sm text-muted-foreground hover:underline"
@@ -61,20 +77,10 @@ export default function Post({ post }: PostProps) {
           />
         )}
       </div>
-      <Linkify>
-        <div className="whitespace-pre-line break-words">{post.content}</div>
-      </Linkify>
-      {/* Tagged users */}
-      {(post as any).post_tags && (post as any).post_tags.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          <span className="font-medium">{post.user.displayName}</span>
-          {" đang cùng với "}
-          {(
-            (post as any).post_tags as Array<{ users: { displayName: string } }>
-          )
-            .map((tag) => tag.users.displayName)
-            .join(", ")}
-        </div>
+      {post.content && (
+        <Linkify>
+          <div className="whitespace-pre-line break-words">{post.content}</div>
+        </Linkify>
       )}
       {!!post.attachments.length && (
         <MediaPreviews
