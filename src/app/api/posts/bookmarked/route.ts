@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       },
       include: {
         post: {
-          include: getPostDataInclude(user.id),
+          include: getPostDataInclude(user.id, true), // Lightweight mode cho list
         },
       },
       orderBy: {

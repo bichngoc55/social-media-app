@@ -3,7 +3,7 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendNotification, processMentions } from "@/lib/socket";
-import { getCommentDataInclude, PostData } from "@/lib/types";
+import { getCommentDataInclude, PostDataLightweight } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
 
 export async function submitComment({
@@ -11,7 +11,7 @@ export async function submitComment({
   content,
   mediaIds = [],
 }: {
-  postId: string;
+  post: PostDataLightweight;
   content: string;
   mediaIds?: string[];
 }) {

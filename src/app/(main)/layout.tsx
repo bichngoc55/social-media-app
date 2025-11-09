@@ -1,9 +1,17 @@
 import { validateRequest } from "@/auth";
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import MenuBar from "./MenuBar";
-import Navbar from "./Navbar";
 import SessionProvider from "./SessionProvider";
 import SocketProvider from "./SocketProvider";
+
+// Lazy load components để giảm initial bundle
+const Navbar = dynamic(() => import("./Navbar"), {
+  ssr: true,
+});
+
+const MenuBar = dynamic(() => import("./MenuBar"), {
+  ssr: true,
+});
 
 export default async function Layout({
   children,
