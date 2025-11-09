@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { UserData } from "@/lib/types";
+import { UserDataLightweight } from "@/lib/types";
 import { X, UserPlus, Check, X as XIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -12,7 +12,7 @@ import { User } from "@prisma/client";
 
 interface UserTaggingProps {
   postId: string;
-  onTaggedUsers: (users: UserData[]) => void;
+  onTaggedUsers: (users: UserDataLightweight[]) => void;
   className?: string;
 }
 
@@ -23,8 +23,8 @@ export default function UserTagging({
 }: UserTaggingProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<UserData[]>([]);
-  const [taggedUsers, setTaggedUsers] = useState<UserData[]>([]);
+  const [searchResults, setSearchResults] = useState<UserDataLightweight[]>([]);
+  const [taggedUsers, setTaggedUsers] = useState<UserDataLightweight[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isTagging, setIsTagging] = useState(false);
 
@@ -48,7 +48,9 @@ export default function UserTagging({
         const response = await kyInstance.get(
           `/api/search/users?q=${encodeURIComponent(searchQuery)}`
         );
-        const data = (await response.json()) as { users: UserData[] };
+        const data = (await response.json()) as {
+          users: UserDataLightweight[];
+        };
         setSearchResults(data.users || []);
       } catch (error) {
         console.error("Error searching users:", error);
@@ -59,7 +61,7 @@ export default function UserTagging({
     }, 300);
   }, [searchQuery]);
 
-  const handleUserSelect = (user: UserData) => {
+  const handleUserSelect = (user: UserDataLightweight) => {
     if (!taggedUsers.find((u) => u.id === user.id)) {
       setTaggedUsers([...taggedUsers, user]);
     }

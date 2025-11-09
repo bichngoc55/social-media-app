@@ -47,9 +47,24 @@ export default function useMediaUpload() {
 
           if (!uploadResult) return a;
 
+          // Nếu callback fail, mediaId có thể null
+          // Nhưng file vẫn upload thành công lên S3
+          const mediaId = uploadResult.serverData?.mediaId;
+
+          if (!mediaId) {
+            console.warn(
+              "⚠️ Upload succeeded but callback failed. File URL:",
+              uploadResult.url,
+              "Error:",
+              uploadResult.serverData?.error
+            );
+            // Vẫn giữ file để user có thể thấy preview
+            // Nhưng sẽ không thể đăng bài (vì không có mediaId)
+          }
+
           return {
             ...a,
-            mediaId: uploadResult.serverData.mediaId,
+            mediaId: mediaId || undefined,
             isUploading: false,
           };
         })
@@ -69,14 +84,6 @@ export default function useMediaUpload() {
       toast({
         variant: "destructive",
         description: "Please wait for the current upload to finish.",
-      });
-      return;
-    }
-
-    if (attachments.length + files.length > 5) {
-      toast({
-        variant: "destructive",
-        description: "You can only upload up to 5 attachments per post.",
       });
       return;
     }
