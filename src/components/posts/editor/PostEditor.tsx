@@ -23,13 +23,15 @@ import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
 import UserTagging from "../UserTagging";
+import { UserData } from "@/lib/types";
 
 export default function PostEditor() {
   const { user } = useSession();
   const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">(
     "PUBLIC"
   );
-  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
+  //
+  const [taggedUsers, setTaggedUsers] = useState<UserData[]>([]);
 
   const mutation = useSubmitPostMutation();
 
@@ -67,20 +69,22 @@ export default function PostEditor() {
     }) || "";
 
   function onSubmit() {
-    mutation.mutate(
-      {
-        content: input,
-        mediaIds: attachments.map((a) => a.mediaId).filter(Boolean) as string[],
-        privacy,
+    const mediaIds = attachments
+      .map((a) => a.mediaId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    const payload = {
+      content: input,
+      mediaIds,
+      privacy,
+    };
+    mutation.mutate(payload, {
+      onSuccess: () => {
+        editor?.commands.clearContent();
+        resetMediaUploads();
+        setPrivacy("PUBLIC"); // Reset về mặc định
       },
-      {
-        onSuccess: () => {
-          editor?.commands.clearContent();
-          resetMediaUploads();
-          setPrivacy("PUBLIC"); // Reset về mặc định
-        },
-      }
-    );
+    });
   }
 
   function onPaste(e: ClipboardEvent<HTMLInputElement>) {

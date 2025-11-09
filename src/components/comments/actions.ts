@@ -7,45 +7,36 @@ import { getCommentDataInclude, PostData } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
 
 export async function submitComment({
-  post,
+  postId,
   content,
+  mediaIds = [],
 }: {
-  post: PostData;
+  postId: string;
   content: string;
+  mediaIds?: string[];
 }) {
   const { user } = await validateRequest();
 
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw "Unauthorized";
 
   const { content: contentValidated } = createCommentSchema.parse({ content });
+  // Load post and its author from DB (plain JS objects) to avoid passing
+  // complex objects from the client into a server action.
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { user: true },
+  });
 
-  // const [newComment] = await prisma.$transaction([
-  //   prisma.comment.create({
-  //     data: {
-  //       content: contentValidated,
-  //       postId: post.id,
-  //       userId: user.id,
-  //     },
-  //     include: getCommentDataInclude(user.id),
-  //   }),
-  //   ...(post.user.id !== user.id
-  //     ? [
-  //         prisma.notification.create({
-  //           data: {
-  //             issuerId: user.id,
-  //             recipientId: post.user.id,
-  //             postId: post.id,
-  //             type: "COMMENT",
-  //           },
-  //         }),
-  //       ]
-  //     : []),
-  // ]);
+  if (!post) throw "Post not found";
+
   const newComment = await prisma.comment.create({
     data: {
       content: contentValidated,
       postId: post.id,
       userId: user.id,
+      attachments: {
+        connect: mediaIds.map((id) => ({ id })),
+      },
     },
     include: getCommentDataInclude(user.id),
   });
@@ -63,27 +54,27 @@ export async function submitComment({
   if (post.user.id !== user.id && !isPostAuthorMentioned) {
     await sendNotification(post.user.id, user.id, "COMMENT", post.id);
   }
-
-  return newComment;
+  return JSON.parse(JSON.stringify(newComment));
 }
 
 export async function deleteComment(id: string) {
   const { user } = await validateRequest();
 
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw "Unauthorized";
 
   const comment = await prisma.comment.findUnique({
     where: { id },
   });
 
-  if (!comment) throw new Error("Comment not found");
+  if (!comment) throw "Comment not found";
 
-  if (comment.userId !== user.id) throw new Error("Unauthorized");
+  if (comment.userId !== user.id) throw "Unauthorized";
 
   const deletedComment = await prisma.comment.delete({
     where: { id },
     include: getCommentDataInclude(user.id),
   });
 
-  return deletedComment;
+  // Ensure we return a plain serializable object from the server action.
+  return JSON.parse(JSON.stringify(deletedComment));
 }
