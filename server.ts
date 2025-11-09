@@ -3,14 +3,12 @@ import next from "next";
 import { Server } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 
-// Extend Socket interface to include userId
 declare module "socket.io" {
   interface Socket {
     userId?: string;
   }
 }
 
-// Declare global types
 declare global {
   var io: Server;
   var userSockets: Map<string, string>;
@@ -45,8 +43,6 @@ app.prepare().then(async () => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`👤 User connected: ${socket.id}`);
-
     socket.on("join", (userId: string) => {
       if (userId) {
         userSockets.set(userId, socket.id);

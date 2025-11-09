@@ -34,6 +34,7 @@ import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
 import UserTagging from "../UserTagging";
+import { UserData } from "@/lib/types";
 
 export default function PostEditor() {
   const { user } = useSession();

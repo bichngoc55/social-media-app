@@ -90,10 +90,12 @@ model Post {
 model Media {
   id        String    @id @default(cuid())
   postId    String?
+  commentId String?
   type      MediaType
   url       String
   createdAt DateTime  @default(now())
   post      Post?     @relation(fields: [postId], references: [id])
+  comment   Comment?  @relation(fields: [commentId], references: [id])
 
   @@map("post_media")
 }
@@ -110,6 +112,7 @@ model Comment {
   post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   mentions  Mention[]
+  attachments Media[]
 
   @@index([postId, createdAt(sort: Desc)])
   @@index([parentId])
