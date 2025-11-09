@@ -25,6 +25,7 @@ export const createPostSchema = z.object({
   mediaIds: z.array(z.string()),
   privacy: z.enum(["DRAFT", "FOLLOWERS", "PUBLIC"]).default("PUBLIC"),
   mediaLayout: z.enum(["GRID", "CAROUSEL", "COLUMNS", "FRAME"]).optional(),
+  taggedUserIds: z.array(z.string()).optional().default([]),
 });
 
 export type CreatePostValues = z.infer<typeof createPostSchema>;
