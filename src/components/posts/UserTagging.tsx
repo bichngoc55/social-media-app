@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import kyInstance from "@/lib/ky";
 import { useToast } from "../ui/use-toast";
+import { User } from "@prisma/client";
 
 interface UserTaggingProps {
   postId: string;

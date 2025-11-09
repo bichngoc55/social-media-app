@@ -193,121 +193,121 @@ export default function AdminReportsPage() {
             {data?.reports.map((report) => (
               <Card key={report.id}>
                 <CardContent className="space-y-3 p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(report.status)}
-                      {getTypeBadge(report.type)}
-                      <span className="text-sm text-muted-foreground">
-                        {formatRelativeDate(report.createdAt)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-sm">
-                        <span className="font-medium">Reported by:</span>{" "}
-                        <Link
-                          href={`/users/${report.reporter.username}`}
-                          className="hover:underline"
-                        >
-                          {report.reporter.displayName}
-                        </Link>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Reported user:</span>{" "}
-                        <Link
-                          href={`/users/${report.reported.username}`}
-                          className="hover:underline"
-                        >
-                          {report.reported.displayName}
-                        </Link>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium">Reason:</span>
-                      <p className="text-sm">{report.reason}</p>
-                    </div>
-                    {report.post && (
-                      <div>
-                        <span className="text-sm font-medium">
-                          Related post:
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(report.status)}
+                        {getTypeBadge(report.type)}
+                        <span className="text-sm text-muted-foreground">
+                          {formatRelativeDate(report.createdAt)}
                         </span>
-                        <Link href={`/posts/${report.post.id}`}>
-                          <p className="line-clamp-2 text-sm text-muted-foreground hover:underline">
-                            {report.post.content}
-                          </p>
-                        </Link>
                       </div>
-                    )}
-                    {report.adminNotes && (
                       <div>
-                        <span className="text-sm font-medium">
-                          Admin notes:
-                        </span>
-                        <p className="text-sm text-muted-foreground">
-                          {report.adminNotes}
-                        </p>
+                        <div className="text-sm">
+                          <span className="font-medium">Reported by:</span>{" "}
+                          <Link
+                            href={`/users/${report.reporter.username}`}
+                            className="hover:underline"
+                          >
+                            {report.reporter.displayName}
+                          </Link>
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium">Reported user:</span>{" "}
+                          <Link
+                            href={`/users/${report.reported.username}`}
+                            className="hover:underline"
+                          >
+                            {report.reported.displayName}
+                          </Link>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedReport(report);
-                          setAdminNotes(report.adminNotes || "");
-                        }}
-                      >
-                        Review
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Review Report</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
+                      <div>
+                        <span className="text-sm font-medium">Reason:</span>
+                        <p className="text-sm">{report.reason}</p>
+                      </div>
+                      {report.post && (
                         <div>
-                          <label className="text-sm font-medium">
-                            Admin Notes
-                          </label>
-                          <Textarea
-                            value={adminNotes}
-                            onChange={(e) => setAdminNotes(e.target.value)}
-                            placeholder="Add notes about this report..."
-                            rows={4}
-                          />
+                          <span className="text-sm font-medium">
+                            Related post:
+                          </span>
+                          <Link href={`/posts/${report.post.id}`}>
+                            <p className="line-clamp-2 text-sm text-muted-foreground hover:underline">
+                              {report.post.content}
+                            </p>
+                          </Link>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="default"
-                            onClick={() => handleUpdateReport("RESOLVED")}
-                            disabled={updateReportMutation.isPending}
-                          >
-                            <Check className="mr-2 h-4 w-4" />
-                            Resolve
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => handleUpdateReport("DISMISSED")}
-                            disabled={updateReportMutation.isPending}
-                          >
-                            <X className="mr-2 h-4 w-4" />
-                            Dismiss
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => handleUpdateReport("REVIEWED")}
-                            disabled={updateReportMutation.isPending}
-                          >
-                            <Clock className="mr-2 h-4 w-4" />
-                            Mark Reviewed
-                          </Button>
+                      )}
+                      {report.adminNotes && (
+                        <div>
+                          <span className="text-sm font-medium">
+                            Admin notes:
+                          </span>
+                          <p className="text-sm text-muted-foreground">
+                            {report.adminNotes}
+                          </p>
                         </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                      )}
+                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedReport(report);
+                            setAdminNotes(report.adminNotes || "");
+                          }}
+                        >
+                          Review
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Review Report</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium">
+                              Admin Notes
+                            </label>
+                            <Textarea
+                              value={adminNotes}
+                              onChange={(e) => setAdminNotes(e.target.value)}
+                              placeholder="Add notes about this report..."
+                              rows={4}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="default"
+                              onClick={() => handleUpdateReport("RESOLVED")}
+                              disabled={updateReportMutation.isPending}
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              Resolve
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => handleUpdateReport("DISMISSED")}
+                              disabled={updateReportMutation.isPending}
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Dismiss
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => handleUpdateReport("REVIEWED")}
+                              disabled={updateReportMutation.isPending}
+                            >
+                              <Clock className="mr-2 h-4 w-4" />
+                              Mark Reviewed
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardContent>
               </Card>
             ))}
