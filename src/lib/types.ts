@@ -285,11 +285,13 @@ export function getCommentDataInclude(
     user: {
       select: getUserDataSelect(loggedInUserId, lightweight), // Lightweight cho comments
     },
+    attachments: true,
     replies: {
       include: {
         user: {
           select: getUserDataSelect(loggedInUserId, lightweight),
         },
+        attachments: true,
       },
       orderBy: {
         createdAt: "asc",

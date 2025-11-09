@@ -1,10 +1,7 @@
-"use client";
-
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Lazy load heavy components
 const AdminDashboardContent = dynamic(() => import("./AdminDashboardContent"), {
   loading: () => (
     <div className="space-y-6">
