@@ -64,6 +64,18 @@ export default function Post({ post }: PostProps) {
       <Linkify>
         <div className="whitespace-pre-line break-words">{post.content}</div>
       </Linkify>
+      {/* Tagged users */}
+      {(post as any).post_tags && (post as any).post_tags.length > 0 && (
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium">{post.user.displayName}</span>
+          {" đang cùng với "}
+          {(
+            (post as any).post_tags as Array<{ users: { displayName: string } }>
+          )
+            .map((tag) => tag.users.displayName)
+            .join(", ")}
+        </div>
+      )}
       {!!post.attachments.length && (
         <MediaPreviews
           attachments={post.attachments}
@@ -94,13 +106,6 @@ export default function Post({ post }: PostProps) {
               ),
             }}
           />
-          {user.id === post.userId && (
-            <UserTagging
-              postId={post.id}
-              onTaggedUsers={() => {}} // Refresh post data
-              className="relative"
-            />
-          )}
         </div>
       </div>
       {showComments && <Comments post={post} />}
@@ -325,7 +330,7 @@ function ImageViewer({ images, initialIndex, onClose }: ImageViewerProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="h-auto max-h-[95vh] w-auto max-w-[95vw] border-none bg-black/95 p-0">
+      <DialogContent className="h-auto max-h-[95vh] w-auto max-w-[95vw] border-none bg-black/95 p-0 [&>button]:hidden">
         <div className="relative flex h-full w-full items-center justify-center">
           {/* Close button */}
           <button

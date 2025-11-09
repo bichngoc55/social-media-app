@@ -3,6 +3,7 @@
 import { useSession } from "@/app/(main)/SessionProvider";
 import LoadingButton from "@/components/LoadingButton";
 import { Button } from "@/components/ui/button";
+import { UserDataLightweight } from "@/lib/types";
 import {
   Select,
   SelectContent,
@@ -33,7 +34,7 @@ import { ClipboardEvent, useRef, useState } from "react";
 import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
-import UserTagging from "../UserTagging";
+import UserTaggingEditor from "./UserTaggingEditor";
 
 export default function PostEditor() {
   const { user } = useSession();
@@ -43,7 +44,7 @@ export default function PostEditor() {
   const [mediaLayout, setMediaLayout] = useState<
     "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME" | null
   >(null);
-  const [taggedUsers, setTaggedUsers] = useState<any[]>([]);
+  const [taggedUsers, setTaggedUsers] = useState<UserDataLightweight[]>([]);
 
   const mutation = useSubmitPostMutation();
 
@@ -87,6 +88,7 @@ export default function PostEditor() {
         mediaIds: attachments.map((a) => a.mediaId).filter(Boolean) as string[],
         privacy,
         mediaLayout: mediaLayout || undefined,
+        taggedUserIds: taggedUsers.map((u) => u.id),
       },
       {
         onSuccess: () => {
@@ -94,6 +96,7 @@ export default function PostEditor() {
           resetMediaUploads();
           setPrivacy("PUBLIC"); // Reset về mặc định
           setMediaLayout(null); // Reset layout
+          setTaggedUsers([]); // Reset tagged users
         },
       }
     );
@@ -141,7 +144,12 @@ export default function PostEditor() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
-          {/* UserTagging disabled in PostEditor - will be available after post creation */}
+          <div className="relative">
+            <UserTaggingEditor
+              taggedUsers={taggedUsers}
+              onTaggedUsersChange={setTaggedUsers}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {isUploading && (

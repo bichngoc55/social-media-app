@@ -132,6 +132,21 @@ export function getPostDataInclude(
         userId: true,
       },
     },
+    post_tags: {
+      where: {
+        status: "APPROVED",
+      },
+      include: {
+        users: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    },
     _count: {
       select: {
         likes: true,
