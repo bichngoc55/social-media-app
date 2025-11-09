@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import kyInstance from "@/lib/ky";
 import { useToast } from "../ui/use-toast";
+import { User } from "@prisma/client";
 
 interface UserTaggingProps {
   postId: string;
@@ -47,7 +48,7 @@ export default function UserTagging({
         const response = await kyInstance.get(
           `/api/search/users?q=${encodeURIComponent(searchQuery)}`
         );
-        const data = await response.json();
+        const data = (await response.json()) as { users: UserData[] };
         setSearchResults(data.users || []);
       } catch (error) {
         console.error("Error searching users:", error);
@@ -79,7 +80,10 @@ export default function UserTagging({
         json: { userIds: taggedUsers.map((u) => u.id) },
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        success: boolean;
+        error?: string;
+      };
 
       if (data.success) {
         toast({

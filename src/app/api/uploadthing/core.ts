@@ -15,17 +15,26 @@ export const fileRouter = {
 
       if (!user) throw new UploadThingError("Unauthorized");
 
-      return { user };
+      // Return only plain serializable data to the client action boundary.
+      // Returning the full `user` object (with Dates/prototypes) can cause
+      // React Server Actions serialization errors. Send only the user id.
+      return { userId: user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      const oldAvatarUrl = metadata.user.avatarUrl;
+      const userId = (metadata as { userId?: string }).userId;
+
+      if (!userId) throw new UploadThingError("Missing userId in metadata");
+
+      const userFromDb = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      const oldAvatarUrl = userFromDb?.avatarUrl;
 
       if (oldAvatarUrl) {
         const key = oldAvatarUrl.split(
           `/a/${process.env.UPLOADTHING_APP_ID}/`
         )[1];
-
-        await new UTApi().deleteFiles(key);
+        if (key) await new UTApi().deleteFiles(key);
       }
 
       const newAvatarUrl = file.url.replace(
@@ -35,21 +44,18 @@ export const fileRouter = {
 
       await Promise.all([
         prisma.user.update({
-          where: { id: metadata.user.id },
-          data: {
-            avatarUrl: newAvatarUrl,
-          },
+          where: { id: userId },
+          data: { avatarUrl: newAvatarUrl },
         }),
         streamServerClient.partialUpdateUser({
-          id: metadata.user.id,
-          set: {
-            image: newAvatarUrl,
-          },
+          id: userId,
+          set: { image: newAvatarUrl },
         }),
       ]);
 
       return { avatarUrl: newAvatarUrl };
     }),
+
   attachment: f({
     image: { maxFileSize: "4MB", maxFileCount: 5 },
     video: { maxFileSize: "64MB", maxFileCount: 5 },
@@ -70,6 +76,26 @@ export const fileRouter = {
       });
 
       return { mediaId: media.id };
+    }),
+  commentAttachment: f({
+    image: { maxFileSize: "2MB", maxFileCount: 3 },
+  })
+    .middleware(async () => {
+      const { user } = await validateRequest();
+
+      if (!user) throw new UploadThingError("Unauthorized");
+
+      return { userId: user.id };
+    })
+    .onUploadComplete(async ({ file }) => {
+      const media = await prisma.media.create({
+        data: {
+          url: file.url.replace("/f/", `/a/${process.env.UPLOADTHING_APP_ID}/`),
+          type: "IMAGE",
+        },
+      });
+
+      return { mediaId: media.id, url: media.url };
     }),
 } satisfies FileRouter;
 

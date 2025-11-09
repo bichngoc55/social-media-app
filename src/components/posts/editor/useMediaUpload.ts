@@ -16,17 +16,21 @@ export default function useMediaUpload() {
   const [uploadProgress, setUploadProgress] = useState<number>();
 
   const { startUpload, isUploading } = useUploadThing("attachment", {
-    onBeforeUploadBegin(files) {
-      const renamedFiles = files.map((file) => {
-        const extension = file.name.split(".").pop();
-        return new File(
-          [file],
-          `attachment_${crypto.randomUUID()}.${extension}`,
-          {
-            type: file.type,
-          }
-        );
-      });
+    onBeforeUploadBegin: async (files) => {
+      // Preserve exact bytes to avoid filesize mismatch by copying via arrayBuffer
+      const renamedFiles = await Promise.all(
+        files.map(async (file) => {
+          const extension = file.name.split(".").pop();
+          const buffer = await file.arrayBuffer();
+          return new File(
+            [buffer],
+            `attachment_${crypto.randomUUID()}.${extension}`,
+            {
+              type: file.type,
+            }
+          );
+        })
+      );
 
       setAttachments((prev) => [
         ...prev,
