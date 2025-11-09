@@ -85,26 +85,29 @@ model Post {
 model Media {
   id        String    @id @default(cuid())
   postId    String?
+  commentId String?
   type      MediaType
   url       String
   createdAt DateTime  @default(now())
   post      Post?     @relation(fields: [postId], references: [id])
+  comment   Comment?  @relation(fields: [commentId], references: [id])
 
   @@map("post_media")
 }
 
 model Comment {
-  id        String    @id @default(cuid())
-  content   String
-  userId    String
-  postId    String
-  parentId  String? // For replies
-  createdAt DateTime  @default(now())
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
-  mentions  Mention[]
+  id          String    @id @default(cuid())
+  content     String
+  userId      String
+  postId      String
+  parentId    String? // For replies
+  createdAt   DateTime  @default(now())
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+  mentions    Mention[]
+  attachments Media[]
 
   @@map("comments")
 }

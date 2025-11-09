@@ -1,5 +1,7 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
+import { getCommentDataInclude } from "@/lib/types";
+import { createCommentSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -15,86 +17,43 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { content } = await req.json();
+    const { content, mediaIds = [] } = await req.json();
 
-    if (!content || content.trim().length === 0) {
+    if (!content?.trim() && (!mediaIds || mediaIds.length === 0)) {
       return NextResponse.json(
-        {
-          error: "Content is required",
-        },
+        { error: "Content or images required" },
         { status: 400 }
       );
     }
 
-    // Kiểm tra comment có tồn tại không
+    const { content: contentValidated } = createCommentSchema.parse({
+      content: content || "",
+    });
+
     const parentComment = await prisma.comment.findUnique({
       where: { id: commentId },
-      select: {
-        id: true,
-        postId: true,
-        userId: true,
-        parentId: true, // Check if this is already a reply
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            username: true,
-          },
-        },
-      },
     });
 
     if (!parentComment) {
       return NextResponse.json(
-        {
-          error: "Comment not found",
-        },
+        { error: "Parent comment not found" },
         { status: 404 }
       );
     }
 
-    // Kiểm tra comment thuộc về post này
-    if (parentComment.postId !== postId) {
-      return NextResponse.json(
-        {
-          error: "Comment does not belong to this post",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Kiểm tra không thể reply một reply (chỉ cho phép 1 cấp)
-    if (parentComment.parentId) {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot reply to a reply. Only one level of replies is allowed.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Tạo reply
     const reply = await prisma.comment.create({
       data: {
-        content: content.trim(),
+        content: contentValidated,
         userId: loggedInUser.id,
         postId,
         parentId: commentId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            username: true,
-            avatarUrl: true,
-          },
+        attachments: {
+          connect: mediaIds.map((id: string) => ({ id })),
         },
       },
+      include: getCommentDataInclude(loggedInUser.id),
     });
 
-    // Tạo notification cho comment owner (nếu không phải chính mình)
     if (parentComment.userId !== loggedInUser.id) {
       await prisma.notification.create({
         data: {
@@ -109,19 +68,12 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Reply created successfully",
-      reply: {
-        id: reply.id,
-        content: reply.content,
-        createdAt: reply.createdAt,
-        user: reply.user,
-      },
+      reply: JSON.parse(JSON.stringify(reply)),
     });
   } catch (error) {
     console.error("Error creating reply:", error);
     return NextResponse.json(
-      {
-        error: "Internal server error",
-      },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
