@@ -27,7 +27,8 @@ const getPost = cache(
 
     if (!post) notFound();
 
-    return post as PostData;
+    // Type assertion needed because Prisma types don't perfectly match our PostData type
+    return post as unknown as PostData;
   }
 );
 
