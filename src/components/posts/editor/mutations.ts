@@ -15,9 +15,16 @@ export function useSubmitPostMutation() {
   const queryClient = useQueryClient();
 
   const { user } = useSession();
+  const userId = user.id;
 
   const mutation = useMutation({
-    mutationFn: submitPost,
+    mutationFn: (input: {
+      content: string;
+      mediaIds: string[];
+      privacy: "DRAFT" | "FOLLOWERS" | "PUBLIC";
+      mediaLayout?: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME";
+      taggedUserIds?: string[];
+    }) => submitPost(input),
     onSuccess: async (newPost) => {
       const queryFilter = {
         queryKey: ["post-feed"],
@@ -25,7 +32,7 @@ export function useSubmitPostMutation() {
           return (
             query.queryKey.includes("for-you") ||
             (query.queryKey.includes("user-posts") &&
-              query.queryKey.includes(user.id))
+              query.queryKey.includes(userId))
           );
         },
       } satisfies QueryFilters;
@@ -58,16 +65,16 @@ export function useSubmitPostMutation() {
           return queryFilter.predicate(query) && !query.state.data;
         },
       });
-
       toast({
         description: "Post created",
       });
     },
     onError(error) {
-      console.error(error);
+      const errorMessage =
+        typeof error === "string" ? error : "An error occurred";
       toast({
         variant: "destructive",
-        description: "Failed to post. Please try again.",
+        description: errorMessage,
       });
     },
   });

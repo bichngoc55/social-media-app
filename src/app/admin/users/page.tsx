@@ -171,80 +171,80 @@ export default function AdminUsersPage() {
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="p-4 text-left">User</th>
-                  <th className="p-4 text-left">Email</th>
-                  <th className="p-4 text-left">Role</th>
-                  <th className="p-4 text-left">Stats</th>
-                  <th className="p-4 text-left">Created</th>
-                  <th className="p-4 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.users.map((user) => (
-                  <tr key={user.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4">
-                      <Link
-                        href={`/users/${user.username}`}
-                        className="font-medium hover:underline"
-                      >
-                        {user.displayName}
-                      </Link>
-                      <div className="text-sm text-muted-foreground">
-                        @{user.username}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        {user.email}
-                        {user.emailVerified ? (
-                          <MailCheck className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge
-                        variant={
-                          user.role === "ADMIN" ? "default" : "secondary"
-                        }
-                      >
-                        {user.role}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-sm">
-                      <div>Posts: {user._count.posts}</div>
-                      <div>Followers: {user._count.followers}</div>
-                      <div>Following: {user._count.following}</div>
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {formatRelativeDate(user.createdAt)}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleRole(user)}
-                          disabled={updateUserMutation.isPending}
-                        >
-                          <Shield className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user)}
-                          disabled={deleteUserMutation.isPending}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+                <thead>
+                  <tr className="border-b">
+                    <th className="p-4 text-left">User</th>
+                    <th className="p-4 text-left">Email</th>
+                    <th className="p-4 text-left">Role</th>
+                    <th className="p-4 text-left">Stats</th>
+                    <th className="p-4 text-left">Created</th>
+                    <th className="p-4 text-left">Actions</th>
                   </tr>
-                ))}
-              </tbody>
+                </thead>
+                <tbody>
+                  {data?.users.map((user) => (
+                    <tr key={user.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <Link
+                          href={`/users/${user.username}`}
+                          className="font-medium hover:underline"
+                        >
+                          {user.displayName}
+                        </Link>
+                        <div className="text-sm text-muted-foreground">
+                          @{user.username}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          {user.email}
+                          {user.emailVerified ? (
+                            <MailCheck className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge
+                          variant={
+                            user.role === "ADMIN" ? "default" : "secondary"
+                          }
+                        >
+                          {user.role}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-sm">
+                        <div>Posts: {user._count.posts}</div>
+                        <div>Followers: {user._count.followers}</div>
+                        <div>Following: {user._count.following}</div>
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground">
+                        {formatRelativeDate(user.createdAt)}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleRole(user)}
+                            disabled={updateUserMutation.isPending}
+                          >
+                            <Shield className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={deleteUserMutation.isPending}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </CardContent>
           </Card>

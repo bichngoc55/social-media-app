@@ -11,14 +11,22 @@ import kyInstance from "@/lib/ky";
 
 export function useSubmitCommentMutation(postId: string) {
   const { toast } = useToast();
-
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: submitComment,
+    mutationFn: async (data: {
+      postId: string;
+      content: string;
+      mediaIds?: string[];
+    }) => {
+      return submitComment({
+        postId: data.postId,
+        content: data.content,
+        mediaIds: data.mediaIds || [],
+      });
+    },
     onSuccess: async (newComment) => {
       const queryKey: QueryKey = ["comments", postId];
-
       await queryClient.cancelQueries({ queryKey });
 
       queryClient.setQueryData<InfiniteData<CommentsPage, string | null>>(
@@ -66,14 +74,14 @@ export function useSubmitCommentMutation(postId: string) {
 
 export function useDeleteCommentMutation() {
   const { toast } = useToast();
-
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: deleteComment,
+    mutationFn: async (commentId: string) => {
+      return deleteComment(commentId);
+    },
     onSuccess: async (deletedComment) => {
       const queryKey: QueryKey = ["comments", deletedComment.postId];
-
       await queryClient.cancelQueries({ queryKey });
 
       queryClient.setQueryData<InfiniteData<CommentsPage, string | null>>(
@@ -115,20 +123,21 @@ export function useSubmitReplyMutation(postId: string) {
     mutationFn: async ({
       commentId,
       content,
+      mediaIds = [],
     }: {
       commentId: string;
       content: string;
+      mediaIds?: string[];
     }) => {
       const response = await kyInstance.post(
         `/api/posts/${postId}/comments/${commentId}/reply`,
         {
-          json: { content },
+          json: { content, mediaIds },
         }
       );
       return response.json();
     },
     onSuccess: async () => {
-      // Invalidate comments to refresh the list
       const queryKey: QueryKey = ["comments", postId];
       await queryClient.invalidateQueries({ queryKey });
 

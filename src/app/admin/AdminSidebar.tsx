@@ -17,7 +17,9 @@ export default function AdminSidebar() {
 
   return (
     <nav className="card-glass h-full rounded-2xl p-4">
-      <div className="mb-4 px-2 text-sm font-semibold text-muted-foreground">Admin</div>
+      <div className="mb-4 px-2 text-sm font-semibold text-muted-foreground">
+        Admin
+      </div>
       <ul className="space-y-1">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
@@ -42,5 +44,3 @@ export default function AdminSidebar() {
     </nav>
   );
 }
-
-
