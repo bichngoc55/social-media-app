@@ -1,5 +1,5 @@
 import { PostDataLightweight, CommentData } from "@/lib/types";
-import { Loader2, SendHorizonal } from "lucide-react";
+import { Loader2, SendHorizonal, X, ImageIcon, Smile } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

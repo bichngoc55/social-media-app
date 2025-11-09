@@ -22,6 +22,8 @@ export function useSubmitPostMutation() {
       content: string;
       mediaIds: string[];
       privacy: "DRAFT" | "FOLLOWERS" | "PUBLIC";
+      mediaLayout?: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME";
+      taggedUserIds?: string[];
     }) => submitPost(input),
     onSuccess: async (newPost) => {
       const queryFilter = {
