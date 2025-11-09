@@ -4,6 +4,7 @@ import { formatRelativeDate } from "@/lib/utils";
 import Link from "next/link";
 import { useState } from "react";
 import { Reply, ChevronDown, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import { Button } from "../ui/button";
 import UserAvatar from "../UserAvatar";
 import UserTooltip from "../UserTooltip";
@@ -13,7 +14,7 @@ import CommentInput from "./CommentInput";
 
 interface CommentProps {
   comment: CommentData;
-  post: any; // PostData type
+  post: any;
   showReplies?: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function Comment({
   const [showRepliesList, setShowRepliesList] = useState(false);
 
   const hasReplies = comment.replies && comment.replies.length > 0;
+  const hasAttachments = comment.attachments && comment.attachments.length > 0;
 
   return (
     <div className="group/comment">
@@ -52,12 +54,28 @@ export default function Comment({
               {formatRelativeDate(comment.createdAt)}
             </span>
           </div>
-          {!comment.parentId && (
-            <div className="mt-1">
-              <Linkify>{comment.content}</Linkify>
+          <div className="mt-1">
+            <Linkify>{comment.content}</Linkify>
+          </div>
+          {/* Display comment attachments for both parent comments and replies */}
+          {hasAttachments && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {comment.attachments.map((media) => (
+                <div
+                  key={media.id}
+                  className="relative h-32 w-32 overflow-hidden rounded-lg border"
+                >
+                  <Image
+                    src={media.url}
+                    alt="Comment attachment"
+                    fill
+                    className="cursor-pointer object-cover hover:opacity-90"
+                    onClick={() => window.open(media.url, "_blank")}
+                  />
+                </div>
+              ))}
             </div>
           )}
-          {/* Reply button - only show for top-level comments */}
           {showReplies && !comment.parentId && (
             <div className="mt-2 flex items-center gap-4">
               <Button
@@ -70,7 +88,6 @@ export default function Comment({
                 Reply
               </Button>
 
-              {/* Show replies toggle */}
               {hasReplies && (
                 <Button
                   variant="ghost"
@@ -90,7 +107,6 @@ export default function Comment({
             </div>
           )}
 
-          {/* Reply input */}
           {showReplyInput && (
             <div className="ml-8 mt-3">
               <CommentInput
@@ -101,7 +117,6 @@ export default function Comment({
             </div>
           )}
 
-          {/* Replies list */}
           {showRepliesList && hasReplies && (
             <div className="ml-8 mt-3 space-y-2 border-l-2 border-muted pl-4">
               {comment.replies?.map((reply) => (
@@ -109,10 +124,10 @@ export default function Comment({
                   key={reply.id}
                   comment={{
                     ...reply,
-                    replies: [], // Replies don't have nested replies
+                    replies: [],
                   }}
                   post={post}
-                  showReplies={false} // Replies don't have nested replies
+                  showReplies={false}
                 />
               ))}
             </div>
@@ -125,9 +140,6 @@ export default function Comment({
             className="ms-auto opacity-0 transition-opacity group-hover/comment:opacity-100"
           />
         )}
-        {/* <div>
-          <Linkify>{comment.content}</Linkify>
-        </div> */}
       </div>
     </div>
   );

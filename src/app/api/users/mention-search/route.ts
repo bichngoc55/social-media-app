@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       where: { followerId: loggedInUser.id },
       select: { followingId: true },
     });
-
+    // todo: return pagination
     const followingIds = followingUsers.map((f) => f.followingId);
 
     const blockedUsers = await prisma.userBlock.findMany({

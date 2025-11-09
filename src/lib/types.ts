@@ -82,11 +82,13 @@ export function getCommentDataInclude(loggedInUserId: string) {
     user: {
       select: getUserDataSelect(loggedInUserId),
     },
+    attachments: true,
     replies: {
       include: {
         user: {
           select: getUserDataSelect(loggedInUserId),
         },
+        attachments: true,
       },
       orderBy: {
         createdAt: "asc",

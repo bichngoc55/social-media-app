@@ -32,7 +32,9 @@ function StatCard({
         </CardTitle>
         <div className="text-3xl font-bold">{value}</div>
         {trend && (
-          <CardDescription className={trend.up ? "text-green-600" : "text-red-600"}>
+          <CardDescription
+            className={trend.up ? "text-green-600" : "text-red-600"}
+          >
             {trend.value}
           </CardDescription>
         )}
@@ -73,9 +75,7 @@ function EmotionAnalytics() {
     <Card className="card-glass">
       <CardHeader>
         <CardTitle>Emotion Overview</CardTitle>
-        <CardDescription>
-          Tỉ lệ cảm xúc từ bài viết
-        </CardDescription>
+        <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -201,8 +201,16 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard title="Total Users" value={data!.totalUsers} icon={Users} />
-          <StatCard title="Total Posts" value={data!.totalPosts} icon={FileText} />
-          <StatCard title="Total Reports" value={data!.totalReports} icon={Flag} />
+          <StatCard
+            title="Total Posts"
+            value={data!.totalPosts}
+            icon={FileText}
+          />
+          <StatCard
+            title="Total Reports"
+            value={data!.totalReports}
+            icon={Flag}
+          />
           <StatCard title="Admins" value={data!.totalAdmins} icon={Shield} />
         </div>
       )}

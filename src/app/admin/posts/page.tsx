@@ -188,55 +188,55 @@ export default function AdminPostsPage() {
             {data?.posts.map((post) => (
               <Card key={post.id}>
                 <CardContent className="space-y-3 p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Link
-                        href={`/users/${post.user.username}`}
-                        className="font-medium hover:underline"
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Link
+                          href={`/users/${post.user.username}`}
+                          className="font-medium hover:underline"
+                        >
+                          {post.user.displayName}
+                        </Link>
+                        <span className="text-sm text-muted-foreground">
+                          @{post.user.username}
+                        </span>
+                        {getPrivacyBadge(post.privacy)}
+                        <span className="text-sm text-muted-foreground">
+                          {formatRelativeDate(post.createdAt)}
+                        </span>
+                      </div>
+                      <p className="whitespace-pre-line text-sm">
+                        {post.content}
+                      </p>
+                      <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
+                        <span>👍 {post._count.likes} likes</span>
+                        <span>💬 {post._count.comments} comments</span>
+                        <span>🔖 {post._count.bookmarks} bookmarks</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openPreview(post);
+                        }}
                       >
-                        {post.user.displayName}
-                      </Link>
-                      <span className="text-sm text-muted-foreground">
-                        @{post.user.username}
-                      </span>
-                      {getPrivacyBadge(post.privacy)}
-                      <span className="text-sm text-muted-foreground">
-                        {formatRelativeDate(post.createdAt)}
-                      </span>
-                    </div>
-                    <p className="whitespace-pre-line text-sm">
-                      {post.content}
-                    </p>
-                    <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
-                      <span>👍 {post._count.likes} likes</span>
-                      <span>💬 {post._count.comments} comments</span>
-                      <span>🔖 {post._count.bookmarks} bookmarks</span>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePost(post)}
+                        disabled={deletePostMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openPreview(post);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeletePost(post)}
-                      disabled={deletePostMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
                 </CardContent>
               </Card>
             ))}
@@ -257,7 +257,7 @@ export default function AdminPostsPage() {
               {selectedPost ? (
                 <div className="space-y-3">
                   <div className="text-sm text-muted-foreground">
-                    {formatRelativeDate(selectedPost.createdAt)} · {" "}
+                    {formatRelativeDate(selectedPost.createdAt)} ·{" "}
                     <span className="inline-flex items-center gap-1">
                       {getPrivacyBadge(selectedPost.privacy)}
                     </span>
@@ -268,10 +268,14 @@ export default function AdminPostsPage() {
                       <div className="h-40 w-full animate-pulse rounded bg-muted" />
                       <div className="h-40 w-full animate-pulse rounded bg-muted" />
                     </div>
-                  ) : selectedPost.attachments && selectedPost.attachments.length > 0 ? (
+                  ) : selectedPost.attachments &&
+                    selectedPost.attachments.length > 0 ? (
                     <div className="grid gap-2 sm:grid-cols-2">
                       {selectedPost.attachments.map((m) => (
-                        <div key={m.id} className="relative overflow-hidden rounded-lg border">
+                        <div
+                          key={m.id}
+                          className="relative overflow-hidden rounded-lg border"
+                        >
                           {m.type === "IMAGE" ? (
                             <Image
                               src={m.url}
