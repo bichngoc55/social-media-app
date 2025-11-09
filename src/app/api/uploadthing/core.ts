@@ -21,10 +21,10 @@ export const fileRouter = {
       return { userId: user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // metadata contains only { userId } to keep the action payload plain.
       const userId = (metadata as { userId?: string }).userId;
 
-      // Fetch current avatar url from DB (plain data) so we can delete old file.
+      if (!userId) throw new UploadThingError("Missing userId in metadata");
+
       const userFromDb = await prisma.user.findUnique({
         where: { id: userId },
       });
@@ -34,7 +34,6 @@ export const fileRouter = {
         const key = oldAvatarUrl.split(
           `/a/${process.env.UPLOADTHING_APP_ID}/`
         )[1];
-
         if (key) await new UTApi().deleteFiles(key);
       }
 
@@ -46,20 +45,17 @@ export const fileRouter = {
       await Promise.all([
         prisma.user.update({
           where: { id: userId },
-          data: {
-            avatarUrl: newAvatarUrl,
-          },
+          data: { avatarUrl: newAvatarUrl },
         }),
         streamServerClient.partialUpdateUser({
           id: userId,
-          set: {
-            image: newAvatarUrl,
-          },
+          set: { image: newAvatarUrl },
         }),
       ]);
 
       return { avatarUrl: newAvatarUrl };
     }),
+
   attachment: f({
     image: { maxFileSize: "4MB", maxFileCount: 5 },
     video: { maxFileSize: "64MB", maxFileCount: 5 },
