@@ -22,24 +22,23 @@ model User {
   role                  UserRole            @default(USER)
   bookmarks             Bookmark[]
   comments              Comment[]
+  deviceSessions        DeviceSession[]
+  emailVerifications    EmailVerification[]
   following             Follow[]            @relation("Following")
   followers             Follow[]            @relation("Followers")
   likes                 Like[]
+  mentionsIssued        Mention[]           @relation("MentionedBy")
+  mentions              Mention[]           @relation("Mentioned")
   issuedNotifications   Notification[]      @relation("Issuer")
   receivedNotifications Notification[]      @relation("Recipient")
-  posts                 Post[]
-  sessions              Session[]
-  emailVerifications    EmailVerification[]
-  deviceSessions        DeviceSession[]
   post_tags             post_tags[]
+  posts                 Post[]
   reportsReceived       Report[]            @relation("Reported")
   reportsIssued         Report[]            @relation("Reporter")
+  sessions              Session[]
   twoFactorAuths        TwoFactorAuth[]
   blockedByUsers        UserBlock[]         @relation("Blocked")
   blockedUsers          UserBlock[]         @relation("Blocker")
-
-  mentions       Mention[] @relation("Mentioned")
-  mentionsIssued Mention[] @relation("MentionedBy")
 
   @@map("users")
 }
@@ -60,6 +59,8 @@ model Follow {
   following   User   @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
   @@map("follows")
 }
 
@@ -69,16 +70,20 @@ model Post {
   userId              String
   createdAt           DateTime       @default(now())
   privacy             PostPrivacy    @default(PUBLIC)
+  mediaLayout         MediaLayout?
   bookmarks           Bookmark[]
   comments            Comment[]
   likes               Like[]
+  mentions            Mention[]
   linkedNotifications Notification[]
   attachments         Media[]
   post_tags           post_tags[]
   user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports             Report[]
-  mentions            Mention[]
 
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([privacy, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -96,19 +101,21 @@ model Media {
 }
 
 model Comment {
-  id          String    @id @default(cuid())
-  content     String
-  userId      String
-  postId      String
-  parentId    String? // For replies
-  createdAt   DateTime  @default(now())
-  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies     Comment[] @relation("CommentReplies")
-  mentions    Mention[]
+  id        String    @id @default(cuid())
+  content   String
+  userId    String
+  postId    String
+  createdAt DateTime  @default(now())
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentions  Mention[]
   attachments Media[]
 
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([parentId])
   @@map("comments")
 }
 
@@ -119,6 +126,8 @@ model Like {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
   @@map("likes")
 }
 
@@ -131,6 +140,7 @@ model Bookmark {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
   @@map("bookmarks")
 }
 
@@ -146,6 +156,8 @@ model Notification {
   post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   recipient   User             @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  @@index([recipientId, read])
+  @@index([recipientId, createdAt(sort: Desc)])
   @@map("notifications")
 }
 
@@ -200,6 +212,8 @@ model UserBlock {
   blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
   @@map("user_blocks")
 }
 
@@ -234,6 +248,21 @@ model post_tags {
   @@map("post_tags")
 }
 
+model Mention {
+  id              String   @id @default(cuid())
+  userId          String
+  postId          String?
+  commentId       String?
+  mentionedBy     String
+  createdAt       DateTime @default(now())
+  comment         Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  mentionedByUser User     @relation("MentionedBy", fields: [mentionedBy], references: [id], onDelete: Cascade)
+  post            Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user            User     @relation("Mentioned", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mentions")
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -245,29 +274,21 @@ enum PostPrivacy {
   PUBLIC
 }
 
+enum MediaLayout {
+  GRID
+  CAROUSEL
+  COLUMNS
+  FRAME
+}
+
 enum NotificationType {
   LIKE
   FOLLOW
   COMMENT
-  TAG
-  TAG_REQUEST
   MESSAGE
   MENTION
-}
-
-model Mention {
-  id              String   @id @default(cuid())
-  userId          String
-  postId          String?
-  commentId       String?
-  mentionedBy     String
-  createdAt       DateTime @default(now())
-  user            User     @relation("Mentioned", fields: [userId], references: [id], onDelete: Cascade)
-  mentionedByUser User     @relation("MentionedBy", fields: [mentionedBy], references: [id], onDelete: Cascade)
-  post            Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment         Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-
-  @@map("mentions")
+  TAG
+  TAG_REQUEST
 }
 
 enum ReportType {

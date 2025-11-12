@@ -1,7 +1,12 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getPostDataInclude, PostsPage } from "@/lib/types";
+import { getCachedBlockedUsers, getCachedFollowingUsers } from "@/lib/cache";
 import { NextRequest } from "next/server";
+
+// Tối ưu: Cache route config
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,42 +20,21 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Lấy danh sách user bị chặn
-    const blockedUsers = await prisma.userBlock.findMany({
-      where: {
-        OR: [
-          { blockerId: user.id }, // User mình chặn
-          { blockedId: user.id }, // User chặn mình
-        ],
-      },
-      select: {
-        blockerId: true,
-        blockedId: true,
-      },
-    });
-
-    const blockedUserIds = new Set([
-      ...blockedUsers.map((b) => b.blockedId),
-      ...blockedUsers.map((b) => b.blockerId),
+    // Tối ưu: Sử dụng cached data thay vì query mỗi lần
+    const [blockedUserIds, followingUserIds] = await Promise.all([
+      getCachedBlockedUsers(user.id),
+      getCachedFollowingUsers(user.id),
     ]);
-
-    // Loại bỏ chính mình khỏi danh sách
-    blockedUserIds.delete(user.id);
-
-    // Lấy danh sách user đang follow
-    const followingUsers = await prisma.follow.findMany({
-      where: { followerId: user.id },
-      select: { followingId: true },
-    });
-
-    const followingUserIds = new Set(followingUsers.map((f) => f.followingId));
 
     const posts = await prisma.post.findMany({
       where: {
         AND: [
           {
             userId: {
-              notIn: Array.from(blockedUserIds),
+              notIn:
+                blockedUserIds.size > 0
+                  ? Array.from(blockedUserIds)
+                  : undefined,
             },
           },
           {
@@ -77,7 +61,7 @@ export async function GET(req: NextRequest) {
           },
         ],
       },
-      include: getPostDataInclude(user.id),
+      include: getPostDataInclude(user.id, true), // Lightweight mode cho list
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
       cursor: cursor ? { id: cursor } : undefined,

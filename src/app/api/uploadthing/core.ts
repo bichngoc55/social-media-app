@@ -57,8 +57,8 @@ export const fileRouter = {
     }),
 
   attachment: f({
-    image: { maxFileSize: "4MB", maxFileCount: 5 },
-    video: { maxFileSize: "64MB", maxFileCount: 5 },
+    image: { maxFileSize: "4MB", maxFileCount: 20 },
+    video: { maxFileSize: "64MB", maxFileCount: 20 },
   })
     .middleware(async () => {
       const { user } = await validateRequest();
@@ -68,14 +68,37 @@ export const fileRouter = {
       return {};
     })
     .onUploadComplete(async ({ file }) => {
-      const media = await prisma.media.create({
-        data: {
-          url: file.url.replace("/f/", `/a/${process.env.UPLOADTHING_APP_ID}/`),
-          type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
-        },
-      });
+      try {
+        const media = await prisma.media.create({
+          data: {
+            url: file.url.replace(
+              "/f/",
+              `/a/${process.env.UPLOADTHING_APP_ID}/`
+            ),
+            type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
+          },
+        });
 
-      return { mediaId: media.id };
+        console.log(`✅ Media created: ${media.id} for file: ${file.name}`);
+        return { mediaId: media.id };
+      } catch (error) {
+        console.error("❌ Error in uploadthing onUploadComplete:", error);
+        // Không throw error để không làm gián đoạn response stream
+        // Files vẫn được upload lên S3 thành công
+        // Chỉ log error và return null mediaId
+        console.warn(
+          "⚠️ Upload succeeded but failed to save to database. File URL:",
+          file.url
+        );
+        return {
+          mediaId: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to save to database",
+          fileUrl: file.url,
+        };
+      }
     }),
   commentAttachment: f({
     image: { maxFileSize: "2MB", maxFileCount: 3 },

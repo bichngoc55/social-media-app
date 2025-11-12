@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
           },
         ],
       },
-      select: getUserDataSelect(loggedInUser.id),
+      select: getUserDataSelect(loggedInUser.id, true), // Lightweight mode cho search
       take: 10,
       orderBy: {
         displayName: "asc",

@@ -5,7 +5,7 @@ import Post from "@/components/posts/Post";
 import UserAvatar from "@/components/UserAvatar";
 import UserTooltip from "@/components/UserTooltip";
 import prisma from "@/lib/prisma";
-import { getPostDataInclude, UserData } from "@/lib/types";
+import { getPostDataInclude, PostData, UserData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -16,18 +16,21 @@ interface PageProps {
   params: { postId: string };
 }
 
-const getPost = cache(async (postId: string, loggedInUserId: string) => {
-  const post = await prisma.post.findUnique({
-    where: {
-      id: postId,
-    },
-    include: getPostDataInclude(loggedInUserId),
-  });
+const getPost = cache(
+  async (postId: string, loggedInUserId: string): Promise<PostData> => {
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      include: getPostDataInclude(loggedInUserId, false), // Full mode - need _count for user profile
+    });
 
-  if (!post) notFound();
+    if (!post) notFound();
 
-  return post;
-});
+    // Type assertion needed because Prisma types don't perfectly match our PostData type
+    return post as unknown as PostData;
+  }
+);
 
 export async function generateMetadata({
   params: { postId },
