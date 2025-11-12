@@ -48,8 +48,11 @@ export async function GET() {
             },
           },
         },
-        select: getUserDataSelect(user.id),
+        select: getUserDataSelect(user.id, true), // Lightweight mode
         take: 5,
+        orderBy: {
+          createdAt: "desc", // Lấy user mới nhất
+        },
       }),
       getTrendingTopics(),
     ]);

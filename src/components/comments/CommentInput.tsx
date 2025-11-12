@@ -1,5 +1,5 @@
-import { PostData, CommentData } from "@/lib/types";
-import { Loader2, SendHorizonal, ImageIcon, X, Smile } from "lucide-react";
+import { PostDataLightweight, CommentData } from "@/lib/types";
+import { Loader2, SendHorizonal, X, ImageIcon, Smile } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 interface CommentInputProps {
-  post: PostData;
+  post: PostDataLightweight;
   parentComment?: CommentData;
   onSuccess?: () => void;
 }

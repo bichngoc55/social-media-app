@@ -19,21 +19,23 @@ interface PageProps {
   params: { username: string };
 }
 
-const getUser = cache(async (username: string, loggedInUserId: string) => {
-  const user = await prisma.user.findFirst({
-    where: {
-      username: {
-        equals: username,
-        mode: "insensitive",
+const getUser = cache(
+  async (username: string, loggedInUserId: string): Promise<UserData> => {
+    const user = await prisma.user.findFirst({
+      where: {
+        username: {
+          equals: username,
+          mode: "insensitive",
+        },
       },
-    },
-    select: getUserDataSelect(loggedInUserId),
-  });
+      select: getUserDataSelect(loggedInUserId, false), // Full mode - need _count for profile
+    });
 
-  if (!user) notFound();
+    if (!user) notFound();
 
-  return user;
-});
+    return user as UserData;
+  }
+);
 
 export async function generateMetadata({
   params: { username },
