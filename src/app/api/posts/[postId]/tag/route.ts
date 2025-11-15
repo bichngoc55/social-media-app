@@ -53,13 +53,51 @@ export async function POST(
       );
     }
 
+    // Lọc ra những user không phải chính mình
+    const userIdsFiltered = userIds.filter((id) => id !== loggedInUser.id);
+
+    if (userIdsFiltered.length === 0) {
+      return NextResponse.json(
+        {
+          error: "No valid users found to tag",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Kiểm tra xem các user có được follow không
+    const followingUsers = await prisma.follow.findMany({
+      where: {
+        followerId: loggedInUser.id,
+        followingId: { in: userIdsFiltered },
+      },
+      select: { followingId: true },
+    });
+
+    const followingIds = new Set(followingUsers.map((f) => f.followingId));
+    const notFollowingIds = userIdsFiltered.filter(
+      (id) => !followingIds.has(id)
+    );
+
+    if (notFollowingIds.length > 0) {
+      // Lấy thông tin user để hiển thị lỗi
+      const notFollowingUsers = await prisma.user.findMany({
+        where: { id: { in: notFollowingIds } },
+        select: { displayName: true, username: true },
+      });
+
+      return NextResponse.json(
+        {
+          error: `Bạn cần follow những user sau trước khi tag: ${notFollowingUsers.map((u) => u.displayName).join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Kiểm tra users có tồn tại không
     const users = await prisma.user.findMany({
       where: {
-        AND: [
-          { id: { in: userIds } },
-          { id: { not: loggedInUser.id } }, // Không thể tag chính mình
-        ],
+        id: { in: userIdsFiltered },
       },
       select: { id: true, displayName: true, username: true },
     });

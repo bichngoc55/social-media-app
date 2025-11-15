@@ -144,12 +144,10 @@ export default function PostEditor() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
-          <div className="relative">
-            <UserTaggingEditor
-              taggedUsers={taggedUsers}
-              onTaggedUsersChange={setTaggedUsers}
-            />
-          </div>
+          <UserTaggingEditor
+            taggedUsers={taggedUsers}
+            onTaggedUsersChange={setTaggedUsers}
+          />
         </div>
         <div className="flex items-center gap-3">
           {isUploading && (

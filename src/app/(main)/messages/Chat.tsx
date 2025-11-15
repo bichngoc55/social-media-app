@@ -2,12 +2,14 @@
 
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chat as StreamChat } from "stream-chat-react";
 import "stream-chat-react/dist/css/v2/index.css";
+import "./messages.css";
 import ChatChannel from "./ChatChannel";
 import ChatSidebar from "./ChatSidebar";
 import useInitializeChatClient from "./useInitializeChatClient";
+import { hideTimestamps } from "./hideTimestamp";
 
 export default function Chat() {
   const chatClient = useInitializeChatClient();
@@ -15,6 +17,15 @@ export default function Chat() {
   const { resolvedTheme } = useTheme();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Chạy script để ẩn timestamp sau khi component mount
+    const timer = setTimeout(() => {
+      hideTimestamps();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [chatClient]);
 
   if (!chatClient) {
     return <Loader2 className="mx-auto my-3 animate-spin" />;
