@@ -26,6 +26,37 @@ export async function submitPost(input: {
     taggedUserIds = [],
   } = parsed;
 
+  // Lọc ra những user đã được follow
+  const taggedUserIdsFiltered = taggedUserIds.filter((id) => id !== user.id); // Không thể tag chính mình
+
+  if (taggedUserIdsFiltered.length > 0) {
+    // Kiểm tra xem các user có được follow không
+    const followingUsers = await prisma.follow.findMany({
+      where: {
+        followerId: user.id,
+        followingId: { in: taggedUserIdsFiltered },
+      },
+      select: { followingId: true },
+    });
+
+    const followingIds = new Set(followingUsers.map((f) => f.followingId));
+    const notFollowingIds = taggedUserIdsFiltered.filter(
+      (id) => !followingIds.has(id)
+    );
+
+    if (notFollowingIds.length > 0) {
+      // Lấy thông tin user để hiển thị lỗi
+      const notFollowingUsers = await prisma.user.findMany({
+        where: { id: { in: notFollowingIds } },
+        select: { displayName: true, username: true },
+      });
+
+      throw new Error(
+        `Bạn cần follow những user sau trước khi tag: ${notFollowingUsers.map((u) => u.displayName).join(", ")}`
+      );
+    }
+  }
+
   const newPost = await prisma.post.create({
     data: {
       content,
@@ -36,16 +67,30 @@ export async function submitPost(input: {
         connect: mediaIds.map((id) => ({ id })),
       },
       post_tags: {
-        create: taggedUserIds
-          .filter((id) => id !== user.id) // Không thể tag chính mình
-          .map((userId) => ({
-            userId,
-            status: "APPROVED", // Tự động approve khi tag trong lúc tạo post
-          })),
+        create: taggedUserIdsFiltered.map((userId) => ({
+          userId,
+          status: "PENDING", // Tạo tag request, cần user approve
+        })),
       },
     },
     include: getPostDataInclude(user.id),
   });
+
+  // Tạo notifications cho các tagged users
+  if (taggedUserIdsFiltered.length > 0) {
+    await Promise.all(
+      taggedUserIdsFiltered.map((userId) =>
+        prisma.notification.create({
+          data: {
+            issuerId: user.id,
+            recipientId: userId,
+            postId: newPost.id,
+            type: "TAG_REQUEST",
+          },
+        })
+      )
+    );
+  }
 
   await processMentions(content, user.id, newPost.id);
 

@@ -1,0 +1,59 @@
+/* Ẩn tất cả timestamp và tên user - dùng selector tổng quát để cover tất cả trường hợp */
+.str-chat__message-simple__header .str-chat__message-simple__metadata,
+.str-chat__message-simple__header .str-chat__message-simple__date,
+.str-chat__message-simple__header .str-chat__message-simple__timestamp,
+.str-chat__message-simple__header .str-chat__message-simple__name,
+.str-chat__message-simple__header-inner > span:not(.str-chat__message-simple__avatar),
+.str-chat__message-simple__header-inner > div:not(.str-chat__message-simple__avatar),
+.str-chat__message-simple__footer,
+.str-chat__message-simple__footer .str-chat__message-simple__date,
+.str-chat__message-simple__header-inner,
+.str-chat__message-simple__header-inner > *:not(.str-chat__message-simple__avatar),
+/* Ẩn tất cả text nodes chứa timestamp pattern */
+.str-chat__message-simple__header *:not(.str-chat__message-simple__avatar):not(.str-chat__message-simple__message-text),
+.str-chat__message-simple__footer * {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Hiển thị lại khi hover vào message content (message bubble) */
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header
+  .str-chat__message-simple__metadata,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header
+  .str-chat__message-simple__date,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header
+  .str-chat__message-simple__timestamp,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header
+  .str-chat__message-simple__name,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header-inner
+  > span:not(.str-chat__message-simple__avatar),
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header-inner
+  > div:not(.str-chat__message-simple__avatar),
+.str-chat__message-simple:hover .str-chat__message-simple__footer,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__footer
+  .str-chat__message-simple__date,
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header-inner
+  > *:not(.str-chat__message-simple__avatar),
+.str-chat__message-simple:hover
+  .str-chat__message-simple__header
+  *:not(.str-chat__message-simple__avatar):not(
+    .str-chat__message-simple__message-text
+  ),
+.str-chat__message-simple:hover .str-chat__message-simple__footer * {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  height: auto !important;
+  overflow: visible !important;
+}

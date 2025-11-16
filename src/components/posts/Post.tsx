@@ -17,6 +17,7 @@ import BookmarkButton from "./BookmarkButton";
 import LikeButton from "./LikeButton";
 import PostMoreButton from "./PostMoreButton";
 import UserTagging from "./UserTagging";
+import TagRequestBanner from "./TagRequestBanner";
 
 interface PostProps {
   post: PostDataLightweight;
@@ -26,9 +27,19 @@ export default function Post({ post }: PostProps) {
   const { user } = useSession();
 
   const [showComments, setShowComments] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <article className="group/post card-glass post-hover-lift space-y-3 rounded-2xl p-6 fade-in">
+      <TagRequestBanner
+        postId={post.id}
+        currentUserId={user.id}
+        onUpdate={() => {
+          setRefreshKey((prev) => prev + 1);
+          // Reload page to refresh post data
+          window.location.reload();
+        }}
+      />
       <div className="flex justify-between gap-3">
         <div className="flex flex-wrap gap-3">
           <UserTooltip user={post.user}>
