@@ -39,6 +39,11 @@ model User {
   twoFactorAuths        TwoFactorAuth[]
   blockedByUsers        UserBlock[]         @relation("Blocked")
   blockedUsers          UserBlock[]         @relation("Blocker")
+  
+  // AI Recommendations - Cached metrics for performance
+  aiMetrics             UserAIMetrics?
+  aiRecommendations     UserRecommendation[] @relation("RecommendedUser")
+  recommendationsFor    UserRecommendation[] @relation("RecommendedTo")
 
   @@map("users")
 }
@@ -318,4 +323,61 @@ enum TagStatus {
 enum UserRole {
   USER
   ADMIN
+}
+
+// AI Recommendations - Cached metrics for performance
+model UserAIMetrics {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Engagement metrics (cached)
+  totalPosts            Int      @default(0)
+  totalLikes            Int      @default(0)
+  totalComments         Int      @default(0)
+  totalFollowers        Int      @default(0)
+  totalFollowing        Int      @default(0)
+  
+  // Activity metrics
+  postsLast30Days       Int      @default(0)
+  postsLast7Days        Int      @default(0)
+  isActiveLast7Days     Boolean  @default(false)
+  lastPostDate          DateTime?
+  
+  // Hashtag preferences (top 10 hashtags user uses)
+  topHashtags           String[] @default([])
+  hashtagCounts         Json?    // Map of hashtag -> count
+  
+  // Content quality score (0-100)
+  engagementRate        Float    @default(0)
+  avgLikesPerPost       Float    @default(0)
+  avgCommentsPerPost    Float    @default(0)
+  
+  // Last updated timestamp
+  updatedAt             DateTime @default(now()) @updatedAt
+  
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("user_ai_metrics")
+}
+
+// AI Recommendations - Store recommendations for users
+model UserRecommendation {
+  id                    String   @id @default(cuid())
+  recommendedToId       String   // User who will see this recommendation
+  recommendedUserId     String   // User being recommended
+  score                 Float    // AI recommendation score (0-100)
+  reason                String?  // Why this user is recommended
+  metadata              Json?    // Additional metadata (hashtags, mutual connections, etc.)
+  createdAt             DateTime @default(now())
+  expiresAt             DateTime // When this recommendation expires
+  
+  recommendedTo         User     @relation("RecommendedTo", fields: [recommendedToId], references: [id], onDelete: Cascade)
+  recommendedUser       User     @relation("RecommendedUser", fields: [recommendedUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([recommendedToId, recommendedUserId])
+  @@index([recommendedToId, score(sort: Desc)])
+  @@index([recommendedToId, expiresAt])
+  @@index([expiresAt])
+  @@map("user_recommendations")
 }

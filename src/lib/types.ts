@@ -30,16 +30,14 @@ export function getUserDataSelect(loggedInUserId: string, lightweight = false) {
     },
   } satisfies Prisma.UserSelect;
 
-  if (lightweight) {
-    return baseSelect;
-  }
-
+  // Always include _count for FollowButton
   return {
     ...baseSelect,
     _count: {
       select: {
         posts: true,
         followers: true,
+        following: true,
       },
     },
   } satisfies Prisma.UserSelect;
