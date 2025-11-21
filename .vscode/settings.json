@@ -1,3 +1,9 @@
 {
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "git.ignoreLimitWarning": true,
+  "files.exclude": {
+    "**/python-api/venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  }
 }

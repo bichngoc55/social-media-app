@@ -6,11 +6,8 @@
   "scripts": {
     "dev": "tsx server.ts",
     "dev:turbo": "cross-env TURBOPACK=1 next dev --turbo",
-<<<<<<< HEAD
-=======
     "dev:all": "concurrently \"npm run dev:python\" \"npm run dev\"",
     "dev:python": "cd python-api && .\\venv\\Scripts\\Activate.ps1 && uvicorn main:app --reload --port 8001",
->>>>>>> linh
     "build": "next build",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "lint": "next lint",
