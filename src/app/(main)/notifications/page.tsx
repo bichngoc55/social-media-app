@@ -1,4 +1,4 @@
-import TrendsSidebar from "@/components/TrendsSidebar";
+import TrendsSidebarClient from "@/components/TrendsSidebarClient";
 import { Metadata } from "next";
 import Notifications from "./Notifications";
 
@@ -15,7 +15,7 @@ export default function Page() {
         </div>
         <Notifications />
       </div>
-      <TrendsSidebar />
+      <TrendsSidebarClient />
     </main>
   );
 }

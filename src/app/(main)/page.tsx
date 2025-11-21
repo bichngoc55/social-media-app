@@ -10,9 +10,12 @@ const PostEditor = dynamic(
   }
 );
 
-const TrendsSidebar = dynamic(() => import("@/components/TrendsSidebar"), {
-  ssr: false,
-});
+const TrendsSidebar = dynamic(
+  () => import("@/components/TrendsSidebarClient"),
+  {
+    ssr: false,
+  }
+);
 
 // Lazy load feeds để giảm bundle size
 const ForYouFeed = dynamic(() => import("./ForYouFeed"), {

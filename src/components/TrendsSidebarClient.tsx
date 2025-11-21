@@ -17,7 +17,7 @@ interface User {
   bio: string | null;
   followers: Array<{ followerId: string }>;
   blockedByUsers: Array<{ id: string }>;
-  _count: {
+  _count?: {
     followers: number;
     following: number;
     posts: number;
@@ -122,10 +122,11 @@ function WhoToFollow({ users }: { users: User[] }) {
           <FollowButton
             userId={user.id}
             initialState={{
-              followers: user._count.followers,
-              isFollowedByUser: user.followers.some(
-                ({ followerId }) => followerId === user.id
-              ),
+              followers: user._count?.followers ?? 0,
+              isFollowedByUser:
+                user.followers?.some(
+                  ({ followerId }) => followerId === user.id
+                ) ?? false,
             }}
           />
         </div>
