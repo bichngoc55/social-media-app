@@ -32,10 +32,13 @@ export async function recommendFriends(
     liked_post_contents: string[];
     comment_contents: string[];
     following_ids: string[];
+    province_code?: string | null;
+    district_code?: string | null;
+    ward_code?: string | null;
   }>
 ): Promise<RecommendedUser[]> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout (2 phút) - vì Python API cần thời gian xử lý embeddings
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout - giảm từ 120s để tránh browser timeout
 
   try {
     const response = await fetch(`${PYTHON_API_URL}/recommend-friends/`, {

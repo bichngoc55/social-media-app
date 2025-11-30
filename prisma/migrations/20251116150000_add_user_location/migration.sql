@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provinceCode" TEXT,
+ADD COLUMN IF NOT EXISTS "districtCode" TEXT,
+ADD COLUMN IF NOT EXISTS "wardCode" TEXT;
+

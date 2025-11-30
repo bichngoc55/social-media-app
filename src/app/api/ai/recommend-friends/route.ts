@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
         id: true,
         username: true,
         displayName: true,
+        provinceCode: true,
+        districtCode: true,
+        wardCode: true,
         posts: {
           where: { privacy: "PUBLIC" },
           select: { content: true },
@@ -68,6 +71,9 @@ export async function GET(req: NextRequest) {
         id: true,
         username: true,
         displayName: true,
+        provinceCode: true,
+        districtCode: true,
+        wardCode: true,
         posts: {
           where: { privacy: "PUBLIC" },
           select: { content: true },
@@ -104,6 +110,9 @@ export async function GET(req: NextRequest) {
           .filter(Boolean),
         comment_contents: currentUser.comments.map((c) => c.content),
         following_ids: currentUser.following.map((f) => f.followingId),
+        province_code: currentUser.provinceCode,
+        district_code: currentUser.districtCode,
+        ward_code: currentUser.wardCode,
       },
       ...candidateUsers.map((u) => ({
         id: u.id,
@@ -113,6 +122,9 @@ export async function GET(req: NextRequest) {
         liked_post_contents: u.likes.map((l) => l.post.content).filter(Boolean),
         comment_contents: u.comments.map((c) => c.content),
         following_ids: u.following.map((f) => f.followingId),
+        province_code: u.provinceCode,
+        district_code: u.districtCode,
+        ward_code: u.wardCode,
       })),
     ];
 

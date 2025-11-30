@@ -15,6 +15,9 @@ interface User {
   displayName: string;
   avatarUrl: string | null;
   bio: string | null;
+  provinceCode: string | null;
+  districtCode: string | null;
+  wardCode: string | null;
   followers: Array<{ followerId: string }>;
   blockedByUsers: Array<{ id: string }>;
   _count?: {
@@ -38,13 +41,16 @@ export default function TrendsSidebarClient() {
   const { data, isLoading, error } = useQuery<TrendsData>({
     queryKey: ["trends"],
     queryFn: async () => {
-      const response = await fetch("/api/trends");
+      const response = await fetch("/api/trends", {
+        cache: "no-store", // Không cache để luôn lấy data mới nhất
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch trends");
       }
       return response.json();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Luôn fetch data mới (không cache)
+    gcTime: 0, // Không cache (React Query v5: gcTime thay cho cacheTime)
   });
 
   if (isLoading) {

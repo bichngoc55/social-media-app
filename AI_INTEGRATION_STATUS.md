@@ -45,7 +45,7 @@ npm run dev
 
 ### 3. Kiểm tra trong Browser
 
-1. Mở app tại `http://localhost:3000`
+1. Mở app tại `npm run dev:allhttp://localhost:3000`
 2. Xem sidebar bên phải → "Who to follow"
 3. Recommendations sẽ được AI-powered dựa trên content similarity
 

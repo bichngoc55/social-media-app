@@ -5,6 +5,7 @@ import FollowerCount from "@/components/FollowerCount";
 import Linkify from "@/components/Linkify";
 import TrendsSidebarClient from "@/components/TrendsSidebarClient";
 import UserAvatar from "@/components/UserAvatar";
+import UserLocation from "@/components/UserLocation";
 import prisma from "@/lib/prisma";
 import { FollowerInfo, getUserDataSelect, UserData } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
@@ -107,6 +108,11 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
             <div className="text-muted-foreground">@{user.username}</div>
           </div>
           <div>Member since {formatDate(user.createdAt, "MMM d, yyyy")}</div>
+          <UserLocation
+            provinceCode={user.provinceCode}
+            districtCode={user.districtCode}
+            wardCode={user.wardCode}
+          />
           <div className="flex items-center gap-3">
             <span>
               Posts:{" "}

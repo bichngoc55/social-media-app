@@ -33,6 +33,9 @@ export type CreatePostValues = z.infer<typeof createPostSchema>;
 export const updateUserProfileSchema = z.object({
   displayName: requiredString,
   bio: z.string().max(1000, "Must be at most 1000 characters"),
+  provinceCode: z.string().optional().nullable(),
+  districtCode: z.string().optional().nullable(),
+  wardCode: z.string().optional().nullable(),
 });
 
 export type UpdateUserProfileValues = z.infer<typeof updateUserProfileSchema>;
