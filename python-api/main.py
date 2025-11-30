@@ -82,6 +82,14 @@ class RecommendSimilarPostsInput(BaseModel):
     posts: List[PostData]  # All relevant posts data (including target)
 
 
+# Input for recommend posts for user (based on user interactions)
+class RecommendPostsForUserInput(BaseModel):
+    user_id: str
+    user_data: UserData  # User's own posts, likes, comments
+    posts: List[PostData]  # Candidate posts to recommend from
+    exclude_post_ids: Set[str] = set()  # Post IDs to exclude (already shown)
+
+
 # -------------------- Helper Functions --------------------
 
 def get_user_embedding(user: UserData) -> np.ndarray:
@@ -232,6 +240,111 @@ async def recommend_similar_posts(input_data: RecommendSimilarPostsInput):
 
     except Exception as e:
         logger.error(f"Error in recommend_similar_posts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/recommend-posts-for-user/")
+async def recommend_posts_for_user(input_data: RecommendPostsForUserInput):
+    """
+    Recommend posts cho user dựa trên user interactions (posts, likes, comments)
+    
+    Args:
+        input_data: User ID, user data, và list candidate posts
+        
+    Returns:
+        List of recommended posts với similarity scores (sorted by similarity)
+    """
+    try:
+        # Build user embedding từ interactions
+        logger.info(f"Building user embedding for user {input_data.user_id}...")
+        user_embedding = get_user_embedding(input_data.user_data)
+        
+        # Build post embeddings - TỐI ƯU: encode tất cả trong một batch
+        post_embeddings: Dict[str, np.ndarray] = {}
+        post_map: Dict[str, PostData] = {}
+        
+        # Filter và collect posts
+        valid_posts = []
+        for post in input_data.posts:
+            # Exclude posts đã được hiển thị và posts của chính user
+            if post.id in input_data.exclude_post_ids or post.userId == input_data.user_id:
+                continue
+            valid_posts.append(post)
+            post_map[post.id] = post
+        
+        if not valid_posts:
+            logger.warning("No candidate posts available after filtering")
+            return []
+        
+        logger.info(f"Building embeddings for {len(valid_posts)} candidate posts (batch mode)...")
+        
+        # Collect all contents for batch encoding
+        all_contents = []
+        content_to_post_map = []  # Map từng content đến post ID
+        
+        for post in valid_posts:
+            contents = [post.content] + post.comment_contents
+            if not contents:
+                # Nếu post không có content, tạo empty embedding sau
+                content_to_post_map.append((post.id, []))
+            else:
+                start_idx = len(all_contents)
+                all_contents.extend(contents)
+                end_idx = len(all_contents)
+                content_to_post_map.append((post.id, list(range(start_idx, end_idx))))
+        
+        # Map embeddings về từng post
+        embedding_dim = model.get_sentence_embedding_dimension()
+        
+        # Encode tất cả contents trong một batch lớn
+        if all_contents:
+            logger.info(f"Encoding {len(all_contents)} contents in batch...")
+            all_embeddings = model.encode(all_contents, batch_size=32, show_progress_bar=False)
+        else:
+            # Nếu không có contents nào, tạo empty array với đúng shape
+            all_embeddings = np.array([]).reshape(0, embedding_dim)
+        for post_id, content_indices in content_to_post_map:
+            if not content_indices:
+                # Post không có content, tạo zero embedding
+                post_embeddings[post_id] = np.zeros(embedding_dim)
+            else:
+                # Lấy embeddings của post này và tính mean
+                post_content_embeddings = all_embeddings[content_indices]
+                post_embeddings[post_id] = np.mean(post_content_embeddings, axis=0)
+
+        if not post_embeddings:
+            logger.warning("No candidate posts available after filtering")
+            return []
+
+        # Calculate similarities
+        user_emb = user_embedding.reshape(1, -1)
+        similarities = {}
+
+        logger.info(f"Calculating similarities for {len(post_embeddings)} posts...")
+
+        for pid, emb in post_embeddings.items():
+            sim = cosine_similarity(user_emb, emb.reshape(1, -1))[0][0]
+            if sim > 0.1:  # Threshold để có nhiều recommendations hơn
+                similarities[pid] = sim
+
+        # Sort by similarity và return all (không limit ở đây, để Next.js handle pagination)
+        suggested = sorted(similarities.items(), key=lambda x: x[1], reverse=True)
+        
+        result = []
+        for pid, score in suggested:
+            post = post_map[pid]
+            result.append({
+                "id": pid,
+                "content": post.content,
+                "userId": post.userId,
+                "similarity": round(float(score), 4)
+            })
+
+        logger.info(f"Found {len(result)} recommended posts for user {input_data.user_id}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in recommend_posts_for_user: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
