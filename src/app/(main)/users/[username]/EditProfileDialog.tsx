@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import LocationSelector from "@/components/LocationSelector";
 import { UserData } from "@/lib/types";
 import {
   updateUserProfileSchema,
@@ -27,8 +28,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
-import { useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import Resizer from "react-image-file-resizer";
 import { useUpdateProfileMutation } from "./mutations";
 
@@ -48,12 +49,39 @@ export default function EditProfileDialog({
     defaultValues: {
       displayName: user.displayName,
       bio: user.bio || "",
+      provinceCode: user.provinceCode || null,
+      districtCode: user.districtCode || null,
+      wardCode: user.wardCode || null,
     },
   });
+
+  // Reset form when dialog opens or user data changes
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        displayName: user.displayName,
+        bio: user.bio || "",
+        provinceCode: user.provinceCode || null,
+        districtCode: user.districtCode || null,
+        wardCode: user.wardCode || null,
+      });
+    }
+  }, [open, user, form]);
 
   const mutation = useUpdateProfileMutation();
 
   const [croppedAvatar, setCroppedAvatar] = useState<Blob | null>(null);
+
+  // Watch location fields - must be called at top level, not inside render callback
+  const provinceCode = useWatch({
+    control: form.control,
+    name: "provinceCode",
+  });
+  const districtCode = useWatch({
+    control: form.control,
+    name: "districtCode",
+  });
+  const wardCode = useWatch({ control: form.control, name: "wardCode" });
 
   async function onSubmit(values: UpdateUserProfileValues) {
     const newAvatarFile = croppedAvatar
@@ -117,6 +145,39 @@ export default function EditProfileDialog({
                       placeholder="Tell us a little bit about yourself"
                       className="resize-none"
                       {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="provinceCode"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <LocationSelector
+                      provinceCode={provinceCode}
+                      districtCode={districtCode}
+                      wardCode={wardCode}
+                      onProvinceChange={(code) => {
+                        form.setValue("provinceCode", code);
+                        form.setValue("districtCode", null);
+                        form.setValue("wardCode", null);
+                      }}
+                      onDistrictChange={(code) => {
+                        form.setValue("districtCode", code);
+                        // Don't clear wardCode here - it's set automatically when ward is selected
+                      }}
+                      onWardChange={(code) => {
+                        form.setValue("wardCode", code, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                          shouldTouch: true,
+                        });
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

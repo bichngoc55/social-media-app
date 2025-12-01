@@ -17,6 +17,9 @@ model User {
   googleId              String?             @unique
   avatarUrl             String?
   bio                   String?
+  provinceCode          String?            // Mã tỉnh/thành phố (theo provinces.open-api.vn)
+  districtCode          String?            // Mã quận/huyện
+  wardCode              String?            // Mã phường/xã
   createdAt             DateTime            @default(now())
   emailVerified         Boolean             @default(false)
   role                  UserRole            @default(USER)

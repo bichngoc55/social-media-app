@@ -66,6 +66,9 @@ export async function GET(req: NextRequest) {
               id: true,
               username: true,
               displayName: true,
+              provinceCode: true,
+              districtCode: true,
+              wardCode: true,
               posts: {
                 where: { privacy: "PUBLIC" },
                 select: { content: true },
@@ -104,6 +107,9 @@ export async function GET(req: NextRequest) {
               id: true,
               username: true,
               displayName: true,
+              provinceCode: true,
+              districtCode: true,
+              wardCode: true,
               posts: {
                 where: { privacy: "PUBLIC" },
                 select: { content: true },
@@ -144,6 +150,9 @@ export async function GET(req: NextRequest) {
                 .filter(Boolean),
               comment_contents: currentUser.comments.map((c) => c.content),
               following_ids: currentUser.following.map((f) => f.followingId),
+              province_code: currentUser.provinceCode,
+              district_code: currentUser.districtCode,
+              ward_code: currentUser.wardCode,
             },
             ...candidateUsers.map((u) => ({
               id: u.id,
@@ -155,6 +164,9 @@ export async function GET(req: NextRequest) {
                 .filter(Boolean),
               comment_contents: u.comments.map((c) => c.content),
               following_ids: u.following.map((f) => f.followingId),
+              province_code: u.provinceCode,
+              district_code: u.districtCode,
+              ward_code: u.wardCode,
             })),
           ];
 
@@ -165,12 +177,38 @@ export async function GET(req: NextRequest) {
 
           // Call AI API
           console.log("⏳ Đang gọi Python AI API (có thể mất 30-60s)...");
+          console.log(
+            `   Target user: ${currentUser.username} (${currentUser.id})`
+          );
+          console.log(
+            `   Location: ${currentUser.provinceCode} / ${currentUser.districtCode || "N/A"} / ${currentUser.wardCode || "N/A"}`
+          );
+          console.log(`   Candidate users: ${candidateUsers.length}`);
           const startTime = Date.now();
           const recommendations = await recommendFriends(user.id, usersData);
           const duration = ((Date.now() - startTime) / 1000).toFixed(2);
           console.log(
             `✅ Python AI API trả về sau ${duration}s với ${recommendations.length} recommendations`
           );
+
+          // Log location info của recommendations
+          if (recommendations.length > 0) {
+            console.log("   Recommendations:");
+            recommendations.slice(0, 3).forEach((r: any) => {
+              const candidate = candidateUsers.find((u) => u.id === r.id);
+              if (candidate) {
+                const locationMatch =
+                  candidate.provinceCode === currentUser.provinceCode
+                    ? candidate.wardCode === currentUser.wardCode
+                      ? "✅ Cùng ward+province"
+                      : "📍 Cùng province"
+                    : "❌ Khác province";
+                console.log(
+                  `      - ${r.displayName}: ${r.similarity.toFixed(4)} (${locationMatch})`
+                );
+              }
+            });
+          }
 
           // Nếu không có recommendations, trả về empty array (không fallback)
           if (recommendations.length === 0) {
@@ -195,19 +233,50 @@ export async function GET(req: NextRequest) {
             select: getUserDataSelect(user.id, false),
           });
 
-          // Sort by similarity
+          // Sort by similarity (giữ nguyên thứ tự từ Python API - đã được sort với location priority)
           const userMap = new Map(recommendedUsers.map((u) => [u.id, u]));
           const sortedUsers = recommendations
-            .map((rec) => userMap.get(rec.id))
+            .map((rec) => {
+              const user = userMap.get(rec.id);
+              if (user) {
+                // Add similarity score để debug
+                (user as any).similarity = rec.similarity;
+              }
+              return user;
+            })
             .filter(Boolean);
 
           console.log(
             `✅ AI recommendations: ${sortedUsers.length} users (similarities: ${recommendations.map((r) => r.similarity.toFixed(2)).join(", ")})`
           );
 
+          // Log location info
+          sortedUsers.slice(0, 3).forEach((u: any) => {
+            const candidate = candidateUsers.find((c) => c.id === u.id);
+            if (candidate) {
+              const locationMatch =
+                candidate.provinceCode === currentUser.provinceCode
+                  ? candidate.wardCode === currentUser.wardCode
+                    ? "✅ Cùng ward+province"
+                    : "📍 Cùng province"
+                  : "❌ Khác province";
+              console.log(
+                `   - ${u.displayName}: ${u.similarity?.toFixed(4) || "N/A"} (${locationMatch})`
+              );
+            }
+          });
+
           return sortedUsers;
         } catch (aiError) {
-          console.log("⚠️ AI recommendations failed, using fallback:", aiError);
+          console.error("⚠️ AI recommendations failed, using fallback");
+          console.error("   Error:", aiError);
+          if (aiError instanceof Error) {
+            console.error("   Message:", aiError.message);
+            console.error("   Stack:", aiError.stack);
+          }
+          console.log(
+            "   💡 Fallback: Using simple query (orderBy createdAt desc)"
+          );
           // Fallback to simple query
           return prisma.user.findMany({
             where: {
