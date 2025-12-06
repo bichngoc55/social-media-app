@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import LocationSelector from "@/components/LocationSelector";
 import { UserData } from "@/lib/types";
 import {
@@ -32,11 +33,68 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import Resizer from "react-image-file-resizer";
 import { useUpdateProfileMutation } from "./mutations";
+import {
+  getAllCountries,
+  getProvinces,
+  getDistricts,
+} from "@/lib/location-data";
+
+const INTEREST_TAGS = [
+  "Technology",
+  "Sports",
+  "Music",
+  "Art",
+  "Travel",
+  "Food",
+  "Fashion",
+  "Photography",
+  "Gaming",
+  "Fitness",
+  "Books",
+  "Movies",
+  "Science",
+  "Business",
+  "Education",
+  "Health",
+  "Nature",
+  "Pets",
+];
 
 interface EditProfileDialogProps {
   user: UserData;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+function getInitialLocationIds(user: UserData) {
+  const countries = getAllCountries();
+
+  // 1. Find the Country ID by ISO2 code
+  const initialCountry = countries.find((c) => c.iso2 === user.countryCode);
+  const initialCountryId = initialCountry?.id.toString() || null;
+
+  if (!initialCountryId || !initialCountry) {
+    return { countryCode: null, provinceCode: null, districtCode: null };
+  }
+
+  // 2. Find the Province ID by name (database stores province name, not ID)
+  const provinces = getProvinces(initialCountryId); // Use country ID, not ISO2
+  const initialProvince = provinces.find((p) => p.name === user.provinceCode);
+  const initialProvinceId = initialProvince?.id.toString() || null;
+
+  // 3. Find the District ID by name (database stores district name, not ID)
+  const districts =
+    initialProvince && initialProvinceId && user.districtCode
+      ? getDistricts(initialCountryId, initialProvinceId) // Use country ID and province ID
+      : [];
+
+  const initialDistrict = districts.find((d) => d.name === user.districtCode);
+  const initialDistrictId = initialDistrict?.id.toString() || null;
+
+  return {
+    countryCode: initialCountryId,
+    provinceCode: initialProvinceId,
+    districtCode: initialDistrictId,
+  };
 }
 
 export default function EditProfileDialog({
@@ -44,26 +102,30 @@ export default function EditProfileDialog({
   open,
   onOpenChange,
 }: EditProfileDialogProps) {
+  const initialLocation = getInitialLocationIds(user);
   const form = useForm<UpdateUserProfileValues>({
     resolver: zodResolver(updateUserProfileSchema),
     defaultValues: {
       displayName: user.displayName,
       bio: user.bio || "",
-      provinceCode: user.provinceCode || null,
-      districtCode: user.districtCode || null,
-      wardCode: user.wardCode || null,
+      interests: user.interests || [],
+      countryCode: initialLocation.countryCode,
+      provinceCode: initialLocation.provinceCode,
+      districtCode: initialLocation.districtCode,
     },
   });
 
   // Reset form when dialog opens or user data changes
   useEffect(() => {
     if (open) {
+      const locationToReset = getInitialLocationIds(user);
       form.reset({
         displayName: user.displayName,
         bio: user.bio || "",
-        provinceCode: user.provinceCode || null,
-        districtCode: user.districtCode || null,
-        wardCode: user.wardCode || null,
+        interests: user.interests || [],
+        countryCode: locationToReset.countryCode,
+        provinceCode: locationToReset.provinceCode,
+        districtCode: locationToReset.districtCode,
       });
     }
   }, [open, user, form]);
@@ -73,6 +135,10 @@ export default function EditProfileDialog({
   const [croppedAvatar, setCroppedAvatar] = useState<Blob | null>(null);
 
   // Watch location fields - must be called at top level, not inside render callback
+  const countryCode = useWatch({
+    control: form.control,
+    name: "countryCode",
+  });
   const provinceCode = useWatch({
     control: form.control,
     name: "provinceCode",
@@ -81,7 +147,6 @@ export default function EditProfileDialog({
     control: form.control,
     name: "districtCode",
   });
-  const wardCode = useWatch({ control: form.control, name: "wardCode" });
 
   async function onSubmit(values: UpdateUserProfileValues) {
     const newAvatarFile = croppedAvatar
@@ -153,30 +218,63 @@ export default function EditProfileDialog({
             />
             <FormField
               control={form.control}
-              name="provinceCode"
+              name="interests"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Interests</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-wrap gap-2">
+                      {INTEREST_TAGS.map((interest) => (
+                        <Badge
+                          key={interest}
+                          variant={
+                            field.value?.includes(interest)
+                              ? "default"
+                              : "outline"
+                          }
+                          className="cursor-pointer"
+                          onClick={() => {
+                            const currentInterests = field.value || [];
+                            if (currentInterests.includes(interest)) {
+                              field.onChange(
+                                currentInterests.filter((i) => i !== interest)
+                              );
+                            } else {
+                              field.onChange([...currentInterests, interest]);
+                            }
+                          }}
+                        >
+                          {interest}
+                        </Badge>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="countryCode"
               render={() => (
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
                     <LocationSelector
+                      countryCode={countryCode}
                       provinceCode={provinceCode}
                       districtCode={districtCode}
-                      wardCode={wardCode}
+                      onCountryChange={(code) => {
+                        form.setValue("countryCode", code);
+                        form.setValue("provinceCode", null);
+                        form.setValue("districtCode", null);
+                      }}
                       onProvinceChange={(code) => {
                         form.setValue("provinceCode", code);
                         form.setValue("districtCode", null);
-                        form.setValue("wardCode", null);
                       }}
                       onDistrictChange={(code) => {
                         form.setValue("districtCode", code);
-                        // Don't clear wardCode here - it's set automatically when ward is selected
-                      }}
-                      onWardChange={(code) => {
-                        form.setValue("wardCode", code, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                          shouldTouch: true,
-                        });
                       }}
                     />
                   </FormControl>

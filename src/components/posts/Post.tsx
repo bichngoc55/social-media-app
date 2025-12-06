@@ -18,6 +18,8 @@ import LikeButton from "./LikeButton";
 import PostMoreButton from "./PostMoreButton";
 import UserTagging from "./UserTagging";
 import TagRequestBanner from "./TagRequestBanner";
+import MediaSlider from "./MediaSlider";
+import PostDetailModal from "./PostDetailModal";
 
 interface PostProps {
   post: PostDataLightweight;
@@ -28,6 +30,7 @@ export default function Post({ post }: PostProps) {
 
   const [showComments, setShowComments] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   return (
     <article className="group/post card-glass post-hover-lift space-y-3 rounded-2xl p-6 fade-in">
@@ -88,17 +91,18 @@ export default function Post({ post }: PostProps) {
           />
         )}
       </div>
-      {post.content && (
-        <Linkify>
-          <div className="whitespace-pre-line break-words">{post.content}</div>
-        </Linkify>
-      )}
-      {!!post.attachments.length && (
-        <MediaPreviews
-          attachments={post.attachments}
-          layout={(post as any).mediaLayout || null}
-        />
-      )}
+      <div onClick={() => setShowDetailModal(true)} className="cursor-pointer">
+        {post.content && (
+          <Linkify>
+            <div className="whitespace-pre-line break-words">
+              {post.content}
+            </div>
+          </Linkify>
+        )}
+        {!!post.attachments.length && (
+          <MediaSlider attachments={post.attachments} />
+        )}
+      </div>
       <hr className="text-muted-foreground" />
       <div className="flex justify-between gap-5">
         <div className="flex items-center gap-5">
@@ -126,6 +130,11 @@ export default function Post({ post }: PostProps) {
         </div>
       </div>
       {showComments && <Comments post={post} />}
+      <PostDetailModal
+        post={post}
+        open={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+      />
     </article>
   );
 }

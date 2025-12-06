@@ -1,6 +1,8 @@
 import { validateRequest } from "@/auth";
+import prisma from "@/lib/prisma";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import SessionProvider from "./SessionProvider";
 import SocketProvider from "./SocketProvider";
 
@@ -13,6 +15,14 @@ const MenuBar = dynamic(() => import("./MenuBar"), {
   ssr: true,
 });
 
+const checkOnboarding = cache(async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { provinceCode: true, bio: true },
+  });
+  return user;
+});
+
 export default async function Layout({
   children,
 }: {
@@ -21,6 +31,12 @@ export default async function Layout({
   const session = await validateRequest();
 
   if (!session.user) redirect("/login");
+
+  const user = await checkOnboarding(session.user.id);
+
+  if (!user?.provinceCode || !user?.bio) {
+    redirect("/onboarding");
+  }
 
   return (
     <SessionProvider value={session}>

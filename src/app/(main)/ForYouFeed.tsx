@@ -27,10 +27,7 @@ export default function ForYouFeed() {
           timeout: 60000, // 60 seconds
         });
         const data = await response.json<PostsPage>();
-        console.log("[ForYouFeed] Received data:", {
-          postsCount: data.posts.length,
-          hasNextCursor: !!data.nextCursor,
-        });
+
         return data;
       } catch (error) {
         console.error("[ForYouFeed] Error fetching posts:", error);
@@ -43,18 +40,6 @@ export default function ForYouFeed() {
   });
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
-
-  // Debug logging
-  console.log("[ForYouFeed] Component state:", {
-    status,
-    postsCount: posts.length,
-    pagesCount: data?.pages.length || 0,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    firstPostId: posts[0]?.id || null,
-    firstPostHasUser: !!posts[0]?.user,
-  });
 
   if (status === "pending") {
     return <PostsLoadingSkeleton />;

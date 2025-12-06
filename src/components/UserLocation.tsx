@@ -1,13 +1,10 @@
 "use client";
 
-import {
-  getDistrictByCode,
-  getProvinceByCode,
-  getWardByCode,
-} from "@/lib/provinces-api";
-import { useEffect, useState } from "react";
+import { getCountryByIso2 } from "@/lib/location-data";
+import { useMemo } from "react";
 
 interface UserLocationProps {
+  countryCode?: string | null;
   provinceCode?: string | null;
   districtCode?: string | null;
   wardCode?: string | null;
@@ -15,73 +12,32 @@ interface UserLocationProps {
 }
 
 export default function UserLocation({
+  countryCode,
   provinceCode,
   districtCode,
   wardCode,
   className,
 }: UserLocationProps) {
-  const [location, setLocation] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const location = useMemo(() => {
+    const parts: string[] = [];
 
-  useEffect(() => {
-    async function loadLocation() {
-      if (!provinceCode) {
-        setLocation(null);
-        setLoading(false);
-        return;
-      }
+    if (districtCode) {
+      parts.push(districtCode);
+    }
 
-      try {
-        const parts: string[] = [];
+    if (provinceCode) {
+      parts.push(provinceCode);
+    }
 
-        if (wardCode && provinceCode) {
-          const ward = await getWardByCode(
-            String(wardCode),
-            String(provinceCode)
-          );
-          if (ward) {
-            parts.push(ward.name);
-          } else {
-            console.warn(
-              `Ward not found: wardCode=${wardCode}, provinceCode=${provinceCode}`
-            );
-          }
-        }
-
-        // District name không có trong API 34tinhthanh.com, skip
-        // if (districtCode) {
-        //   const district = await getDistrictByCode(districtCode);
-        //   if (district) parts.push(district.name);
-        // }
-
-        if (provinceCode) {
-          const province = await getProvinceByCode(String(provinceCode));
-          if (province) {
-            parts.push(province.name);
-          } else {
-            console.warn(`Province not found: provinceCode=${provinceCode}`);
-          }
-        }
-
-        setLocation(parts.length > 0 ? parts.join(", ") : null);
-      } catch (error) {
-        console.error("Error loading location:", error);
-        setLocation(null);
-      } finally {
-        setLoading(false);
+    if (countryCode) {
+      const country = getCountryByIso2(countryCode);
+      if (country) {
+        parts.push(country.name);
       }
     }
 
-    loadLocation();
-  }, [provinceCode, districtCode, wardCode]);
-
-  if (loading) {
-    return (
-      <div className={`text-sm text-muted-foreground ${className}`}>
-        Loading location...
-      </div>
-    );
-  }
+    return parts.length > 0 ? parts.join(", ") : null;
+  }, [countryCode, provinceCode, districtCode, wardCode]);
 
   if (!location) {
     return null;
@@ -89,7 +45,7 @@ export default function UserLocation({
 
   return (
     <div className={`text-sm text-muted-foreground ${className}`}>
-      📍 {location}
+      {location}
     </div>
   );
 }

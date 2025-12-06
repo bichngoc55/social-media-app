@@ -79,11 +79,7 @@ class RecommendFriendsInput(BaseModel):
     users: List[UserData]  # All relevant users data (including target)
 
 
-# Input for recommend similar posts
-class RecommendSimilarPostsInput(BaseModel):
-    post_id: str
-    posts: List[PostData]  # All relevant posts data (including target)
-
+# Input for recommend similar posts 
 
 # Input for recommend posts for user (based on user interactions)
 class RecommendPostsForUserInput(BaseModel):
@@ -280,64 +276,7 @@ async def recommend_friends(input_data: RecommendFriendsInput):
         logger.error(f"Error in recommend_friends: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/recommend-similar-posts/")
-async def recommend_similar_posts(input_data: RecommendSimilarPostsInput):
-    """
-    Recommend similar posts dựa trên content similarity
-    
-    Args:
-        input_data: Post ID và list posts data
-        
-    Returns:
-        List of similar posts với similarity scores
-    """
-    try:
-        # Build embeddings
-        post_embeddings: Dict[str, np.ndarray] = {}
-        post_map: Dict[str, PostData] = {}
-        
-        logger.info(f"Building embeddings for {len(input_data.posts)} posts...")
-
-        for post in input_data.posts:
-            post_embeddings[post.id] = get_post_embedding(post)
-            post_map[post.id] = post
-
-        if input_data.post_id not in post_embeddings:
-            raise HTTPException(404, "Target post not found in data")
-
-        target_emb = post_embeddings[input_data.post_id].reshape(1, -1)
-        similarities = {}
-
-        logger.info(f"Calculating similarities for post {input_data.post_id}...")
-
-        for pid, emb in post_embeddings.items():
-            if pid != input_data.post_id:
-                sim = cosine_similarity(target_emb, emb.reshape(1, -1))[0][0]
-                if sim > 0.3:  # Threshold
-                    similarities[pid] = sim
-
-        # Top N
-        top = 5
-        suggested = sorted(similarities.items(), key=lambda x: x[1], reverse=True)[:top]
-        
-        result = []
-        for pid, score in suggested:
-            post = post_map[pid]
-            result.append({
-                "id": pid,
-                "content": post.content,
-                "userId": post.userId,
-                "similarity": round(float(score), 4)
-            })
-
-        logger.info(f"Found {len(result)} similar posts for post {input_data.post_id}")
-        return result
-
-    except Exception as e:
-        logger.error(f"Error in recommend_similar_posts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+ 
 
 @app.post("/recommend-posts-for-user/")
 async def recommend_posts_for_user(input_data: RecommendPostsForUserInput):

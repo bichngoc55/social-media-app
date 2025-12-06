@@ -7,6 +7,7 @@ import { PropsWithChildren } from "react";
 import FollowButton from "./FollowButton";
 import FollowerCount from "./FollowerCount";
 import Linkify from "./Linkify";
+import { Badge } from "./ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -57,6 +58,20 @@ export default function UserTooltip({ children, user }: UserTooltipProps) {
                   {user.bio}
                 </div>
               </Linkify>
+            )}
+            {user.interests && user.interests.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {user.interests.slice(0, 3).map((interest) => (
+                  <Badge key={interest} variant="secondary" className="text-xs">
+                    {interest}
+                  </Badge>
+                ))}
+                {user.interests.length > 3 && (
+                  <Badge variant="secondary" className="text-xs">
+                    +{user.interests.length - 3}
+                  </Badge>
+                )}
+              </div>
             )}
             <FollowerCount userId={user.id} initialState={followerState} />
           </div>

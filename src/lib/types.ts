@@ -11,6 +11,8 @@ export function getUserDataSelect(loggedInUserId: string, lightweight = false) {
     displayName: true,
     avatarUrl: true,
     bio: true,
+    interests: true,
+    countryCode: true,
     provinceCode: true,
     districtCode: true,
     wardCode: true,
@@ -54,8 +56,10 @@ export type UserData = Prisma.UserGetPayload<{
     displayName: true;
     avatarUrl: true;
     bio: true;
+    interests: true;
     provinceCode: true;
     districtCode: true;
+    countryCode: true;
     wardCode: true;
     createdAt: true;
     followers: {
@@ -91,7 +95,9 @@ export type UserDataLightweight = Prisma.UserGetPayload<{
     displayName: true;
     avatarUrl: true;
     bio: true;
+    interests: true;
     provinceCode: true;
+    countryCode: true;
     districtCode: true;
     wardCode: true;
     createdAt: true;

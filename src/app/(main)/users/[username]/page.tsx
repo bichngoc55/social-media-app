@@ -6,6 +6,7 @@ import Linkify from "@/components/Linkify";
 import TrendsSidebarClient from "@/components/TrendsSidebarClient";
 import UserAvatar from "@/components/UserAvatar";
 import UserLocation from "@/components/UserLocation";
+import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
 import { FollowerInfo, getUserDataSelect, UserData } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
@@ -109,6 +110,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </div>
           <div>Member since {formatDate(user.createdAt, "MMM d, yyyy")}</div>
           <UserLocation
+            countryCode={user.countryCode}
             provinceCode={user.provinceCode}
             districtCode={user.districtCode}
             wardCode={user.wardCode}
@@ -144,6 +146,23 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
               {user.bio}
             </div>
           </Linkify>
+        </>
+      )}
+      {user.interests && user.interests.length > 0 && (
+        <>
+          <hr />
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Interests
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {user.interests.map((interest) => (
+                <Badge key={interest} variant="secondary">
+                  {interest}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>

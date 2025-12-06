@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     if (!query || query.trim().length < 2) {
       return NextResponse.json({ users: [] });
     }
+    console.log("search users", query, onlyFollowing);
 
     // Nếu chỉ tìm trong following users (dùng cho tagging)
     let followingIds: string[] = [];

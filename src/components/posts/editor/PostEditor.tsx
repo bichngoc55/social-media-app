@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useDropzone } from "@uploadthing/react";
+import { useDropzone } from "react-dropzone";
 import {
   Globe,
   ImageIcon,

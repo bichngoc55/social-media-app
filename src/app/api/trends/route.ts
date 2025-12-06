@@ -14,15 +14,16 @@ const getTrendingTopics = unstable_cache(
     const result = await prisma.$queryRaw<
       { hashtag: string; count: bigint }[]
     >` 
-            SELECT LOWER(unnest(regexp_matches(content, '#[[:alnum:]_]+', 'g'))) AS hashtag, COUNT(*) AS count
+            SELECT LOWER(unnest(hashtags)) AS hashtag, COUNT(*) AS count
             FROM posts
+            WHERE array_length(hashtags, 1) > 0
             GROUP BY (hashtag)
             ORDER BY count DESC, hashtag ASC
             LIMIT 5
         `;
 
     return result.map((row) => ({
-      hashtag: row.hashtag,
+      hashtag: "#" + row.hashtag,
       count: Number(row.count),
     }));
   },

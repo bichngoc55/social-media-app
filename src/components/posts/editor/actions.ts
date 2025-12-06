@@ -5,6 +5,11 @@ import prisma from "@/lib/prisma";
 import { processMentions } from "@/lib/socket";
 import { getPostDataInclude } from "@/lib/types";
 import { createPostSchema } from "@/lib/validation";
+import {
+  analyzePostWithGemini,
+  getMultimodalEmbedding,
+  normalizeVector,
+} from "@/lib/vertex";
 
 export async function submitPost(input: {
   content: string;
@@ -28,6 +33,15 @@ export async function submitPost(input: {
 
   // Lọc ra những user đã được follow
   const taggedUserIdsFiltered = taggedUserIds.filter((id) => id !== user.id); // Không thể tag chính mình
+
+  // Extract hashtags from content
+  const hashtagRegex = /#(\w+)/g;
+  const hashtags: string[] = [];
+  let match;
+  while ((match = hashtagRegex.exec(content)) !== null) {
+    hashtags.push(match[1].toLowerCase());
+  }
+  const uniqueHashtags = [...new Set(hashtags)];
 
   if (taggedUserIdsFiltered.length > 0) {
     // Kiểm tra xem các user có được follow không
@@ -62,6 +76,7 @@ export async function submitPost(input: {
       content,
       userId: user.id,
       privacy,
+      hashtags: uniqueHashtags,
       ...(mediaLayout && { mediaLayout: mediaLayout as any }),
       attachments: {
         connect: mediaIds.map((id) => ({ id })),
@@ -75,7 +90,74 @@ export async function submitPost(input: {
     },
     include: getPostDataInclude(user.id),
   });
+  let analysis: {
+    sentimentScore: number;
+    emotion: string;
+    harmful: boolean;
+    harmfulTypes: string[];
+  } = {
+    sentimentScore: 0.5,
+    emotion: "NEUTRAL",
+    harmful: false,
+    harmfulTypes: [],
+  };
 
+  try {
+    const imageUrl = newPost.attachments.find((m) => m.type === "IMAGE")?.url;
+    const videoUrl = newPost.attachments.find((m) => m.type === "VIDEO")?.url;
+
+    const [embedding, geminiAnalysis] = await Promise.all([
+      getMultimodalEmbedding(
+        content || undefined,
+        imageUrl ?? undefined,
+        videoUrl ?? undefined
+      ),
+      analyzePostWithGemini(
+        content || undefined,
+        imageUrl ?? undefined,
+        videoUrl ?? undefined
+      ),
+    ]);
+
+    const normalizedVector = normalizeVector(embedding);
+    analysis = geminiAnalysis;
+    // Update post with embedding and sentiment
+    await prisma.$executeRaw`
+      UPDATE "posts"
+      SET 
+        embedding = ${normalizedVector}::vector,
+        emotions = ${analysis.emotion}::"EMOTION",
+        "emotionScore" = ${analysis.sentimentScore},
+        harmful = ${analysis.harmful},
+        "harmfulTypes" = ${analysis.harmfulTypes}::text[]
+      WHERE id = ${newPost.id}
+    `;
+  } catch (error) {
+    console.error("Error generating embedding for post:", error);
+  }
+  const currentUserStats = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { emotionScore: true, _count: { select: { posts: true } } },
+  });
+
+  const currentScore = currentUserStats?.emotionScore ?? 0.5;
+  const postCount = (currentUserStats?._count.posts ?? 0) || 1;
+
+  const newAverageScore =
+    (currentScore * (postCount - 1) + analysis.sentimentScore) / postCount;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      generalEmotion:
+        newAverageScore > 0.55
+          ? "POSITIVE"
+          : newAverageScore < 0.45
+            ? "NEGATIVE"
+            : "NEUTRAL",
+      emotionScore: newAverageScore,
+    },
+  });
   // Tạo notifications cho các tagged users
   if (taggedUserIdsFiltered.length > 0) {
     await Promise.all(

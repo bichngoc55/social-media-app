@@ -21,9 +21,9 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log(
-      `[for-you] Fetching recommendations for user: ${user.id} (${user.username})`
-    );
+    // console.log(
+    //   `[for-you] Fetching recommendations for user: ${user.id} (${user.username})`
+    // );
 
     // Tối ưu: Sử dụng cached data thay vì query mỗi lần
     const [blockedUserIds, followingUserIds] = await Promise.all([
@@ -121,14 +121,14 @@ export async function GET(req: NextRequest) {
 
       // Nếu có posts nhưng tất cả đều của user này, vẫn trả về empty
       // (vì "For you" feed không nên hiển thị posts của chính user)
-      console.log(`[for-you] All PUBLIC posts belong to user ${user.id}`);
+      // console.log(`[for-you] All PUBLIC posts belong to user ${user.id}`);
       return Response.json({
         posts: [],
         nextCursor: null,
       });
     }
 
-    console.log(`[for-you] Found ${candidatePosts.length} candidate posts`);
+    // console.log(`[for-you] Found ${candidatePosts.length} candidate posts`);
 
     // Format user data
     const userData = {
