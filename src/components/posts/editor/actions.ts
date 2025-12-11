@@ -8,6 +8,7 @@ import { createPostSchema } from "@/lib/validation";
 import {
   analyzePostWithGemini,
   getMultimodalEmbedding,
+  getTextEmbedding,
   normalizeVector,
 } from "@/lib/vertex";
 
@@ -93,88 +94,168 @@ export async function submitPost(input: {
   let analysis: {
     sentimentScore: number;
     emotion: string;
+    primaryEmotion: string;
+    topics: string[];
+    wisdomOrAdviceMessage: string;
     harmful: boolean;
     harmfulTypes: string[];
+    flags?: string[];
   } = {
     sentimentScore: 0.5,
     emotion: "NEUTRAL",
+    primaryEmotion: "neutral",
+    topics: [],
+    wisdomOrAdviceMessage: "",
     harmful: false,
     harmfulTypes: [],
+    flags: [],
   };
 
-  try {
-    const imageUrl = newPost.attachments.find((m) => m.type === "IMAGE")?.url;
-    const videoUrl = newPost.attachments.find((m) => m.type === "VIDEO")?.url;
+  // Process post analysis, embeddings, and notifications in background (non-blocking)
+  Promise.all([
+    (async () => {
+      try {
+        const imageUrl = newPost.attachments.find(
+          (m) => m.type === "IMAGE"
+        )?.url;
+        const videoUrl = newPost.attachments.find(
+          (m) => m.type === "VIDEO"
+        )?.url;
 
-    const [embedding, geminiAnalysis] = await Promise.all([
-      getMultimodalEmbedding(
-        content || undefined,
-        imageUrl ?? undefined,
-        videoUrl ?? undefined
-      ),
-      analyzePostWithGemini(
-        content || undefined,
-        imageUrl ?? undefined,
-        videoUrl ?? undefined
-      ),
-    ]);
+        // Generate both embeddings and analysis in parallel
+        const [multimodalEmbedding, geminiAnalysis] = await Promise.all([
+          getMultimodalEmbedding(
+            content || undefined,
+            imageUrl ?? undefined,
+            videoUrl ?? undefined
+          ),
+          analyzePostWithGemini(
+            content || undefined,
+            imageUrl ?? undefined,
+            videoUrl ?? undefined
+          ),
+        ]);
 
-    const normalizedVector = normalizeVector(embedding);
-    analysis = geminiAnalysis;
-    // Update post with embedding and sentiment
-    await prisma.$executeRaw`
-      UPDATE "posts"
-      SET 
-        embedding = ${normalizedVector}::vector,
-        emotions = ${analysis.emotion}::"EMOTION",
-        "emotionScore" = ${analysis.sentimentScore},
-        harmful = ${analysis.harmful},
-        "harmfulTypes" = ${analysis.harmfulTypes}::text[]
-      WHERE id = ${newPost.id}
-    `;
-  } catch (error) {
-    console.error("Error generating embedding for post:", error);
-  }
-  const currentUserStats = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { emotionScore: true, _count: { select: { posts: true } } },
-  });
+        analysis = geminiAnalysis;
+        const normalizedMultimodalVector = normalizeVector(multimodalEmbedding);
 
-  const currentScore = currentUserStats?.emotionScore ?? 0.5;
-  const postCount = (currentUserStats?._count.posts ?? 0) || 1;
+        // Generate embeddings for each topic
+        const topicEmbeddings = await Promise.all(
+          analysis.topics.map((topic) => getTextEmbedding(topic))
+        );
 
-  const newAverageScore =
-    (currentScore * (postCount - 1) + analysis.sentimentScore) / postCount;
+        // Format embeddings for PostgreSQL vector type
+        const embeddingString = `[${normalizedMultimodalVector.join(",")}]`;
+        const topicEmbeddingsArray = topicEmbeddings.map(
+          (emb) => `[${emb.join(",")}]`
+        );
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      generalEmotion:
-        newAverageScore > 0.55
-          ? "POSITIVE"
-          : newAverageScore < 0.45
-            ? "NEGATIVE"
-            : "NEUTRAL",
-      emotionScore: newAverageScore,
-    },
-  });
-  // Tạo notifications cho các tagged users
-  if (taggedUserIdsFiltered.length > 0) {
-    await Promise.all(
-      taggedUserIdsFiltered.map((userId) =>
-        prisma.notification.create({
+        // Get recent posts for wisdom message context
+        const recentPosts = await prisma.post.findMany({
+          where: { userId: user.id },
+          select: { content: true, topics: true, primaryEmotion: true },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        });
+        const emotionContext = recentPosts
+          .map((p) => {
+            const parts = [];
+            if (p.primaryEmotion) parts.push(p.primaryEmotion);
+            if (p.topics.length > 0) parts.push(p.topics.join(", "));
+            return parts.length > 0 ? parts.join(": ") : "";
+          })
+          .filter(Boolean)
+          .join(". ");
+
+        await prisma.$executeRawUnsafe(
+          `
+          UPDATE "posts"
+          SET 
+            embedding = $1::vector,
+            "topicEmbeddings" = $2::vector[],
+            emotions = $3::"EMOTION",
+            "emotionScore" = $4,
+            "primaryEmotion" = $5,
+            topics = $6::text[],
+            harmful = $7,
+            "harmfulTypes" = $8::text[],
+            "wisdomOrAdviceMessage" = $9
+          WHERE id = $10
+        `,
+          embeddingString,
+          topicEmbeddingsArray,
+          analysis.emotion,
+          analysis.sentimentScore,
+          analysis.primaryEmotion,
+          analysis.topics,
+          analysis.harmful,
+          analysis.harmfulTypes,
+          analysis.wisdomOrAdviceMessage,
+          newPost.id
+        );
+
+        const currentUserStats = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { emotionScore: true, _count: { select: { posts: true } } },
+        });
+
+        const currentScore = currentUserStats?.emotionScore ?? 0.5;
+        const postCount = (currentUserStats?._count.posts ?? 0) || 1;
+
+        let newAverageScore;
+
+        if (analysis.harmful) {
+          // Harmful posts cause immediate drop to 0.40 (40%)
+          // Calculate penalty needed to reach target of 0.40
+          const targetScore = 0.4;
+          const requiredPenalty =
+            (currentScore * postCount - targetScore * postCount) / 1;
+          const postEmotionImpact = Math.max(
+            0.01,
+            currentScore - requiredPenalty / postCount
+          );
+
+          newAverageScore =
+            (currentScore * (postCount - 1) + postEmotionImpact) / postCount;
+          // Ensure it doesn't go above target
+          newAverageScore = Math.min(newAverageScore, targetScore);
+        } else {
+          // Normal calculation for non-harmful posts
+          newAverageScore =
+            (currentScore * (postCount - 1) + analysis.sentimentScore) /
+            postCount;
+        }
+
+        await prisma.user.update({
+          where: { id: user.id },
           data: {
-            issuerId: user.id,
-            recipientId: userId,
-            postId: newPost.id,
-            type: "TAG_REQUEST",
+            generalEmotion:
+              newAverageScore > 0.55
+                ? "POSITIVE"
+                : newAverageScore < 0.45
+                  ? "NEGATIVE"
+                  : "NEUTRAL",
+            emotionScore: newAverageScore,
           },
-        })
-      )
-    );
-  }
-
-  await processMentions(content, user.id, newPost.id);
+        });
+      } catch (error) {}
+    })(),
+    taggedUserIdsFiltered.length > 0
+      ? Promise.all(
+          taggedUserIdsFiltered.map((userId) =>
+            prisma.notification.create({
+              data: {
+                issuerId: user.id,
+                recipientId: userId,
+                postId: newPost.id,
+                type: "TAG_REQUEST",
+              },
+            })
+          )
+        )
+      : Promise.resolve(),
+    processMentions(content, user.id, newPost.id),
+  ]).catch(() => {});
 
   return newPost;
 }

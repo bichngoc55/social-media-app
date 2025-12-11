@@ -28,9 +28,16 @@ import {
   Grid3x3,
   Columns,
   Frame,
+  Smile,
 } from "lucide-react";
 import Image from "next/image";
 import { ClipboardEvent, useRef, useState } from "react";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
@@ -45,6 +52,7 @@ export default function PostEditor() {
     "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME" | null
   >(null);
   const [taggedUsers, setTaggedUsers] = useState<UserDataLightweight[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const mutation = useSubmitPostMutation();
 
@@ -70,10 +78,10 @@ export default function PostEditor() {
         italic: false,
       }),
       Placeholder.configure({
-        placeholder: "What's crack-a-lackin'?",
+        placeholder: "What's on your mind?",
       }),
     ],
-    immediatelyRender: false, // Fix hydration mismatch
+    immediatelyRender: false,
   });
 
   const input =
@@ -94,9 +102,9 @@ export default function PostEditor() {
         onSuccess: () => {
           editor?.commands.clearContent();
           resetMediaUploads();
-          setPrivacy("PUBLIC"); // Reset về mặc định
-          setMediaLayout(null); // Reset layout
-          setTaggedUsers([]); // Reset tagged users
+          setPrivacy("PUBLIC");
+          setMediaLayout(null);
+          setTaggedUsers([]);
         },
       }
     );
@@ -108,6 +116,13 @@ export default function PostEditor() {
       .map((item) => item.getAsFile()) as File[];
     startUpload(files);
   }
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    if (!editor) return;
+    editor.commands.insertContent(emojiData.emoji);
+    setShowEmojiPicker(false);
+    editor.commands.focus();
+  };
 
   return (
     <div className="card-glass slide-up post-hover-lift flex flex-col gap-5 rounded-2xl p-6">
@@ -160,6 +175,32 @@ export default function PostEditor() {
             onFilesSelected={startUpload}
             disabled={isUploading || attachments.length >= 5}
           />
+          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-white/20 hover:text-primary"
+              >
+                <Smile size={20} />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-full border-0 p-0"
+              align="end"
+              side="top"
+            >
+              <EmojiPicker
+                onEmojiClick={handleEmojiClick}
+                width="100%"
+                height={400}
+                searchDisabled={false}
+                skinTonesDisabled
+                previewConfig={{ showPreview: false }}
+              />
+            </PopoverContent>
+          </Popover>
           <LoadingButton
             onClick={onSubmit}
             loading={mutation.isPending}
@@ -196,13 +237,13 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
   const getPrivacyText = (privacyLevel: string) => {
     switch (privacyLevel) {
       case "DRAFT":
-        return "Nháp";
+        return "Draft";
       case "FOLLOWERS":
-        return "Người theo dõi";
+        return "Followers";
       case "PUBLIC":
-        return "Công khai";
+        return "Public";
       default:
-        return "Công khai";
+        return "Public";
     }
   };
 
@@ -217,9 +258,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
             <div>
-              <div className="font-medium">Công khai</div>
+              <div className="font-medium">Public</div>
               <div className="text-xs text-muted-foreground">
-                Mọi người có thể thấy
+                Everyone can see this
               </div>
             </div>
           </div>
@@ -228,9 +269,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <div>
-              <div className="font-medium">Người theo dõi</div>
+              <div className="font-medium">Followers</div>
               <div className="text-xs text-muted-foreground">
-                Chỉ người theo dõi thấy
+                Only followers can see this
               </div>
             </div>
           </div>
@@ -239,9 +280,9 @@ function PrivacySelector({ privacy, onPrivacyChange }: PrivacySelectorProps) {
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
             <div>
-              <div className="font-medium">Nháp</div>
+              <div className="font-medium">Draft</div>
               <div className="text-xs text-muted-foreground">
-                Chỉ mình bạn thấy
+                Only you can see this
               </div>
             </div>
           </div>
@@ -278,7 +319,7 @@ function AddAttachmentsButton({
         accept="image/*, video/*"
         multiple
         ref={fileInputRef}
-        className="sr-only hidden"
+        className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
           if (files.length) {
@@ -304,33 +345,32 @@ function LayoutSelector({
   onLayoutChange,
   imageCount,
 }: LayoutSelectorProps) {
-  // Chỉ hiện layout selector khi <= 6 ảnh
   if (imageCount === 0 || imageCount > 6) return null;
 
   const layouts = [
     {
       value: "GRID" as const,
       icon: Grid3x3,
-      label: "Lưới",
-      description: "2x2, 3x3",
+      label: "Grid",
+      description: "2x2, 3x3 layout",
     },
     {
       value: "CAROUSEL" as const,
       icon: LayoutGrid,
       label: "Carousel",
-      description: "Trượt ngang",
+      description: "Horizontal sliding",
     },
     {
       value: "COLUMNS" as const,
       icon: Columns,
-      label: "Cột",
-      description: "Nhiều cột",
+      label: "Columns",
+      description: "Multiple vertical columns",
     },
     {
       value: "FRAME" as const,
       icon: Frame,
-      label: "Khung",
-      description: "Có viền",
+      label: "Frame",
+      description: "With border frame",
     },
   ];
 
@@ -379,7 +419,6 @@ function AttachmentPreviews({
   const MAX_DISPLAY = 6;
   const remainingCount = imageAttachments.length - MAX_DISPLAY;
 
-  // Default layout nếu không chọn
   const effectiveLayout = layout || "GRID";
 
   const getLayoutClasses = () => {
@@ -393,10 +432,8 @@ function AttachmentPreviews({
       case "CAROUSEL":
         return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
       case "COLUMNS":
-        // Mỗi ảnh là một cột riêng biệt, cho phép scroll ngang
         return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
       case "FRAME":
-        // Container sẽ có border và background, bao tất cả ảnh
         if (imageAttachments.length === 1) return "flex flex-col gap-3";
         if (imageAttachments.length === 2) return "grid grid-cols-2 gap-3";
         if (imageAttachments.length === 3) return "grid grid-cols-3 gap-3";
@@ -407,12 +444,10 @@ function AttachmentPreviews({
     }
   };
 
-  // Chỉ hiển thị tối đa 6 ảnh, ảnh cuối hiện "+X" nếu có
   const displayImages = imageAttachments.slice(0, MAX_DISPLAY);
 
   return (
     <div className="space-y-3">
-      {/* Images */}
       {imageAttachments.length > 0 && (
         <div
           className={cn(
@@ -438,7 +473,6 @@ function AttachmentPreviews({
           })}
         </div>
       )}
-      {/* Videos */}
       {videoAttachments.length > 0 && (
         <div className="flex flex-col gap-3">
           {videoAttachments.map((attachment) => (
@@ -477,10 +511,8 @@ function AttachmentPreview({
       case "GRID":
         return "w-full h-full object-cover rounded-2xl";
       case "CAROUSEL":
-        // Fit ảnh vừa khung, không zoom, nhỏ lại
         return "w-[60vw] sm:w-[35vw] max-h-[25rem] object-contain rounded-xl snap-center flex-shrink-0";
       case "COLUMNS":
-        // Mỗi ảnh là một cột, fit vừa khung, snap scroll
         return "w-full h-full object-cover rounded-lg snap-center";
       case "FRAME":
         return "w-full h-full object-cover rounded-xl";

@@ -11,6 +11,17 @@ import { useRouter } from "next/navigation";
 import { updateUserProfile } from "./actions";
 
 async function uploadAvatar(file: File): Promise<string> {
+  if (!file) {
+    throw new Error("No file selected");
+  }
+  console.log("Uploading file:", file);
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only images are allowed");
+  }
+  if (file.size > 512 * 1024) {
+    throw new Error("File too large. Max 512KB");
+  }
+
   const signedUrlResponse = await fetch("/api/upload/avatar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

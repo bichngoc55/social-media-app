@@ -119,18 +119,20 @@ export default function OnboardingPage() {
       });
 
       toast({
-        description: "Profile updated successfully!",
+        description:
+          "Profile updated successfully! Redirecting to main page...",
       });
 
-      router.push("/");
-      router.refresh();
+      // Wait a moment for user to see the message, then redirect
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
         description: "Failed to update profile. Please try again.",
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -158,7 +160,8 @@ export default function OnboardingPage() {
             Welcome to Loopy!
           </CardTitle>
           <p className="text-center text-muted-foreground">
-            Help us personalize your experience
+            Choose at least 3 interests - we&apos;ll learn your preferences as
+            you explore
           </p>
           <div className="mt-6">
             <Stepper currentStep={step}>
@@ -174,27 +177,33 @@ export default function OnboardingPage() {
                 <div>
                   <h3 className="font-semibold">
                     Select your interests{" "}
-                    <span className="text-muted-foreground">(at least 3)</span>
+                    <span className="text-muted-foreground">(minimum 3)</span>
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Selected: {selectedInterests.length}/3
+                    Selected: {selectedInterests.length}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {INTEREST_TAGS.map((interest) => (
-                    <Badge
-                      key={interest}
-                      variant={
-                        selectedInterests.includes(interest)
-                          ? "default"
-                          : "outline"
-                      }
-                      className="cursor-pointer"
-                      onClick={() => handleInterestToggle(interest)}
-                    >
-                      {interest}
-                    </Badge>
-                  ))}
+                  {INTEREST_TAGS.map((interest) => {
+                    const isSelected = selectedInterests.includes(interest);
+                    const isDisabled = false;
+                    return (
+                      <Badge
+                        key={interest}
+                        variant={isSelected ? "default" : "outline"}
+                        className={`cursor-pointer ${
+                          isDisabled ? "cursor-not-allowed opacity-50" : ""
+                        }`}
+                        onClick={() => {
+                          if (!isDisabled) {
+                            handleInterestToggle(interest);
+                          }
+                        }}
+                      >
+                        {interest}
+                      </Badge>
+                    );
+                  })}
                 </div>
               </div>
 

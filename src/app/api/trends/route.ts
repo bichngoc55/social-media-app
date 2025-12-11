@@ -1,41 +1,116 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
-import { getUserDataSelect } from "@/lib/types";
-import { formatNumber } from "@/lib/utils";
 import { unstable_cache } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { recommendFriends } from "@/lib/ai-api";
 
-// Set max duration for Vercel serverless functions
-export const maxDuration = 120; // 120 seconds (2 phút) - vì Python API cần thời gian xử lý embeddings
+export const maxDuration = 30;
 
 const getTrendingTopics = unstable_cache(
   async () => {
+    // Get all topics with their embeddings and counts from last 7 days
     const result = await prisma.$queryRaw<
-      { hashtag: string; count: bigint }[]
-    >` 
-            SELECT LOWER(unnest(hashtags)) AS hashtag, COUNT(*) AS count
-            FROM posts
-            WHERE array_length(hashtags, 1) > 0
-            GROUP BY (hashtag)
-            ORDER BY count DESC, hashtag ASC
-            LIMIT 5
-        `;
+      { topic: string; embedding: string; count: bigint }[]
+    >`
+      SELECT 
+        LOWER(TRIM(topic)) AS topic,
+        topic_emb::text AS embedding,
+        COUNT(*) AS count
+      FROM posts,
+      LATERAL unnest(topics) WITH ORDINALITY AS t(topic, ord)
+      LEFT JOIN LATERAL unnest("topicEmbeddings") WITH ORDINALITY AS te(topic_emb, emb_ord)
+        ON t.ord = te.emb_ord
+      WHERE array_length(topics, 1) > 0
+        AND "createdAt" >= NOW() - INTERVAL '40 days'
+        AND topic_emb IS NOT NULL
+      GROUP BY LOWER(TRIM(topic)), topic_emb
+      ORDER BY count DESC
+      LIMIT 50
+    `;
 
-    return result.map((row) => ({
-      hashtag: "#" + row.hashtag,
-      count: Number(row.count),
-    }));
+    if (result.length === 0) {
+      return [];
+    }
+
+    // Group similar topics using cosine similarity
+    const groupedTopics: Map<
+      string,
+      { topic: string; count: number; embedding: number[] }
+    > = new Map();
+    const SIMILARITY_THRESHOLD = 0.85; // Topics with >85% similarity are considered the same
+
+    for (const row of result) {
+      const topic = row.topic;
+      const count = Number(row.count);
+      const embedding = row.embedding
+        .slice(1, -1)
+        .split(",")
+        .map((v) => parseFloat(v));
+
+      let merged = false;
+
+      // Check if this topic is similar to any existing group
+      for (const [groupTopic, groupData] of groupedTopics) {
+        const similarity = cosineSimilarity(embedding, groupData.embedding);
+
+        if (similarity > SIMILARITY_THRESHOLD) {
+          // Merge with existing group - keep the more common/shorter name
+          groupData.count += count;
+          if (
+            count > groupedTopics.get(groupTopic)!.count ||
+            topic.length < groupTopic.length
+          ) {
+            groupedTopics.delete(groupTopic);
+            groupedTopics.set(topic, {
+              topic,
+              count: groupData.count,
+              embedding,
+            });
+          }
+          merged = true;
+          break;
+        }
+      }
+
+      if (!merged) {
+        groupedTopics.set(topic, { topic, count, embedding });
+      }
+    }
+
+    // Sort by count and return top 4
+    return Array.from(groupedTopics.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4)
+      .map((item) => ({
+        hashtag: "#" + item.topic,
+        count: item.count,
+      }));
   },
   ["trending_topics"],
   {
-    revalidate: 3 * 60 * 60,
+    revalidate: 60,
   }
 );
 
+// Helper function to calculate cosine similarity
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    // Check if request was aborted
     if (req.signal?.aborted) {
       return NextResponse.json(
         { usersToFollow: [], trendingTopics: [] },
@@ -50,250 +125,39 @@ export async function GET(req: NextRequest) {
     }
 
     const [usersToFollow, trendingTopics] = await Promise.all([
-      // Try AI recommendations first, fallback to simple query
       (async () => {
-        // Check if request was aborted
-        if (req.signal?.aborted) {
-          throw new Error("Request aborted");
-        }
-
         try {
-          console.log("🤖 Bắt đầu gọi Python AI API...");
-
-          // Fetch user data for AI recommendations
-          const currentUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              provinceCode: true,
-              districtCode: true,
-              wardCode: true,
-              posts: {
-                where: { privacy: "PUBLIC" },
-                select: { content: true },
-                take: 100,
-              },
-              likes: {
-                select: {
-                  post: {
-                    select: { content: true },
-                  },
-                },
-                take: 100,
-              },
-              comments: {
-                select: { content: true },
-                take: 100,
-              },
-              following: {
-                select: { followingId: true },
-              },
-            },
-          });
-
-          if (!currentUser) {
-            throw new Error("User not found");
-          }
-
-          // Get candidate users
-          const candidateUsers = await prisma.user.findMany({
-            where: {
-              NOT: { id: user.id },
-              followers: { none: { followerId: user.id } },
-              posts: { some: { privacy: "PUBLIC" } },
-            },
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              provinceCode: true,
-              districtCode: true,
-              wardCode: true,
-              posts: {
-                where: { privacy: "PUBLIC" },
-                select: { content: true },
-                take: 50,
-              },
-              likes: {
-                select: {
-                  post: {
-                    select: { content: true },
-                  },
-                },
-                take: 50,
-              },
-              comments: {
-                select: { content: true },
-                take: 50,
-              },
-              following: {
-                select: { followingId: true },
-              },
-            },
-            take: 50, // Giảm từ 200 xuống 50 để Python API xử lý nhanh hơn
-          });
-
-          // Format for AI API
-          console.log(
-            `📊 Sending ${candidateUsers.length + 1} users to Python API...`
-          );
-
-          const usersData = [
-            {
-              id: currentUser.id,
-              username: currentUser.username,
-              displayName: currentUser.displayName,
-              post_contents: currentUser.posts.map((p) => p.content),
-              liked_post_contents: currentUser.likes
-                .map((l) => l.post.content)
-                .filter(Boolean),
-              comment_contents: currentUser.comments.map((c) => c.content),
-              following_ids: currentUser.following.map((f) => f.followingId),
-              province_code: currentUser.provinceCode,
-              district_code: currentUser.districtCode,
-              ward_code: currentUser.wardCode,
-            },
-            ...candidateUsers.map((u) => ({
-              id: u.id,
-              username: u.username,
-              displayName: u.displayName,
-              post_contents: u.posts.map((p) => p.content),
-              liked_post_contents: u.likes
-                .map((l) => l.post.content)
-                .filter(Boolean),
-              comment_contents: u.comments.map((c) => c.content),
-              following_ids: u.following.map((f) => f.followingId),
-              province_code: u.provinceCode,
-              district_code: u.districtCode,
-              ward_code: u.wardCode,
-            })),
-          ];
-
-          // Check if request was aborted before calling AI API
           if (req.signal?.aborted) {
-            throw new Error("Request aborted");
-          }
-
-          // Call AI API
-          console.log("⏳ Đang gọi Python AI API (có thể mất 30-60s)...");
-          console.log(
-            `   Target user: ${currentUser.username} (${currentUser.id})`
-          );
-          console.log(
-            `   Location: ${currentUser.provinceCode} / ${currentUser.districtCode || "N/A"} / ${currentUser.wardCode || "N/A"}`
-          );
-          console.log(`   Candidate users: ${candidateUsers.length}`);
-          const startTime = Date.now();
-          const recommendations = await recommendFriends(user.id, usersData);
-          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-          console.log(
-            `✅ Python AI API trả về sau ${duration}s với ${recommendations.length} recommendations`
-          );
-
-          // Log location info của recommendations
-          if (recommendations.length > 0) {
-            console.log("   Recommendations:");
-            recommendations.slice(0, 3).forEach((r: any) => {
-              const candidate = candidateUsers.find((u) => u.id === r.id);
-              if (candidate) {
-                const locationMatch =
-                  candidate.provinceCode === currentUser.provinceCode
-                    ? candidate.wardCode === currentUser.wardCode
-                      ? "✅ Cùng ward+province"
-                      : "📍 Cùng province"
-                    : "❌ Khác province";
-                console.log(
-                  `      - ${r.displayName}: ${r.similarity.toFixed(4)} (${locationMatch})`
-                );
-              }
-            });
-          }
-
-          // Nếu không có recommendations, trả về empty array (không fallback)
-          if (recommendations.length === 0) {
-            console.log(
-              "ℹ️ Python AI API không tìm thấy recommendations phù hợp (threshold quá cao hoặc không có users tương tự)"
-            );
             return [];
           }
 
-          // Check again after AI API call (nhưng không throw nếu đã có kết quả)
-          if (req.signal?.aborted) {
-            console.log(
-              "⚠️ Request bị abort nhưng đã có kết quả từ AI, vẫn trả về recommendations"
-            );
-            // Vẫn trả về kết quả, không throw error
-          }
-
-          // Get full user data
-          const recommendedUserIds = recommendations.map((r) => r.id);
-          const recommendedUsers = await prisma.user.findMany({
-            where: { id: { in: recommendedUserIds } },
-            select: getUserDataSelect(user.id, false),
-          });
-
-          // Sort by similarity (giữ nguyên thứ tự từ Python API - đã được sort với location priority)
-          const userMap = new Map(recommendedUsers.map((u) => [u.id, u]));
-          const sortedUsers = recommendations
-            .map((rec) => {
-              const user = userMap.get(rec.id);
-              if (user) {
-                // Add similarity score để debug
-                (user as any).similarity = rec.similarity;
-              }
-              return user;
-            })
-            .filter(Boolean);
-
-          console.log(
-            `✅ AI recommendations: ${sortedUsers.length} users (similarities: ${recommendations.map((r) => r.similarity.toFixed(2)).join(", ")})`
-          );
-
-          // Log location info
-          sortedUsers.slice(0, 3).forEach((u: any) => {
-            const candidate = candidateUsers.find((c) => c.id === u.id);
-            if (candidate) {
-              const locationMatch =
-                candidate.provinceCode === currentUser.provinceCode
-                  ? candidate.wardCode === currentUser.wardCode
-                    ? "✅ Cùng ward+province"
-                    : "📍 Cùng province"
-                  : "❌ Khác province";
-              console.log(
-                `   - ${u.displayName}: ${u.similarity?.toFixed(4) || "N/A"} (${locationMatch})`
-              );
-            }
-          });
-
-          return sortedUsers;
-        } catch (aiError) {
-          console.error("⚠️ AI recommendations failed, using fallback");
-          console.error("   Error:", aiError);
-          if (aiError instanceof Error) {
-            console.error("   Message:", aiError.message);
-            console.error("   Stack:", aiError.stack);
-          }
-          console.log(
-            "   💡 Fallback: Using simple query (orderBy createdAt desc)"
-          );
-          // Fallback to simple query
-          return prisma.user.findMany({
-            where: {
-              NOT: { id: user.id },
-              followers: { none: { followerId: user.id } },
+          console.log("[TRENDS] Calling recommend-friends API...");
+          const baseUrl =
+            process.env.NEXT_PUBLIC_BASE_URL ||
+            `http://localhost:${process.env.PORT || 3000}`;
+          const response = (await fetch(`${baseUrl}/api/ai/recommend-friends`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: req.headers.get("cookie") || "",
             },
-            select: getUserDataSelect(user.id, false),
-            take: 5,
-            orderBy: { createdAt: "desc" },
-          });
+          }).then((res) => res.json())) as { users: any[] };
+
+          console.log(
+            "[TRENDS] Received",
+            response.users?.length || 0,
+            "users"
+          );
+          return response.users?.slice(0, 5) || [];
+        } catch (error) {
+          console.error("[TRENDS] Error fetching users:", error);
+          return [];
         }
       })(),
       getTrendingTopics(),
     ]);
+    console.log("[TRENDS] Final usersToFollow:", usersToFollow.length);
 
-    // Final check before sending response
     if (req.signal?.aborted) {
       return NextResponse.json(
         { usersToFollow: [], trendingTopics: [] },
@@ -306,7 +170,6 @@ export async function GET(req: NextRequest) {
       trendingTopics,
     });
   } catch (error) {
-    // Check if error is due to abort
     if (
       req.signal?.aborted ||
       (error instanceof Error && error.name === "AbortError")
@@ -317,7 +180,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.error("Error fetching trends:", error);
     return NextResponse.json(
       { error: "Failed to fetch trends" },
       { status: 500 }

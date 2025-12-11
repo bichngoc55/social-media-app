@@ -1,181 +1,176 @@
-/**
- * API route để recommend friends sử dụng Hugging Face BGE-M3 embeddings
- * Next.js sẽ fetch data từ Prisma, format và gửi cho Python API
- */
-
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getUserDataSelect } from "@/lib/types";
-import { recommendFriends } from "@/lib/ai-api";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export const maxDuration = 30; // 30 seconds max duration for Vercel
+export const maxDuration = 30;
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { user } = await validateRequest();
-    if (!user) {
+    console.log("[RECOMMEND-FRIENDS] API called");
+    const { user: authUser } = await validateRequest();
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if request was aborted
-    if (req.signal?.aborted) {
-      return NextResponse.json({ error: "Request aborted" }, { status: 499 });
-    }
-
-    // Lấy data của user hiện tại
     const currentUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        provinceCode: true,
-        districtCode: true,
-        wardCode: true,
-        posts: {
-          where: { privacy: "PUBLIC" },
-          select: { content: true },
-          take: 100,
-        },
-        likes: {
-          select: {
-            post: {
-              select: { content: true },
-            },
-          },
-          take: 100,
-        },
-        comments: {
-          select: { content: true },
-          take: 100,
-        },
-        following: {
-          select: { followingId: true },
-        },
-      },
+      where: { id: authUser.id },
     });
 
     if (!currentUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Lấy candidate users (không follow, có posts)
-    const candidateUsers = await prisma.user.findMany({
-      where: {
-        NOT: { id: user.id },
-        followers: { none: { followerId: user.id } },
-        posts: { some: { privacy: "PUBLIC" } },
-      },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        provinceCode: true,
-        districtCode: true,
-        wardCode: true,
-        posts: {
-          where: { privacy: "PUBLIC" },
-          select: { content: true },
-          take: 50,
-        },
-        likes: {
-          select: {
-            post: {
-              select: { content: true },
-            },
-          },
-          take: 50,
-        },
-        comments: {
-          select: { content: true },
-          take: 50,
-        },
-        following: {
-          select: { followingId: true },
-        },
-      },
-      take: 200, // Limit để tránh quá tải
-    });
+    // Query tasteEmbedding as raw string and parse it
+    const userWithEmbedding = await prisma.$queryRaw<
+      Array<{ tasteEmbedding: string | null }>
+    >`
+      SELECT "tasteEmbedding"::text as "tasteEmbedding"
+      FROM users
+      WHERE id = ${authUser.id}
+    `;
 
-    // Format data để gửi cho Python API
-    const usersData = [
-      {
-        id: currentUser.id,
-        username: currentUser.username,
-        displayName: currentUser.displayName,
-        post_contents: currentUser.posts.map((p) => p.content),
-        liked_post_contents: currentUser.likes
-          .map((l) => l.post.content)
-          .filter(Boolean),
-        comment_contents: currentUser.comments.map((c) => c.content),
-        following_ids: currentUser.following.map((f) => f.followingId),
-        province_code: currentUser.provinceCode,
-        district_code: currentUser.districtCode,
-        ward_code: currentUser.wardCode,
-      },
-      ...candidateUsers.map((u) => ({
-        id: u.id,
-        username: u.username,
-        displayName: u.displayName,
-        post_contents: u.posts.map((p) => p.content),
-        liked_post_contents: u.likes.map((l) => l.post.content).filter(Boolean),
-        comment_contents: u.comments.map((c) => c.content),
-        following_ids: u.following.map((f) => f.followingId),
-        province_code: u.provinceCode,
-        district_code: u.districtCode,
-        ward_code: u.wardCode,
-      })),
-    ];
+    let tasteEmbedding: number[] | null = null;
+    if (userWithEmbedding[0]?.tasteEmbedding) {
+      const vectorStr = userWithEmbedding[0].tasteEmbedding;
+      tasteEmbedding = vectorStr
+        .slice(1, -1)
+        .split(",")
+        .map((v) => parseFloat(v));
+    }
 
-    // Gọi Python AI API (Hugging Face BGE-M3)
-    try {
-      const recommendations = await recommendFriends(user.id, usersData);
-
-      // Lấy full user data cho recommended users
-      const recommendedUserIds = recommendations.map((r) => r.id);
-      const recommendedUsers = await prisma.user.findMany({
-        where: { id: { in: recommendedUserIds } },
-        select: getUserDataSelect(user.id, false),
-      });
-
-      // Sắp xếp theo similarity score
-      const userMap = new Map(recommendedUsers.map((u) => [u.id, u]));
-      const sortedUsers = recommendations
-        .map((rec) => ({
-          user: userMap.get(rec.id),
-          similarity: rec.similarity,
-        }))
-        .filter((item) => item.user)
-        .map((item) => item.user!);
-
-      return NextResponse.json({
-        users: sortedUsers,
-        similarities: Object.fromEntries(
-          recommendations.map((r) => [r.id, r.similarity])
-        ),
-      });
-    } catch (pythonError) {
-      console.error("Python AI API error, using fallback:", pythonError);
-      // Fallback: simple query
-      const fallbackUsers = await prisma.user.findMany({
+    if (!tasteEmbedding || tasteEmbedding.length === 0) {
+      const fallback = await prisma.user.findMany({
         where: {
-          NOT: { id: user.id },
-          followers: { none: { followerId: user.id } },
+          id: { not: currentUser.id },
+          role: "USER",
+          followers: { none: { followerId: currentUser.id } },
+          blockedByUsers: { none: { blockerId: currentUser.id } },
         },
-        select: getUserDataSelect(user.id, false),
-        take: 5,
+        select: getUserDataSelect(currentUser.id, false),
+        take: 12,
         orderBy: { createdAt: "desc" },
       });
-
       return NextResponse.json({
-        users: fallbackUsers,
-        similarities: {},
-        metadata: { message: "Python AI API unavailable, using fallback." },
+        users: fallback,
+        message: "New user fallback",
       });
     }
+
+    const userTasteStr = `[${tasteEmbedding.join(",")}]`;
+    const userProvince = currentUser.provinceCode || "";
+    const userEmotion = currentUser.generalEmotion || "NEUTRAL";
+
+    const recommendations = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        generalEmotion: string | null;
+        mutual_friends: bigint;
+        similarity: number;
+        final_score: number;
+      }>
+    >`
+      WITH candidates AS (
+        SELECT u.id
+        FROM users u
+        WHERE u."tasteEmbedding" IS NOT NULL
+          AND u.id != ${currentUser.id}
+          AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${currentUser.id})
+          AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${currentUser.id})
+        ORDER BY u."tasteEmbedding" <=> ${userTasteStr}::vector
+        LIMIT 100  -- Fast ANN search first
+      )
+      SELECT 
+        u.id,
+        u.username,
+        u."displayName",
+        u."avatarUrl",
+        u."generalEmotion",
+        (
+          SELECT COUNT(*)
+          FROM follows f1
+          JOIN follows f2 ON f1."followingId" = f2."followingId"
+          WHERE f1."followerId" = ${currentUser.id}
+            AND f2."followerId" = u.id
+        ) as mutual_friends,
+        (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
+        (
+          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.45 +          -- Behavioral taste match
+          LEAST((
+            SELECT COUNT(*)
+            FROM follows f1
+            JOIN follows f2 ON f1."followingId" = f2."followingId"
+            WHERE f1."followerId" = ${currentUser.id}
+              AND f2."followerId" = u.id
+          ), 15) / 15.0 * 0.25 +                                                  -- Social proof
+          (CASE 
+            WHEN u."generalEmotion"::text = ${userEmotion} THEN 1.0
+            WHEN (u."generalEmotion"::text = 'POSITIVE' AND ${userEmotion} = 'NEUTRAL') 
+                 OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
+            WHEN u."generalEmotion" IS NULL THEN 0.2
+            ELSE 0.0
+          END) * 0.15 +                                                            -- Emotion compatibility
+          (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.15  -- Location
+        ) as final_score
+      FROM users u
+      JOIN candidates c ON u.id = c.id
+      ORDER BY final_score DESC
+      LIMIT 12
+    `;
+
+    console.log(
+      "[RECOMMEND-FRIENDS] Raw recommendations:",
+      recommendations.length
+    );
+    const userIds = recommendations.map((r) => r.id);
+
+    if (userIds.length === 0) {
+      console.log("[RECOMMEND-FRIENDS] Empty recommendations, using fallback");
+      const fallback = await prisma.user.findMany({
+        where: {
+          id: { not: currentUser.id },
+          role: "USER",
+          followers: { none: { followerId: currentUser.id } },
+          blockedByUsers: { none: { blockerId: currentUser.id } },
+        },
+        select: getUserDataSelect(currentUser.id, false),
+        take: 12,
+        orderBy: { createdAt: "desc" },
+      });
+      console.log("[RECOMMEND-FRIENDS] Fallback users:", fallback.length);
+      return NextResponse.json({
+        users: fallback,
+        message: "Fallback recommendations",
+      });
+    }
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: getUserDataSelect(currentUser.id, false),
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    const sortedUsers = recommendations
+      .map((rec) => userMap.get(rec.id))
+      .filter(Boolean);
+
+    const metadata = recommendations.map((rec) => ({
+      userId: rec.id,
+      mutualFriends: Number(rec.mutual_friends),
+      similarity: Number(rec.similarity.toFixed(3)),
+      finalScore: Number(rec.final_score.toFixed(3)),
+    }));
+
+    console.log("[RECOMMEND-FRIENDS] Returning", sortedUsers.length, "users");
+    return NextResponse.json({
+      users: sortedUsers,
+      metadata,
+    });
   } catch (error) {
-    console.error("Error in AI recommend-friends route:", error);
+    console.error("[RECOMMEND-FRIENDS] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

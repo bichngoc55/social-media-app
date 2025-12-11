@@ -1,13 +1,16 @@
 "use client";
 
-import { getCountryByIso2 } from "@/lib/location-data";
+import {
+  getCountry,
+  getProvinceName,
+  getDistrictName,
+} from "@/lib/location-data";
 import { useMemo } from "react";
 
 interface UserLocationProps {
   countryCode?: string | null;
   provinceCode?: string | null;
   districtCode?: string | null;
-  wardCode?: string | null;
   className?: string;
 }
 
@@ -15,29 +18,39 @@ export default function UserLocation({
   countryCode,
   provinceCode,
   districtCode,
-  wardCode,
   className,
 }: UserLocationProps) {
   const location = useMemo(() => {
     const parts: string[] = [];
 
-    if (districtCode) {
-      parts.push(districtCode);
-    }
-
-    if (provinceCode) {
-      parts.push(provinceCode);
-    }
-
+    // Now all codes are IDs, convert them to names for display
     if (countryCode) {
-      const country = getCountryByIso2(countryCode);
+      if (districtCode && provinceCode) {
+        const districtName = getDistrictName(
+          countryCode,
+          provinceCode,
+          districtCode
+        );
+        if (districtName) {
+          parts.push(districtName);
+        }
+      }
+
+      if (provinceCode) {
+        const provinceName = getProvinceName(countryCode, provinceCode);
+        if (provinceName) {
+          parts.push(provinceName);
+        }
+      }
+
+      const country = getCountry(countryCode);
       if (country) {
         parts.push(country.name);
       }
     }
 
     return parts.length > 0 ? parts.join(", ") : null;
-  }, [countryCode, provinceCode, districtCode, wardCode]);
+  }, [countryCode, provinceCode, districtCode]);
 
   if (!location) {
     return null;

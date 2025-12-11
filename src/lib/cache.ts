@@ -74,11 +74,10 @@ export async function getCachedFollowingUsers(userId: string) {
 /**
  * Invalidate cache khi có thay đổi
  */
-export async function invalidateBlockedUsersCache(userId: string) {
-  // Next.js sẽ tự động invalidate dựa trên tags
-  // Hoặc có thể dùng revalidateTag từ next/cache
+export function invalidateBlockedUsersCache(userId: string) {
+  blockedUsersCache.delete(userId);
 }
 
-export async function invalidateFollowingUsersCache(userId: string) {
-  // Next.js sẽ tự động invalidate dựa trên tags
+export function invalidateFollowingUsersCache(userId: string) {
+  followingUsersCache.delete(userId);
 }

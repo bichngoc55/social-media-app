@@ -33,11 +33,6 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import Resizer from "react-image-file-resizer";
 import { useUpdateProfileMutation } from "./mutations";
-import {
-  getAllCountries,
-  getProvinces,
-  getDistricts,
-} from "@/lib/location-data";
 
 const INTEREST_TAGS = [
   "Technology",
@@ -66,34 +61,11 @@ interface EditProfileDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 function getInitialLocationIds(user: UserData) {
-  const countries = getAllCountries();
-
-  // 1. Find the Country ID by ISO2 code
-  const initialCountry = countries.find((c) => c.iso2 === user.countryCode);
-  const initialCountryId = initialCountry?.id.toString() || null;
-
-  if (!initialCountryId || !initialCountry) {
-    return { countryCode: null, provinceCode: null, districtCode: null };
-  }
-
-  // 2. Find the Province ID by name (database stores province name, not ID)
-  const provinces = getProvinces(initialCountryId); // Use country ID, not ISO2
-  const initialProvince = provinces.find((p) => p.name === user.provinceCode);
-  const initialProvinceId = initialProvince?.id.toString() || null;
-
-  // 3. Find the District ID by name (database stores district name, not ID)
-  const districts =
-    initialProvince && initialProvinceId && user.districtCode
-      ? getDistricts(initialCountryId, initialProvinceId) // Use country ID and province ID
-      : [];
-
-  const initialDistrict = districts.find((d) => d.name === user.districtCode);
-  const initialDistrictId = initialDistrict?.id.toString() || null;
-
+  // Now database stores IDs directly, so just return them
   return {
-    countryCode: initialCountryId,
-    provinceCode: initialProvinceId,
-    districtCode: initialDistrictId,
+    countryCode: user.countryCode || null,
+    provinceCode: user.provinceCode || null,
+    districtCode: user.districtCode || null,
   };
 }
 
@@ -150,7 +122,9 @@ export default function EditProfileDialog({
 
   async function onSubmit(values: UpdateUserProfileValues) {
     const newAvatarFile = croppedAvatar
-      ? new File([croppedAvatar], `avatar_${user.id}.webp`)
+      ? new File([croppedAvatar], `avatar_${user.id}.webp`, {
+          type: "image/webp",
+        }) // <--- FIX HERE
       : undefined;
 
     mutation.mutate(
@@ -169,126 +143,134 @@ export default function EditProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="flex max-h-[90vh] flex-col">
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
         </DialogHeader>
-        <div className="space-y-1.5">
-          <Label>Avatar</Label>
-          <AvatarInput
-            src={
-              croppedAvatar
-                ? URL.createObjectURL(croppedAvatar)
-                : user.avatarUrl || avatarPlaceholder
-            }
-            onImageCropped={setCroppedAvatar}
-          />
+        <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+          <div className="space-y-1.5">
+            <Label>Avatar</Label>
+            <AvatarInput
+              src={
+                croppedAvatar
+                  ? URL.createObjectURL(croppedAvatar)
+                  : user.avatarUrl || avatarPlaceholder
+              }
+              onImageCropped={setCroppedAvatar}
+            />
+          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your display name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Tell us a little bit about yourself"
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="interests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interests</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2">
+                        {INTEREST_TAGS.map((interest) => {
+                          const currentInterests = field.value || [];
+                          const isSelected =
+                            currentInterests.includes(interest);
+                          const isDisabled = false;
+                          return (
+                            <Badge
+                              key={interest}
+                              variant={isSelected ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                if (isSelected) {
+                                  field.onChange(
+                                    currentInterests.filter(
+                                      (i) => i !== interest
+                                    )
+                                  );
+                                } else {
+                                  field.onChange([
+                                    ...currentInterests,
+                                    interest,
+                                  ]);
+                                }
+                              }}
+                            >
+                              {interest}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="countryCode"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <LocationSelector
+                        countryCode={countryCode}
+                        provinceCode={provinceCode}
+                        districtCode={districtCode}
+                        onCountryChange={(code) => {
+                          form.setValue("countryCode", code);
+                          form.setValue("provinceCode", null);
+                          form.setValue("districtCode", null);
+                        }}
+                        onProvinceChange={(code) => {
+                          form.setValue("provinceCode", code);
+                          form.setValue("districtCode", null);
+                        }}
+                        onDistrictChange={(code) => {
+                          form.setValue("districtCode", code);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="mt-4 border-t pt-4">
+                <LoadingButton type="submit" loading={mutation.isPending}>
+                  Save
+                </LoadingButton>
+              </DialogFooter>
+            </form>
+          </Form>
         </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Display name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your display name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bio</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Tell us a little bit about yourself"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="interests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Interests</FormLabel>
-                  <FormControl>
-                    <div className="flex flex-wrap gap-2">
-                      {INTEREST_TAGS.map((interest) => (
-                        <Badge
-                          key={interest}
-                          variant={
-                            field.value?.includes(interest)
-                              ? "default"
-                              : "outline"
-                          }
-                          className="cursor-pointer"
-                          onClick={() => {
-                            const currentInterests = field.value || [];
-                            if (currentInterests.includes(interest)) {
-                              field.onChange(
-                                currentInterests.filter((i) => i !== interest)
-                              );
-                            } else {
-                              field.onChange([...currentInterests, interest]);
-                            }
-                          }}
-                        >
-                          {interest}
-                        </Badge>
-                      ))}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="countryCode"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <LocationSelector
-                      countryCode={countryCode}
-                      provinceCode={provinceCode}
-                      districtCode={districtCode}
-                      onCountryChange={(code) => {
-                        form.setValue("countryCode", code);
-                        form.setValue("provinceCode", null);
-                        form.setValue("districtCode", null);
-                      }}
-                      onProvinceChange={(code) => {
-                        form.setValue("provinceCode", code);
-                        form.setValue("districtCode", null);
-                      }}
-                      onDistrictChange={(code) => {
-                        form.setValue("districtCode", code);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
       </DialogContent>
     </Dialog>
   );

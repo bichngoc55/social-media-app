@@ -37,20 +37,13 @@ export default function LocationSelector({
 
   const provinces = useMemo(() => {
     if (!countryCode) return [];
-    const country = countries.find((c) => c.id.toString() === countryCode);
-    return country ? getProvinces(country.iso2) : [];
-  }, [countryCode, countries]);
+    return getProvinces(countryCode);
+  }, [countryCode]);
 
   const districts = useMemo(() => {
     if (!countryCode || !provinceCode) return [];
-    const country = countries.find((c) => c.id.toString() === countryCode);
-    const province = provinces.find((p) => p.id.toString() === provinceCode);
-
-    if (country && province) {
-      return getDistricts(country.iso2, province.iso2);
-    }
-    return [];
-  }, [countryCode, provinceCode, countries, provinces]);
+    return getDistricts(countryCode, provinceCode);
+  }, [countryCode, provinceCode]);
 
   const handleCountryChange = (value: string | null) => {
     onCountryChange(value);
@@ -85,7 +78,6 @@ export default function LocationSelector({
         </Select>
       </div>
 
-      {/* Province Selector - Always Enabled */}
       <div>
         <label className="mb-1.5 block text-sm font-medium">
           Province/State (Optional)
@@ -114,7 +106,6 @@ export default function LocationSelector({
         </Select>
       </div>
 
-      {/* District Selector - Always Enabled */}
       <div>
         <label className="mb-1.5 block text-sm font-medium">
           District/City (Optional)

@@ -2,6 +2,7 @@ import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getUserDataSelect } from "@/lib/types";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 /**
  * Search users that have mutual follow with logged in user
@@ -54,8 +55,18 @@ export async function GET(req: NextRequest) {
             ? [
                 {
                   OR: [
-                    { displayName: { contains: query, mode: "insensitive" } },
-                    { username: { contains: query, mode: "insensitive" } },
+                    {
+                      displayName: {
+                        contains: query,
+                        mode: Prisma.QueryMode.insensitive,
+                      },
+                    },
+                    {
+                      username: {
+                        contains: query,
+                        mode: Prisma.QueryMode.insensitive,
+                      },
+                    },
                   ],
                 },
               ]

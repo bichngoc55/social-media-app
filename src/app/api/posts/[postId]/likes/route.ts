@@ -2,12 +2,14 @@ import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendNotification } from "@/lib/socket";
 import { LikeInfo } from "@/lib/types";
+import { updateUserTasteEmbedding } from "@/lib/recommendation";
 
 export async function GET(
   req: Request,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -51,9 +53,10 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -91,6 +94,8 @@ export async function POST(
       await sendNotification(post.userId, loggedInUser.id, "LIKE", postId);
     }
 
+    // Update user interests based on post topics (non-blocking)
+    updateUserTasteEmbedding(loggedInUser.id).catch(() => {});
     return new Response();
   } catch (error) {
     console.error(error);
@@ -100,9 +105,10 @@ export async function POST(
 
 export async function DELETE(
   req: Request,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {

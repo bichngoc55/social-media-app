@@ -19,51 +19,68 @@ enum HARMFULTYPES {
 }
 
 model User {
-  id                    String                      @id
-  username              String                      @unique
-  displayName           String
-  email                 String?                     @unique
-  passwordHash          String?
-  googleId              String?                     @unique
-  avatarUrl             String?
-  bio                   String?
-  interests             String[]                    @default([])
-  provinceCode          String? // Mã tỉnh/thành phố (theo provinces.open-api.vn)
-  districtCode          String? // Mã quận/huyện
-  wardCode              String? // Mã phường/xã
-  countryCode           String? // Mã quốc gia (theo chuẩn ISO 3166-1 alpha-2)
-  createdAt             DateTime                    @default(now())
-  emailVerified         Boolean                     @default(false)
-  role                  UserRole                    @default(USER)
-  bookmarks             Bookmark[]
-  comments              Comment[]
-  deviceSessions        DeviceSession[]
-  emailVerifications    EmailVerification[]
-  following             Follow[]                    @relation("Following")
-  followers             Follow[]                    @relation("Followers")
-  likes                 Like[]
-  mentionsIssued        Mention[]                   @relation("MentionedBy")
-  mentions              Mention[]                   @relation("Mentioned")
-  issuedNotifications   Notification[]              @relation("Issuer")
-  receivedNotifications Notification[]              @relation("Recipient")
-  post_tags             post_tags[]
-  posts                 Post[]
-  reportsReceived       Report[]                    @relation("Reported")
-  reportsIssued         Report[]                    @relation("Reporter")
-  sessions              Session[]
-  twoFactorAuths        TwoFactorAuth[]
-  blockedByUsers        UserBlock[]                 @relation("Blocked")
-  blockedUsers          UserBlock[]                 @relation("Blocker")
-  userEmbedding         Unsupported("vector(384)")?
+  id                          String                       @id
+  username                    String                       @unique
+  displayName                 String
+  email                       String?                      @unique
+  passwordHash                String?
+  googleId                    String?                      @unique
+  avatarUrl                   String?
+  bio                         String?
+  interests                   String[]                     @default([])
+  provinceCode                String? // Province/State ID from location data
+  districtCode                String? // District/City ID from location data
+  countryCode                 String? // Country ID from location data
+  createdAt                   DateTime                     @default(now())
+  emailVerified               Boolean                      @default(false)
+  role                        UserRole                     @default(USER)
+  bookmarks                   Bookmark[]
+  comments                    Comment[]
+  deviceSessions              DeviceSession[]
+  emailVerifications          EmailVerification[]
+  following                   Follow[]                     @relation("Following")
+  followers                   Follow[]                     @relation("Followers")
+  likes                       Like[]
+  mentionsIssued              Mention[]                    @relation("MentionedBy")
+  mentions                    Mention[]                    @relation("Mentioned")
+  issuedNotifications         Notification[]               @relation("Issuer")
+  receivedNotifications       Notification[]               @relation("Recipient")
+  post_tags                   post_tags[]
+  posts                       Post[]
+  reportsReceived             Report[]                     @relation("Reported")
+  reportsIssued               Report[]                     @relation("Reporter")
+  sessions                    Session[]
+  twoFactorAuths              TwoFactorAuth[]
+  blockedByUsers              UserBlock[]                  @relation("Blocked")
+  blockedUsers                UserBlock[]                  @relation("Blocker")
+  topicEmbeddings             Unsupported("vector(768)")[]
+  tasteEmbedding              Unsupported("vector(768)")?
   // AI Recommendations - Cached metrics for performance
-  aiMetrics             UserAIMetrics?
-  aiRecommendations     UserRecommendation[]        @relation("RecommendedUser")
-  recommendationsFor    UserRecommendation[]        @relation("RecommendedTo")
+  aiMetrics                   UserAIMetrics?
+  aiRecommendations           UserRecommendation[]         @relation("RecommendedUser")
+  recommendationsFor          UserRecommendation[]         @relation("RecommendedTo")
   // emotion
-  generalEmotion        EMOTION?
-  emotionScore          Float?
+  generalEmotion              EMOTION?
+  emotionScore                Float?
+  // dislike
+  dislikedPostTopicsEmbedding Unsupported("vector(768)")[] // Array of embeddings for disliked post topics
+  blockedPosts                PostBlock[]
 
   @@map("users")
+}
+
+model PostBlock {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@map("post_blocks")
 }
 
 model Session {
@@ -94,27 +111,32 @@ enum EMOTION {
 }
 
 model Post {
-  id                  String                       @id @default(cuid())
-  content             String
-  userId              String
-  createdAt           DateTime                     @default(now())
-  privacy             PostPrivacy                  @default(PUBLIC)
-  mediaLayout         MediaLayout?
-  hashtags            String[]                     @default([])
-  bookmarks           Bookmark[]
-  comments            Comment[]
-  likes               Like[]
-  mentions            Mention[]
-  linkedNotifications Notification[]
-  attachments         Media[]
-  post_tags           post_tags[]
-  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reports             Report[]
-  embedding           Unsupported("vector(1408)")?
-  emotions            EMOTION?
-  emotionScore        Float?
-  harmful             Boolean                      @default(false)
-  harmfulTypes        String[]                     @default([])
+  id                    String                       @id @default(cuid())
+  content               String
+  userId                String
+  createdAt             DateTime                     @default(now())
+  privacy               PostPrivacy                  @default(PUBLIC)
+  mediaLayout           MediaLayout?
+  hashtags              String[]                     @default([])
+  bookmarks             Bookmark[]
+  comments              Comment[]
+  likes                 Like[]
+  mentions              Mention[]
+  linkedNotifications   Notification[]
+  attachments           Media[]
+  post_tags             post_tags[]
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports               Report[]
+  embedding             Unsupported("vector(1408)")? // Multimodal embedding (text+image+video)
+  topicEmbeddings       Unsupported("vector(768)")[] // Array of embeddings for each topic
+  emotions              EMOTION?
+  emotionScore          Float?
+  harmful               Boolean                      @default(false)
+  harmfulTypes          String[]                     @default([])
+  primaryEmotion        String? // e.g. "joy", "sadness", "anger", "gratitude", "loneliness"
+  topics                String[]                     @default([]) // e.g. ["beach vacation", "new job", "breakup"]
+  wisdomOrAdviceMessage String?
+  postBlocks            PostBlock[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([privacy, createdAt(sort: Desc)])

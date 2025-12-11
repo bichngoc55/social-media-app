@@ -1,7 +1,6 @@
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
-import { PrismaClient } from "@prisma/client";
 
 declare module "socket.io" {
   interface Socket {
@@ -14,8 +13,6 @@ declare global {
   var userSockets: Map<string, string>;
 }
 
-const prisma = new PrismaClient();
-
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.APP_PORT || "3000");
@@ -27,13 +24,6 @@ const userSockets = new Map<string, string>();
 
 app.prepare().then(async () => {
   const httpServer = createServer(handler);
-
-  // Database connection
-  try {
-    await prisma.$connect();
-  } catch (err) {
-    console.error("Database connection error:", err);
-  }
 
   const io = new Server(httpServer, {
     cors: {

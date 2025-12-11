@@ -2,12 +2,14 @@ import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendNotification } from "@/lib/socket";
 import { FollowerInfo } from "@/lib/types";
+import { invalidateFollowingUsersCache } from "@/lib/cache";
 
 export async function GET(
   req: Request,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -51,9 +53,10 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -73,6 +76,10 @@ export async function POST(
       },
       update: {},
     });
+
+    // Invalidate cache so Following feed updates immediately
+    invalidateFollowingUsersCache(loggedInUser.id);
+
     await sendNotification(userId, loggedInUser.id, "FOLLOW");
 
     return new Response();
@@ -84,9 +91,10 @@ export async function POST(
 
 export async function DELETE(
   req: Request,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -108,6 +116,9 @@ export async function DELETE(
         },
       }),
     ]);
+
+    // Invalidate cache so Following feed updates immediately
+    invalidateFollowingUsersCache(loggedInUser.id);
 
     return new Response();
   } catch (error) {

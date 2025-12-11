@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     console.log("Creating session for user:", verification.user.id);
     const session = await lucia.createSession(verification.user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(
+    (await cookies()).set(
       sessionCookie.name,
       sessionCookie.value,
       sessionCookie.attributes

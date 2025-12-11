@@ -15,7 +15,6 @@ export function getUserDataSelect(loggedInUserId: string, lightweight = false) {
     countryCode: true,
     provinceCode: true,
     districtCode: true,
-    wardCode: true,
     createdAt: true,
     followers: {
       where: {
@@ -60,7 +59,6 @@ export type UserData = Prisma.UserGetPayload<{
     provinceCode: true;
     districtCode: true;
     countryCode: true;
-    wardCode: true;
     createdAt: true;
     followers: {
       where: {
@@ -82,6 +80,7 @@ export type UserData = Prisma.UserGetPayload<{
       select: {
         posts: true;
         followers: true;
+        following: true;
       };
     };
   };
@@ -99,7 +98,6 @@ export type UserDataLightweight = Prisma.UserGetPayload<{
     provinceCode: true;
     countryCode: true;
     districtCode: true;
-    wardCode: true;
     createdAt: true;
     followers: {
       where: {
@@ -179,6 +177,10 @@ export type PostData = Prisma.PostGetPayload<{
         displayName: true;
         avatarUrl: true;
         bio: true;
+        interests: true;
+        countryCode: true;
+        provinceCode: true;
+        districtCode: true;
         createdAt: true;
         followers: {
           where: {
@@ -200,6 +202,7 @@ export type PostData = Prisma.PostGetPayload<{
           select: {
             posts: true;
             followers: true;
+            following: true;
           };
         };
       };
@@ -240,6 +243,10 @@ export type PostDataLightweight = Prisma.PostGetPayload<{
         displayName: true;
         avatarUrl: true;
         bio: true;
+        interests: true;
+        countryCode: true;
+        provinceCode: true;
+        districtCode: true;
         createdAt: true;
         followers: {
           where: {

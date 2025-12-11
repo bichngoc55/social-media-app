@@ -119,33 +119,6 @@ export default function SearchField() {
 
       abortControllerRef.current = new AbortController();
       setIsLoading(true);
-
-      try {
-        const response = await fetch(
-          `/api/autocomplete?q=${encodeURIComponent(debouncedQuery)}&limit=5`,
-          { signal: abortControllerRef.current.signal }
-        );
-        const data = await response.json();
-
-        if (data.suggestions) {
-          // Cache the results
-          searchCache.set(debouncedQuery, {
-            data: data.suggestions,
-            timestamp: Date.now(),
-          });
-
-          setSuggestions(data.suggestions);
-          setIsOpen(data.suggestions.length > 0);
-          setShowHistory(false);
-        }
-      } catch (error: any) {
-        if (error.name !== "AbortError") {
-          console.error("Error fetching suggestions:", error);
-          setSuggestions([]);
-        }
-      } finally {
-        setIsLoading(false);
-      }
     };
 
     fetchSuggestions();

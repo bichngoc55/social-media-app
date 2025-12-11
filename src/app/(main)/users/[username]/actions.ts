@@ -2,13 +2,9 @@
 
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
+import { getTextEmbedding } from "@/lib/vertex";
 import streamServerClient from "@/lib/stream";
 import { getUserDataSelect } from "@/lib/types";
-import {
-  getCountry,
-  getProvinceName,
-  getDistrictName,
-} from "@/lib/location-data";
 import {
   updateUserProfileSchema,
   UpdateUserProfileValues,
@@ -21,31 +17,7 @@ export async function updateUserProfile(values: UpdateUserProfileValues) {
 
   if (!user) throw new Error("Unauthorized");
 
-  // Convert IDs to names and ISO codes
-  let countryIso2 = null;
-  let provinceName = null;
-  let districtName = null;
-
-  if (validatedValues.countryCode) {
-    const country = getCountry(validatedValues.countryCode);
-    countryIso2 = country?.iso2 || null;
-
-    if (validatedValues.provinceCode) {
-      provinceName = getProvinceName(
-        validatedValues.countryCode,
-        validatedValues.provinceCode
-      );
-
-      if (validatedValues.districtCode) {
-        districtName = getDistrictName(
-          validatedValues.countryCode,
-          validatedValues.provinceCode,
-          validatedValues.districtCode
-        );
-      }
-    }
-  }
-
+  // Store IDs directly - no conversion needed
   const updatedUser = await prisma.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: { id: user.id },
@@ -53,10 +25,9 @@ export async function updateUserProfile(values: UpdateUserProfileValues) {
         displayName: validatedValues.displayName,
         bio: validatedValues.bio,
         interests: validatedValues.interests,
-        countryCode: countryIso2,
-        provinceCode: provinceName,
-        districtCode: districtName,
-        wardCode: null,
+        countryCode: validatedValues.countryCode || null,
+        provinceCode: validatedValues.provinceCode || null,
+        districtCode: validatedValues.districtCode || null,
       },
       select: getUserDataSelect(user.id),
     });
@@ -68,6 +39,21 @@ export async function updateUserProfile(values: UpdateUserProfileValues) {
     });
     return updatedUser;
   });
+
+  // Regenerate topic embeddings if interests changed (non-blocking)
+  if (validatedValues.interests && validatedValues.interests.length > 0) {
+    Promise.all(
+      validatedValues.interests.map((topic) => getTextEmbedding(topic))
+    )
+      .then((topicEmbeddings) => {
+        prisma.$executeRaw`
+        UPDATE users
+        SET "topicEmbeddings" = ARRAY[${topicEmbeddings.map((emb) => `'[${emb.join(",")}]'::vector`).join(",")}]::vector[]
+        WHERE id = ${user.id}
+      `;
+      })
+      .catch(() => {});
+  }
 
   return updatedUser;
 }

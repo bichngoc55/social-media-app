@@ -8,24 +8,28 @@ import UserAvatar from "@/components/UserAvatar";
 import kyInstance from "@/lib/ky";
 import { PostData, UserData } from "@/lib/types";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface SearchResultsProps {
   query: string;
 }
 
-interface PostsResponse {
+interface EmotionAnalysis {
+  isHarmful: boolean;
+  isDepressive: boolean;
+  isNegative: boolean;
+  hasEmotionalConcern: boolean;
+  supportiveMessage: string | null;
+}
+
+interface SemanticSearchResponse {
   posts: PostData[];
-  nextCursor: string | null;
+  nextCursor: number | null;
+  emotionAnalysis?: EmotionAnalysis;
 }
 
 interface UsersResponse {
-  users: UserData[];
-}
-
-interface AllResponse {
-  posts: PostData[];
   users: UserData[];
 }
 
@@ -39,9 +43,9 @@ export default function SearchResults({ query }: SearchResultsProps) {
       const [postsRes, usersRes] = await Promise.all([
         kyInstance
           .get("/api/search/semantic", {
-            searchParams: { q: query, limit: "10" },
+            searchParams: { q: query, limit: "5" },
           })
-          .json<{ posts: PostData[] }>(),
+          .json<SemanticSearchResponse>(),
         kyInstance
           .get("/api/search/users", { searchParams: { q: query } })
           .json<UsersResponse>(),
@@ -49,13 +53,12 @@ export default function SearchResults({ query }: SearchResultsProps) {
       return {
         posts: postsRes.posts || [],
         users: usersRes.users || [],
+        emotionAnalysis: postsRes.emotionAnalysis,
       };
     },
     enabled: activeTab === "all",
-    gcTime: 0,
   });
 
-  // Query for "Posts" tab with infinite scroll
   const postsQuery = useInfiniteQuery({
     queryKey: ["search", "posts", query],
     queryFn: ({ pageParam }) =>
@@ -64,19 +67,16 @@ export default function SearchResults({ query }: SearchResultsProps) {
           searchParams: {
             q: query,
             limit: "10",
+            cursor: pageParam !== null ? pageParam.toString() : "0",
           },
         })
-        .json<{ posts: PostData[] }>(),
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => {
-      const posts = lastPage.posts || [];
-      return posts.length === 10 ? posts[posts.length - 1]?.id : null;
-    },
+        .json<SemanticSearchResponse>(),
+    initialPageParam: 0 as number | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: activeTab === "posts",
     gcTime: 0,
   });
 
-  // Query for "Users" tab
   const usersQuery = useQuery({
     queryKey: ["search", "users", query],
     queryFn: () =>
@@ -86,7 +86,6 @@ export default function SearchResults({ query }: SearchResultsProps) {
         })
         .json<UsersResponse>(),
     enabled: activeTab === "users",
-    gcTime: 0,
   });
 
   const allPosts = allQuery.data?.posts || [];
@@ -95,21 +94,21 @@ export default function SearchResults({ query }: SearchResultsProps) {
     postsQuery.data?.pages.flatMap((page) => page.posts || []) || [];
   const users = usersQuery.data?.users || [];
 
+  const emotionAnalysis =
+    allQuery.data?.emotionAnalysis ||
+    postsQuery.data?.pages[0]?.emotionAnalysis;
+
   const isLoading =
     (activeTab === "all" && allQuery.isLoading) ||
     (activeTab === "posts" && postsQuery.isLoading) ||
     (activeTab === "users" && usersQuery.isLoading);
 
-  const isError =
+  if (isLoading) return <PostsLoadingSkeleton />;
+
+  if (
     (activeTab === "all" && allQuery.isError) ||
-    (activeTab === "posts" && postsQuery.isError) ||
-    (activeTab === "users" && usersQuery.isError);
-
-  if (isLoading) {
-    return <PostsLoadingSkeleton />;
-  }
-
-  if (isError) {
+    (activeTab === "posts" && postsQuery.isError)
+  ) {
     return (
       <p className="text-center text-destructive">
         An error occurred while loading results.
@@ -119,6 +118,20 @@ export default function SearchResults({ query }: SearchResultsProps) {
 
   return (
     <div className="space-y-5">
+      {/* Emotion Banner */}
+      {emotionAnalysis?.hasEmotionalConcern &&
+        emotionAnalysis.supportiveMessage && (
+          <div className="rounded-lg border border-pink-200 bg-gradient-to-r from-pink-50 to-purple-50 p-3 shadow-sm dark:border-pink-900/30 dark:from-pink-950/20 dark:to-purple-950/20">
+            <div className="flex items-start gap-2">
+              <Heart className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-500" />
+              <p className="text-sm text-foreground/90">
+                {emotionAnalysis.supportiveMessage}
+              </p>
+            </div>
+          </div>
+        )}
+
+      {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button
           onClick={() => setActiveTab("all")}
@@ -148,21 +161,31 @@ export default function SearchResults({ query }: SearchResultsProps) {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Users {activeTab === "users" && `(${users.length})`}
+          Users
         </button>
       </div>
 
+      {/* "All" Tab View */}
       {activeTab === "all" && (
         <div className="space-y-8">
           <div>
-            <h2 className="mb-3 text-lg font-semibold">Posts</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Top Posts</h2>
+              <button
+                onClick={() => setActiveTab("posts")}
+                className="text-sm text-primary hover:underline"
+              >
+                See all
+              </button>
+            </div>
             {allPosts.length === 0 ? (
               <p className="text-center text-muted-foreground">
                 No posts found.
               </p>
             ) : (
               <div className="space-y-5">
-                {allPosts.slice(0, 5).map((post) => (
+                {/* REMOVED .slice(0, 5) - now shows whatever 'limit' returned */}
+                {allPosts.map((post) => (
                   <Post key={post.id} post={post} />
                 ))}
               </div>
@@ -200,20 +223,21 @@ export default function SearchResults({ query }: SearchResultsProps) {
         </div>
       )}
 
+      {/* "Posts" Tab View (Infinite Scroll) */}
       {activeTab === "posts" && (
         <>
-          {posts.length === 0 ? (
+          {posts.length === 0 && !postsQuery.isFetching ? (
             <p className="text-center text-muted-foreground">
               No posts found for this query.
             </p>
           ) : (
             <InfiniteScrollContainer
               className="space-y-5"
-              onBottomReached={() =>
-                postsQuery.hasNextPage &&
-                !postsQuery.isFetching &&
-                postsQuery.fetchNextPage()
-              }
+              onBottomReached={() => {
+                if (postsQuery.hasNextPage && !postsQuery.isFetching) {
+                  postsQuery.fetchNextPage();
+                }
+              }}
             >
               {posts.map((post) => (
                 <Post key={post.id} post={post} />
@@ -226,29 +250,24 @@ export default function SearchResults({ query }: SearchResultsProps) {
         </>
       )}
 
+      {/* "Users" Tab View */}
       {activeTab === "users" && (
         <div className="space-y-3">
-          {users.length === 0 ? (
-            <p className="text-center text-muted-foreground">
-              No users found for this query.
-            </p>
-          ) : (
-            users.map((user) => (
-              <Link
-                key={user.id}
-                href={`/users/${user.username}`}
-                className="flex items-center gap-3 rounded-lg bg-card p-4 shadow-sm transition-colors hover:bg-accent"
-              >
-                <UserAvatar avatarUrl={user.avatarUrl} size={48} />
-                <div className="flex-1 overflow-hidden">
-                  <p className="truncate font-semibold">{user.displayName}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    @{user.username}
-                  </p>
-                </div>
-              </Link>
-            ))
-          )}
+          {users.map((user) => (
+            <Link
+              key={user.id}
+              href={`/users/${user.username}`}
+              className="flex items-center gap-3 rounded-lg bg-card p-4 shadow-sm transition-colors hover:bg-accent"
+            >
+              <UserAvatar avatarUrl={user.avatarUrl} size={48} />
+              <div className="flex-1 overflow-hidden">
+                <p className="truncate font-semibold">{user.displayName}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  @{user.username}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </div>

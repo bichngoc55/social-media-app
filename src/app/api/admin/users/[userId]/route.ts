@@ -4,9 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     await requireAdmin();
 
     const user = await prisma.user.findUnique({
@@ -56,9 +57,10 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     await requireAdmin();
 
     const { role, emailVerified } = await req.json();
@@ -98,9 +100,10 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params: { userId } }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
     const admin = await requireAdmin();
 
     // Cannot delete yourself

@@ -1,11 +1,8 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
-import {
-  getCountry,
-  getProvinceName,
-  getDistrictName,
-} from "@/lib/location-data";
+import { getTextEmbedding, normalizeVector } from "@/lib/vertex";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,26 +29,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const country = getCountry(countryCode);
-    const countryIso2 = country?.iso2 || null;
-    const provinceName = provinceCode
-      ? getProvinceName(countryCode, provinceCode)
-      : null;
-    const districtName =
-      provinceCode && districtCode
-        ? getDistrictName(countryCode, provinceCode, districtCode)
-        : null;
-
-    await prisma.user.update({
+    // Get user data to generate embedding
+    const userData = await prisma.user.findUnique({
       where: { id: user.id },
-      data: {
-        interests: interests,
-        countryCode: countryIso2,
-        provinceCode: provinceName,
-        districtCode: districtName,
-        wardCode: null,
-      },
+      select: { displayName: true, username: true, bio: true },
     });
+
+    if (!userData) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Generate embeddings for selected interests
+    const topicEmbeddings = await Promise.all(
+      interests.map((topic: string) => getTextEmbedding(topic))
+    );
+
+    const vectorStrings = topicEmbeddings.map((emb) => `[${emb.join(",")}]`);
+    const vectorArrayStr = `ARRAY[${vectorStrings.map((v) => `'${v}'::vector`).join(",")}]::vector[]`;
+    const dim = topicEmbeddings[0].length;
+    const avgDeclared = Array(dim).fill(0);
+    topicEmbeddings.forEach((emb) => {
+      emb.forEach((v, i) => (avgDeclared[i] += v / topicEmbeddings.length));
+    });
+    const normalized = normalizeVector(avgDeclared);
+    const tasteVectorStr = `[${normalized.join(",")}]`;
+    console.log("[ONBOARDING] Setting tasteEmbedding for user:", user.id);
+    console.log("[ONBOARDING] Interests:", interests);
+    console.log("[ONBOARDING] Taste embedding dim:", normalized.length);
+
+    await prisma.$executeRaw`
+      UPDATE users
+      SET 
+        interests = ${interests}::text[],
+        "countryCode" = ${countryCode},
+        "provinceCode" = ${provinceCode || null},
+        "districtCode" = ${districtCode || null},
+        "topicEmbeddings" = ${Prisma.raw(vectorArrayStr)},
+        "tasteEmbedding" = ${tasteVectorStr}::vector
+      WHERE id = ${user.id}
+    `;
+
+    console.log("[ONBOARDING] Successfully updated user with tasteEmbedding");
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -144,6 +144,9 @@ const nextConfig = {
         pathname: `/${process.env.GCS_BUCKET}/**`,
       },
       { protocol: "https", hostname: "i.pravatar.cc", pathname: "/**" },
+      { protocol: "https", hostname: "assets.genius.com", pathname: "/**" },
+      { protocol: "https", hostname: "images.genius.com", pathname: "/**" },
+      { protocol: "https", hostname: "i.ytimg.com", pathname: "/**" },
     ],
   },
   rewrites: () => {

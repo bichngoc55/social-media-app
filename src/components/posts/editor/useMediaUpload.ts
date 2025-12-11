@@ -13,7 +13,10 @@ export default function useMediaUpload() {
   const [uploadProgress, setUploadProgress] = useState<number>();
   const [isUploading, setIsUploading] = useState(false);
 
-  async function uploadFile(file: File): Promise<string | null> {
+  async function uploadFile(
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<string | null> {
     const signedUrlResponse = await fetch("/api/upload/attachment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,16 +32,37 @@ export default function useMediaUpload() {
     }
 
     const { uploadUrl, fileName } = await signedUrlResponse.json();
-    try {
-      await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        mode: "cors",
+
+    // Use XMLHttpRequest to track upload progress
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
       });
-    } catch (err) {
-      console.log("Error uploading file to signed URL:", err);
-      throw err;
-    }
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload aborted"));
+      });
+
+      xhr.open("PUT", uploadUrl);
+      xhr.send(file);
+    });
 
     const completeResponse = await fetch("/api/upload/attachment/complete", {
       method: "POST",
@@ -62,8 +86,29 @@ export default function useMediaUpload() {
       });
       return;
     }
+    const ALLOWED_IMAGE_TYPES = [
+      "image/bmp",
+      "image/gif",
+      "image/jpeg",
+      "image/png",
+    ];
+
+    for (const file of files) {
+      if (
+        !ALLOWED_IMAGE_TYPES.includes(file.type) &&
+        !file.type.startsWith("video/")
+      ) {
+        toast({
+          title: "Unsupported image format",
+          description: "Only BMP, GIF, JPG, and PNG formats are allowed.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     setIsUploading(true);
+    setUploadProgress(0);
     setAttachments((prev) => [
       ...prev,
       ...files.map((file) => ({ file, isUploading: true })),
@@ -72,12 +117,35 @@ export default function useMediaUpload() {
     try {
       const total = files.length;
       let completed = 0;
+      const fileProgress: Record<string, number> = {};
+
+      // Initialize progress for each file
+      files.forEach((file) => {
+        fileProgress[file.name] = 0;
+      });
 
       const results = await Promise.allSettled(
         files.map(async (file) => {
-          const mediaId = await uploadFile(file);
+          const mediaId = await uploadFile(file, (progress) => {
+            // Update individual file progress
+            fileProgress[file.name] = progress;
+
+            // Calculate total progress: completed files + current file progress
+            const totalProgress =
+              ((completed * 100 +
+                Object.values(fileProgress).reduce((sum, p) => sum + p, 0)) /
+                (total * 100)) *
+              100;
+
+            setUploadProgress(Math.round(totalProgress));
+          });
+
           completed++;
-          setUploadProgress((completed / total) * 100);
+          fileProgress[file.name] = 100;
+
+          // Update progress for completed files
+          setUploadProgress(Math.round((completed / total) * 100));
+
           return { file, mediaId };
         })
       );

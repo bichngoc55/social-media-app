@@ -7,7 +7,6 @@ export const metadata: Metadata = {
 
 // Lazy load Chat component - stream-chat rất nặng (5000+ modules)
 const Chat = dynamic(() => import("./Chat"), {
-  ssr: false,
   loading: () => (
     <div
       className="flex w-full min-w-0 items-center justify-center"

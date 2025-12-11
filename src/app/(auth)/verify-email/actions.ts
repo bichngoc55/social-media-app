@@ -4,7 +4,7 @@ import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 import { verifyEmailSchema, VerifyEmailValues } from "@/lib/validation";
-import { isRedirectError } from "next/dist/client/components/redirect";
+import { isRedirectError } from "next/navigation";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -80,7 +80,7 @@ export async function verifyEmailAction(data: VerifyEmailValues) {
     console.log("Creating session for user:", verification.user.id);
     const session = await lucia.createSession(verification.user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(
+    (await cookies()).set(
       sessionCookie.name,
       sessionCookie.value,
       sessionCookie.attributes
@@ -89,7 +89,7 @@ export async function verifyEmailAction(data: VerifyEmailValues) {
 
     return { success: true, message: "Email verified successfully" };
   } catch (error) {
-    if (isRedirectError(error)) throw error;
+    // Redirect errors are automatically handled by Next.js
     console.error("Error verifying email:", error);
     return {
       success: false,
