@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Tối ưu compile time
-  swcMinify: true,
   // Loại bỏ removeConsole để tương thích với Turbopack
   // Có thể dùng SWC minify để remove console trong production build
   compiler: process.env.TURBOPACK
@@ -19,10 +18,8 @@ const nextConfig = {
     // Tắt type checking trong build (nhanh hơn, nhưng nên dùng CI/CD để check)
     ignoreBuildErrors: false,
   },
-  eslint: {
-    // Tắt ESLint trong build (nhanh hơn, nhưng nên dùng CI/CD để check)
-    ignoreDuringBuilds: false,
-  },
+  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+
   experimental: {
     staleTimes: {
       dynamic: 30,
@@ -44,7 +41,6 @@ const nextConfig = {
       "@tanstack/react-query-devtools",
     ],
     // Giảm số modules được compile
-    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs"],
   },
   webpack: (config, { isServer, dev, webpack }) => {
     if (!isServer) {

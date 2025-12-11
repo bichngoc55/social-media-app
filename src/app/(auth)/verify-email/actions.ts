@@ -4,9 +4,8 @@ import { lucia } from "@/auth";
 import prisma from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 import { verifyEmailSchema, VerifyEmailValues } from "@/lib/validation";
-import { isRedirectError } from "next/navigation";
+// import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export async function verifyEmailAction(data: VerifyEmailValues) {
   try {

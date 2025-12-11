@@ -73,16 +73,6 @@ export async function GET() {
         final_score: number;
       }>
     >`
-      WITH candidates AS (
-        SELECT u.id
-        FROM users u
-        WHERE u."tasteEmbedding" IS NOT NULL
-          AND u.id != ${currentUser.id}
-          AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${currentUser.id})
-          AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${currentUser.id})
-        ORDER BY u."tasteEmbedding" <=> ${userTasteStr}::vector
-        LIMIT 100  -- Fast ANN search first
-      )
       SELECT 
         u.id,
         u.username,
@@ -96,29 +86,44 @@ export async function GET() {
           WHERE f1."followerId" = ${currentUser.id}
             AND f2."followerId" = u.id
         ) as mutual_friends,
+        -- Exact Cosine Similarity (1 - distance)
         (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
         (
-          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.45 +          -- Behavioral taste match
-          LEAST((
+          -- 1. Behavioral Match (45%)
+          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.45 +
+          
+          -- 2. Social Proof (25%) - Capped at 15 mutual friends
+          -- Formula: LEAST(count, 15) / 15.0 * 0.25
+          (LEAST((
             SELECT COUNT(*)
             FROM follows f1
             JOIN follows f2 ON f1."followingId" = f2."followingId"
             WHERE f1."followerId" = ${currentUser.id}
               AND f2."followerId" = u.id
-          ), 15) / 15.0 * 0.25 +                                                  -- Social proof
+          ), 15)::float / 15.0) * 0.25 +
+
+          -- 3. Emotion Compatibility (15%)
           (CASE 
             WHEN u."generalEmotion"::text = ${userEmotion} THEN 1.0
             WHEN (u."generalEmotion"::text = 'POSITIVE' AND ${userEmotion} = 'NEUTRAL') 
-                 OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
+              OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
             WHEN u."generalEmotion" IS NULL THEN 0.2
             ELSE 0.0
-          END) * 0.15 +                                                            -- Emotion compatibility
-          (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.15  -- Location
+          END) * 0.15 +
+
+          -- 4. Location (15%)
+          (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.15 
         ) as final_score
       FROM users u
-      JOIN candidates c ON u.id = c.id
+      WHERE u."tasteEmbedding" IS NOT NULL
+        AND u.id != ${currentUser.id}
+        -- Filter out already followed users
+        AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${currentUser.id})
+        -- Filter out blocked interactions
+        AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${currentUser.id})
+        AND u.id NOT IN (SELECT "blockerId" FROM user_blocks WHERE "blockedId" = ${currentUser.id})
       ORDER BY final_score DESC
-      LIMIT 12
+      LIMIT 20
     `;
 
     console.log(

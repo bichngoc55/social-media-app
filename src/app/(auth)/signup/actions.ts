@@ -8,7 +8,6 @@ import { generateOTP, sendOTPEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 import { generateIdFromEntropySize } from "lucia";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function signUp(
