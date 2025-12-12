@@ -26,39 +26,37 @@ export async function GET(req: NextRequest) {
       getCachedFollowingUsers(user.id),
     ]);
 
-    // Lấy posts từ user đang follow + chính mình, loại trừ user bị chặn
-    const validFollowingIds = [
-      ...Array.from(followingUserIds),
-      user.id, // Thêm chính mình
-    ].filter((id) => !blockedUserIds.has(id));
+    // Lấy posts từ user đang follow ONLY, loại trừ user bị chặn và chính mình
+    const validFollowingIds = Array.from(followingUserIds).filter(
+      (id) => !blockedUserIds.has(id)
+    );
+
+    // If not following anyone, return empty
+    if (validFollowingIds.length === 0) {
+      return Response.json({
+        posts: [],
+        nextCursor: null,
+      });
+    }
 
     const posts = await prisma.post.findMany({
       where: {
         AND: [
           {
             userId: {
-              in: validFollowingIds.length > 0 ? validFollowingIds : [user.id], // Fallback nếu không có following
+              in: validFollowingIds,
             },
           },
           {
             OR: [
               // Public posts từ following users
               { privacy: "PUBLIC" },
-              // Followers posts từ following users HOẶC chính mình
+              // Followers posts từ following users (if current user follows them back)
               {
                 AND: [
                   { privacy: "FOLLOWERS" },
-                  {
-                    OR: [
-                      { userId: { in: validFollowingIds } },
-                      { userId: user.id }, // Chính mình
-                    ],
-                  },
+                  { userId: { in: validFollowingIds } },
                 ],
-              },
-              // Draft posts chỉ của chính mình (nếu follow chính mình)
-              {
-                AND: [{ privacy: "DRAFT" }, { userId: user.id }],
               },
             ],
           },

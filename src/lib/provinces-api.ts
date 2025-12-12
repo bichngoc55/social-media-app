@@ -186,17 +186,11 @@ export async function getWardByCode(
  */
 export async function getFullAddress(
   provinceCode?: string | null,
-  districtCode?: string | null,
-  wardCode?: string | null
+  districtCode?: string | null
 ): Promise<string | null> {
   if (!provinceCode) return null;
 
   const parts: string[] = [];
-
-  if (wardCode) {
-    const ward = await getWardByCode(wardCode, provinceCode);
-    if (ward) parts.push(ward.name);
-  }
 
   // District name không có trong API, skip
   // if (districtCode) {

@@ -27,10 +27,7 @@ export default function ForYouFeed() {
           timeout: 60000, // 60 seconds
         });
         const data = await response.json<PostsPage>();
-        console.log("[ForYouFeed] Received data:", {
-          postsCount: data.posts.length,
-          hasNextCursor: !!data.nextCursor,
-        });
+
         return data;
       } catch (error) {
         console.error("[ForYouFeed] Error fetching posts:", error);
@@ -43,18 +40,6 @@ export default function ForYouFeed() {
   });
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
-
-  // Debug logging
-  console.log("[ForYouFeed] Component state:", {
-    status,
-    postsCount: posts.length,
-    pagesCount: data?.pages.length || 0,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    firstPostId: posts[0]?.id || null,
-    firstPostHasUser: !!posts[0]?.user,
-  });
 
   if (status === "pending") {
     return <PostsLoadingSkeleton />;
@@ -87,28 +72,7 @@ export default function ForYouFeed() {
 
   // Nếu có posts nhưng không render được, log để debug
   if (status === "success" && posts.length > 0) {
-    const postsWithUser = posts.filter((p) => p.user);
     const postsWithoutUser = posts.filter((p) => !p.user);
-
-    console.log("[ForYouFeed] Rendering posts:", {
-      totalPosts: posts.length,
-      postsWithUser: postsWithUser.length,
-      postsWithoutUser: postsWithoutUser.length,
-      samplePost: postsWithUser[0]
-        ? {
-            id: postsWithUser[0].id,
-            content: postsWithUser[0].content?.substring(0, 50),
-            userId: postsWithUser[0].userId,
-            hasUser: !!postsWithUser[0].user,
-            userData: postsWithUser[0].user
-              ? {
-                  id: postsWithUser[0].user.id,
-                  username: postsWithUser[0].user.username,
-                }
-              : null,
-          }
-        : null,
-    });
 
     if (postsWithoutUser.length > 0) {
       console.warn(

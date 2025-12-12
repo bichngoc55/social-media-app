@@ -1,23 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Tối ưu compile time
-  swcMinify: true,
   // Loại bỏ removeConsole để tương thích với Turbopack
   // Có thể dùng SWC minify để remove console trong production build
-  compiler: process.env.TURBOPACK ? undefined : {
-    removeConsole: process.env.NODE_ENV === "production" ? {
-      exclude: ["error", "warn"],
-    } : false,
-  },
+  compiler: process.env.TURBOPACK
+    ? undefined
+    : {
+        removeConsole:
+          process.env.NODE_ENV === "production"
+            ? {
+                exclude: ["error", "warn"],
+              }
+            : false,
+      },
   // Tối ưu compile performance
   typescript: {
     // Tắt type checking trong build (nhanh hơn, nhưng nên dùng CI/CD để check)
     ignoreBuildErrors: false,
   },
-  eslint: {
-    // Tắt ESLint trong build (nhanh hơn, nhưng nên dùng CI/CD để check)
-    ignoreDuringBuilds: false,
-  },
+  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+
   experimental: {
     staleTimes: {
       dynamic: 30,
@@ -39,7 +41,6 @@ const nextConfig = {
       "@tanstack/react-query-devtools",
     ],
     // Giảm số modules được compile
-    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs"],
   },
   webpack: (config, { isServer, dev, webpack }) => {
     if (!isServer) {
@@ -62,7 +63,8 @@ const nextConfig = {
     // Use IgnorePlugin to prevent webpack from trying to resolve these files
     config.plugins.push(
       new webpack.IgnorePlugin({
-        resourceRegExp: /^\.\.\/assets\/icons\/stream-chat-icons\.eot(#iefix)?$/,
+        resourceRegExp:
+          /^\.\.\/assets\/icons\/stream-chat-icons\.eot(#iefix)?$/,
         contextRegExp: /node_modules\/stream-chat-react/,
       })
     );
@@ -134,15 +136,13 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "utfs.io",
-        pathname: `/**`,
-      },
-      {
-        protocol: "https",
-        hostname: "uploadthing-prod-sea1.s3.us-west-2.amazonaws.com",
-        pathname: "/**",
+        hostname: "storage.googleapis.com",
+        pathname: `/${process.env.GCS_BUCKET}/**`,
       },
       { protocol: "https", hostname: "i.pravatar.cc", pathname: "/**" },
+      { protocol: "https", hostname: "assets.genius.com", pathname: "/**" },
+      { protocol: "https", hostname: "images.genius.com", pathname: "/**" },
+      { protocol: "https", hostname: "i.ytimg.com", pathname: "/**" },
     ],
   },
   rewrites: () => {

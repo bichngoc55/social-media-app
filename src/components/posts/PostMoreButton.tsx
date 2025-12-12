@@ -1,5 +1,5 @@
 import { PostDataLightweight } from "@/lib/types";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import {
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import DeletePostDialog from "./DeletePostDialog";
+import EditPostDialog from "./EditPostDialog";
 
 interface PostMoreButtonProps {
   post: PostDataLightweight;
@@ -20,6 +21,7 @@ export default function PostMoreButton({
   className,
 }: PostMoreButtonProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   return (
     <>
@@ -30,6 +32,12 @@ export default function PostMoreButton({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
+          <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+            <span className="flex items-center gap-3">
+              <Edit className="size-4" />
+              Edit
+            </span>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setShowDeleteDialog(true)}>
             <span className="flex items-center gap-3 text-destructive">
               <Trash2 className="size-4" />
@@ -38,6 +46,11 @@ export default function PostMoreButton({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <EditPostDialog
+        post={post}
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+      />
       <DeletePostDialog
         post={post}
         open={showDeleteDialog}

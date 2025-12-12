@@ -5,14 +5,15 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
+  const { postId } = await params;
   const { user } = await validateRequest();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const post = await prisma.post.findUnique({
-    where: { id: params.postId },
+    where: { id: postId },
     include: getPostDataInclude(user.id),
   });
 

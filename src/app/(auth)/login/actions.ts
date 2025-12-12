@@ -5,9 +5,9 @@ import prisma from "@/lib/prisma";
 import { loginSchema, LoginValues } from "@/lib/validation";
 import { generateDeviceId, getDeviceName } from "@/lib/device";
 import bcrypt from "bcryptjs";
-import { isRedirectError } from "next/dist/client/components/redirect";
-import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+// import { redirect } from "next/navigation";
 
 export async function login(
   credentials: LoginValues
@@ -99,8 +99,11 @@ export async function login(
       });
     }
 
-    // Nếu thiết bị chưa được tin tưởng, yêu cầu 2FA
-    if (!trustedDevice.isTrusted) {
+    // Skip 2FA for seed/test accounts (emails ending with @example.com)
+    const isSeedAccount = existingUser.email?.endsWith("@example.com");
+
+    // Nếu thiết bị chưa được tin tưởng, yêu cầu 2FA (trừ seed accounts)
+    if (!trustedDevice.isTrusted && !isSeedAccount) {
       // Gửi 2FA email với device info
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/send-2fa`,
@@ -129,6 +132,21 @@ export async function login(
       );
     }
 
+    // Auto-trust device for seed accounts
+    if (isSeedAccount && !trustedDevice.isTrusted) {
+      await prisma.deviceSession.update({
+        where: {
+          userId_deviceId: {
+            userId: existingUser.id,
+            deviceId: deviceInfo.deviceId,
+          },
+        },
+        data: {
+          isTrusted: true,
+        },
+      });
+    }
+
     // Cập nhật lastUsedAt cho thiết bị tin tưởng
     await prisma.deviceSession.update({
       where: {
@@ -144,7 +162,7 @@ export async function login(
 
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
-    cookies().set(
+    (await cookies()).set(
       sessionCookie.name,
       sessionCookie.value,
       sessionCookie.attributes
@@ -157,7 +175,12 @@ export async function login(
 
     return redirect("/");
   } catch (error) {
-    if (isRedirectError(error)) throw error;
+    // Check if the error is a NEXT_REDIRECT signal
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+
+    // Handle actual errors
     console.error(error);
     return {
       error: "Something went wrong. Please try again.",

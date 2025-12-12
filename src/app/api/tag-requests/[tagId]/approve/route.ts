@@ -4,9 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params: { tagId } }: { params: { tagId: string } }
+  { params }: { params: Promise<{ tagId: string }> }
 ) {
   try {
+    const { tagId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {

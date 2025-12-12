@@ -21,7 +21,6 @@ const AdminDashboardContent = dynamic(() => import("./AdminDashboardContent"), {
       </div>
     </div>
   ),
-  ssr: false,
 });
 
 export default function AdminDashboard() {

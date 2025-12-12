@@ -7,8 +7,7 @@ import { signUpSchema, SignUpValues } from "@/lib/validation";
 import { generateOTP, sendOTPEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 import { generateIdFromEntropySize } from "lucia";
-import { isRedirectError } from "next/dist/client/components/redirect";
-import { cookies } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 
 export async function signUp(
@@ -103,7 +102,9 @@ export async function signUp(
     // Redirect đến trang xác thực email
     return redirect(`/verify-email?email=${encodeURIComponent(email)}`);
   } catch (error) {
-    if (isRedirectError(error)) throw error;
+    if (isRedirectError(error)) {
+      throw error;
+    }
     console.error(error);
     return {
       error: "Something went wrong. Please try again.",

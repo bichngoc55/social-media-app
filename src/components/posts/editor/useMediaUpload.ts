@@ -1,5 +1,4 @@
 import { useToast } from "@/components/ui/use-toast";
-import { useUploadThing } from "@/lib/uploadthing";
 import { useState } from "react";
 
 export interface Attachment {
@@ -10,76 +9,76 @@ export interface Attachment {
 
 export default function useMediaUpload() {
   const { toast } = useToast();
-
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-
   const [uploadProgress, setUploadProgress] = useState<number>();
+  const [isUploading, setIsUploading] = useState(false);
 
-  const { startUpload, isUploading } = useUploadThing("attachment", {
-    onBeforeUploadBegin: async (files) => {
-      // Preserve exact bytes to avoid filesize mismatch by copying via arrayBuffer
-      const renamedFiles = await Promise.all(
-        files.map(async (file) => {
-          const extension = file.name.split(".").pop();
-          const buffer = await file.arrayBuffer();
-          return new File(
-            [buffer],
-            `attachment_${crypto.randomUUID()}.${extension}`,
-            {
-              type: file.type,
-            }
-          );
-        })
-      );
+  async function uploadFile(
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<string | null> {
+    const signedUrlResponse = await fetch("/api/upload/attachment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contentType: file.type,
+        fileSize: file.size,
+      }),
+    });
 
-      setAttachments((prev) => [
-        ...prev,
-        ...renamedFiles.map((file) => ({ file, isUploading: true })),
-      ]);
+    if (!signedUrlResponse.ok) {
+      const error = await signedUrlResponse.json();
+      throw new Error(error.error || "Failed to get upload URL");
+    }
 
-      return renamedFiles;
-    },
-    onUploadProgress: setUploadProgress,
-    onClientUploadComplete(res) {
-      setAttachments((prev) =>
-        prev.map((a) => {
-          const uploadResult = res.find((r) => r.name === a.file.name);
+    const { uploadUrl, fileName } = await signedUrlResponse.json();
 
-          if (!uploadResult) return a;
+    // Use XMLHttpRequest to track upload progress
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-          // Nếu callback fail, mediaId có thể null
-          // Nhưng file vẫn upload thành công lên S3
-          const mediaId = uploadResult.serverData?.mediaId;
-
-          if (!mediaId) {
-            console.warn(
-              "⚠️ Upload succeeded but callback failed. File URL:",
-              uploadResult.url,
-              "Error:",
-              uploadResult.serverData?.error
-            );
-            // Vẫn giữ file để user có thể thấy preview
-            // Nhưng sẽ không thể đăng bài (vì không có mediaId)
-          }
-
-          return {
-            ...a,
-            mediaId: mediaId || undefined,
-            isUploading: false,
-          };
-        })
-      );
-    },
-    onUploadError(e) {
-      setAttachments((prev) => prev.filter((a) => !a.isUploading));
-      toast({
-        variant: "destructive",
-        description: e.message,
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
       });
-    },
-  });
 
-  function handleStartUpload(files: File[]) {
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload aborted"));
+      });
+
+      xhr.open("PUT", uploadUrl);
+      xhr.send(file);
+    });
+
+    const completeResponse = await fetch("/api/upload/attachment/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName, contentType: file.type }),
+    });
+
+    if (!completeResponse.ok) {
+      throw new Error("Failed to complete upload");
+    }
+
+    const { mediaId } = await completeResponse.json();
+    return mediaId;
+  }
+
+  async function handleStartUpload(files: File[]) {
     if (isUploading) {
       toast({
         variant: "destructive",
@@ -87,8 +86,103 @@ export default function useMediaUpload() {
       });
       return;
     }
+    const ALLOWED_IMAGE_TYPES = [
+      "image/bmp",
+      "image/gif",
+      "image/jpeg",
+      "image/png",
+    ];
 
-    startUpload(files);
+    for (const file of files) {
+      if (
+        !ALLOWED_IMAGE_TYPES.includes(file.type) &&
+        !file.type.startsWith("video/")
+      ) {
+        toast({
+          title: "Unsupported image format",
+          description: "Only BMP, GIF, JPG, and PNG formats are allowed.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setAttachments((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, isUploading: true })),
+    ]);
+
+    try {
+      const total = files.length;
+      let completed = 0;
+      const fileProgress: Record<string, number> = {};
+
+      // Initialize progress for each file
+      files.forEach((file) => {
+        fileProgress[file.name] = 0;
+      });
+
+      const results = await Promise.allSettled(
+        files.map(async (file) => {
+          const mediaId = await uploadFile(file, (progress) => {
+            // Update individual file progress
+            fileProgress[file.name] = progress;
+
+            // Calculate total progress: completed files + current file progress
+            const totalProgress =
+              ((completed * 100 +
+                Object.values(fileProgress).reduce((sum, p) => sum + p, 0)) /
+                (total * 100)) *
+              100;
+
+            setUploadProgress(Math.round(totalProgress));
+          });
+
+          completed++;
+          fileProgress[file.name] = 100;
+
+          // Update progress for completed files
+          setUploadProgress(Math.round((completed / total) * 100));
+
+          return { file, mediaId };
+        })
+      );
+
+      setAttachments((prev) =>
+        prev.map((a) => {
+          const result = results.find(
+            (r) => r.status === "fulfilled" && r.value.file === a.file
+          );
+          if (result && result.status === "fulfilled") {
+            return {
+              ...a,
+              mediaId: result.value.mediaId || undefined,
+              isUploading: false,
+            };
+          }
+          return a;
+        })
+      );
+
+      const failedUploads = results.filter((r) => r.status === "rejected");
+      if (failedUploads.length > 0) {
+        toast({
+          variant: "destructive",
+          description: `${failedUploads.length} file(s) failed to upload`,
+        });
+      }
+    } catch (error) {
+      setAttachments((prev) => prev.filter((a) => !a.isUploading));
+      toast({
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Upload failed",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(undefined);
+    }
   }
 
   function removeAttachment(fileName: string) {

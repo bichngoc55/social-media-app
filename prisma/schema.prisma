@@ -1,54 +1,87 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["postgresqlExtensions", "fullTextSearch"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum HARMFULTYPES {
+  VIOLENCE
+  HATE_SPEECH
+  NUDITY
+  SPAM
+  HARASSMENT
+  OTHER
 }
 
 model User {
-  id                    String              @id
-  username              String              @unique
-  displayName           String
-  email                 String?             @unique
-  passwordHash          String?
-  googleId              String?             @unique
-  avatarUrl             String?
-  bio                   String?
-  provinceCode          String?            // Mã tỉnh/thành phố (theo provinces.open-api.vn)
-  districtCode          String?            // Mã quận/huyện
-  wardCode              String?            // Mã phường/xã
-  createdAt             DateTime            @default(now())
-  emailVerified         Boolean             @default(false)
-  role                  UserRole            @default(USER)
-  bookmarks             Bookmark[]
-  comments              Comment[]
-  deviceSessions        DeviceSession[]
-  emailVerifications    EmailVerification[]
-  following             Follow[]            @relation("Following")
-  followers             Follow[]            @relation("Followers")
-  likes                 Like[]
-  mentionsIssued        Mention[]           @relation("MentionedBy")
-  mentions              Mention[]           @relation("Mentioned")
-  issuedNotifications   Notification[]      @relation("Issuer")
-  receivedNotifications Notification[]      @relation("Recipient")
-  post_tags             post_tags[]
-  posts                 Post[]
-  reportsReceived       Report[]            @relation("Reported")
-  reportsIssued         Report[]            @relation("Reporter")
-  sessions              Session[]
-  twoFactorAuths        TwoFactorAuth[]
-  blockedByUsers        UserBlock[]         @relation("Blocked")
-  blockedUsers          UserBlock[]         @relation("Blocker")
-  
+  id                          String                       @id
+  username                    String                       @unique
+  displayName                 String
+  email                       String?                      @unique
+  passwordHash                String?
+  googleId                    String?                      @unique
+  avatarUrl                   String?
+  bio                         String?
+  interests                   String[]                     @default([])
+  provinceCode                String? // Province/State ID from location data
+  districtCode                String? // District/City ID from location data
+  countryCode                 String? // Country ID from location data
+  createdAt                   DateTime                     @default(now())
+  emailVerified               Boolean                      @default(false)
+  role                        UserRole                     @default(USER)
+  bookmarks                   Bookmark[]
+  comments                    Comment[]
+  deviceSessions              DeviceSession[]
+  emailVerifications          EmailVerification[]
+  following                   Follow[]                     @relation("Following")
+  followers                   Follow[]                     @relation("Followers")
+  likes                       Like[]
+  mentionsIssued              Mention[]                    @relation("MentionedBy")
+  mentions                    Mention[]                    @relation("Mentioned")
+  issuedNotifications         Notification[]               @relation("Issuer")
+  receivedNotifications       Notification[]               @relation("Recipient")
+  post_tags                   post_tags[]
+  posts                       Post[]
+  reportsReceived             Report[]                     @relation("Reported")
+  reportsIssued               Report[]                     @relation("Reporter")
+  sessions                    Session[]
+  twoFactorAuths              TwoFactorAuth[]
+  blockedByUsers              UserBlock[]                  @relation("Blocked")
+  blockedUsers                UserBlock[]                  @relation("Blocker")
+  topicEmbeddings             Unsupported("vector(768)")[]
+  tasteEmbedding              Unsupported("vector(768)")?
   // AI Recommendations - Cached metrics for performance
-  aiMetrics             UserAIMetrics?
-  aiRecommendations     UserRecommendation[] @relation("RecommendedUser")
-  recommendationsFor    UserRecommendation[] @relation("RecommendedTo")
+  aiMetrics                   UserAIMetrics?
+  aiRecommendations           UserRecommendation[]         @relation("RecommendedUser")
+  recommendationsFor          UserRecommendation[]         @relation("RecommendedTo")
+  // emotion
+  generalEmotion              EMOTION?
+  emotionScore                Float?
+  // dislike
+  dislikedPostTopicsEmbedding Unsupported("vector(768)")[] // Array of embeddings for disliked post topics
+  blockedPosts                PostBlock[]
+  dislikedTopics              String[]                     @default([])
 
   @@map("users")
+}
+
+model PostBlock {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@map("post_blocks")
 }
 
 model Session {
@@ -72,22 +105,39 @@ model Follow {
   @@map("follows")
 }
 
+enum EMOTION {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
 model Post {
-  id                  String         @id @default(cuid())
-  content             String
-  userId              String
-  createdAt           DateTime       @default(now())
-  privacy             PostPrivacy    @default(PUBLIC)
-  mediaLayout         MediaLayout?
-  bookmarks           Bookmark[]
-  comments            Comment[]
-  likes               Like[]
-  mentions            Mention[]
-  linkedNotifications Notification[]
-  attachments         Media[]
-  post_tags           post_tags[]
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reports             Report[]
+  id                    String                       @id @default(cuid())
+  content               String
+  userId                String
+  createdAt             DateTime                     @default(now())
+  privacy               PostPrivacy                  @default(PUBLIC)
+  mediaLayout           MediaLayout?
+  hashtags              String[]                     @default([])
+  bookmarks             Bookmark[]
+  comments              Comment[]
+  likes                 Like[]
+  mentions              Mention[]
+  linkedNotifications   Notification[]
+  attachments           Media[]
+  post_tags             post_tags[]
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports               Report[]
+  embedding             Unsupported("vector(1408)")? // Multimodal embedding (text+image+video)
+  topicEmbeddings       Unsupported("vector(768)")[] // Array of embeddings for each topic
+  emotions              EMOTION?
+  emotionScore          Float?
+  harmful               Boolean                      @default(false)
+  harmfulTypes          String[]                     @default([])
+  primaryEmotion        String? // e.g. "joy", "sadness", "anger", "gratitude", "loneliness"
+  topics                String[]                     @default([]) // e.g. ["beach vacation", "new job", "breakup"]
+  wisdomOrAdviceMessage String?
+  postBlocks            PostBlock[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([privacy, createdAt(sort: Desc)])
@@ -109,17 +159,17 @@ model Media {
 }
 
 model Comment {
-  id        String    @id @default(cuid())
-  content   String
-  userId    String
-  postId    String
-  createdAt DateTime  @default(now())
-  parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mentions  Mention[]
+  id          String    @id @default(cuid())
+  content     String
+  userId      String
+  postId      String
+  createdAt   DateTime  @default(now())
+  parentId    String?
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentions    Mention[]
   attachments Media[]
 
   @@index([postId, createdAt(sort: Desc)])
@@ -330,35 +380,35 @@ enum UserRole {
 
 // AI Recommendations - Cached metrics for performance
 model UserAIMetrics {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Engagement metrics (cached)
-  totalPosts            Int      @default(0)
-  totalLikes            Int      @default(0)
-  totalComments         Int      @default(0)
-  totalFollowers        Int      @default(0)
-  totalFollowing        Int      @default(0)
-  
+  totalPosts     Int @default(0)
+  totalLikes     Int @default(0)
+  totalComments  Int @default(0)
+  totalFollowers Int @default(0)
+  totalFollowing Int @default(0)
+
   // Activity metrics
-  postsLast30Days       Int      @default(0)
-  postsLast7Days        Int      @default(0)
-  isActiveLast7Days     Boolean  @default(false)
-  lastPostDate          DateTime?
-  
+  postsLast30Days   Int       @default(0)
+  postsLast7Days    Int       @default(0)
+  isActiveLast7Days Boolean   @default(false)
+  lastPostDate      DateTime?
+
   // Hashtag preferences (top 10 hashtags user uses)
-  topHashtags           String[] @default([])
-  hashtagCounts         Json?    // Map of hashtag -> count
-  
+  topHashtags   String[] @default([])
+  hashtagCounts Json? // Map of hashtag -> count
+
   // Content quality score (0-100)
-  engagementRate        Float    @default(0)
-  avgLikesPerPost       Float    @default(0)
-  avgCommentsPerPost    Float    @default(0)
-  
+  engagementRate     Float @default(0)
+  avgLikesPerPost    Float @default(0)
+  avgCommentsPerPost Float @default(0)
+
   // Last updated timestamp
-  updatedAt             DateTime @default(now()) @updatedAt
-  
+  updatedAt DateTime @default(now()) @updatedAt
+
   @@index([userId])
   @@index([updatedAt])
   @@map("user_ai_metrics")
@@ -366,18 +416,18 @@ model UserAIMetrics {
 
 // AI Recommendations - Store recommendations for users
 model UserRecommendation {
-  id                    String   @id @default(cuid())
-  recommendedToId       String   // User who will see this recommendation
-  recommendedUserId     String   // User being recommended
-  score                 Float    // AI recommendation score (0-100)
-  reason                String?  // Why this user is recommended
-  metadata              Json?    // Additional metadata (hashtags, mutual connections, etc.)
-  createdAt             DateTime @default(now())
-  expiresAt             DateTime // When this recommendation expires
-  
-  recommendedTo         User     @relation("RecommendedTo", fields: [recommendedToId], references: [id], onDelete: Cascade)
-  recommendedUser       User     @relation("RecommendedUser", fields: [recommendedUserId], references: [id], onDelete: Cascade)
-  
+  id                String   @id @default(cuid())
+  recommendedToId   String // User who will see this recommendation
+  recommendedUserId String // User being recommended
+  score             Float // AI recommendation score (0-100)
+  reason            String? // Why this user is recommended
+  metadata          Json? // Additional metadata (hashtags, mutual connections, etc.)
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime // When this recommendation expires
+
+  recommendedTo   User @relation("RecommendedTo", fields: [recommendedToId], references: [id], onDelete: Cascade)
+  recommendedUser User @relation("RecommendedUser", fields: [recommendedUserId], references: [id], onDelete: Cascade)
+
   @@unique([recommendedToId, recommendedUserId])
   @@index([recommendedToId, score(sort: Desc)])
   @@index([recommendedToId, expiresAt])

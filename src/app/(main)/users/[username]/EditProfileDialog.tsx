@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import LocationSelector from "@/components/LocationSelector";
 import { UserData } from "@/lib/types";
 import {
@@ -33,10 +34,39 @@ import { useForm, useWatch } from "react-hook-form";
 import Resizer from "react-image-file-resizer";
 import { useUpdateProfileMutation } from "./mutations";
 
+const INTEREST_TAGS = [
+  "Technology",
+  "Sports",
+  "Music",
+  "Art",
+  "Travel",
+  "Food",
+  "Fashion",
+  "Photography",
+  "Gaming",
+  "Fitness",
+  "Books",
+  "Movies",
+  "Science",
+  "Business",
+  "Education",
+  "Health",
+  "Nature",
+  "Pets",
+];
+
 interface EditProfileDialogProps {
   user: UserData;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+function getInitialLocationIds(user: UserData) {
+  // Now database stores IDs directly, so just return them
+  return {
+    countryCode: user.countryCode || null,
+    provinceCode: user.provinceCode || null,
+    districtCode: user.districtCode || null,
+  };
 }
 
 export default function EditProfileDialog({
@@ -44,26 +74,30 @@ export default function EditProfileDialog({
   open,
   onOpenChange,
 }: EditProfileDialogProps) {
+  const initialLocation = getInitialLocationIds(user);
   const form = useForm<UpdateUserProfileValues>({
     resolver: zodResolver(updateUserProfileSchema),
     defaultValues: {
       displayName: user.displayName,
       bio: user.bio || "",
-      provinceCode: user.provinceCode || null,
-      districtCode: user.districtCode || null,
-      wardCode: user.wardCode || null,
+      interests: user.interests || [],
+      countryCode: initialLocation.countryCode,
+      provinceCode: initialLocation.provinceCode,
+      districtCode: initialLocation.districtCode,
     },
   });
 
   // Reset form when dialog opens or user data changes
   useEffect(() => {
     if (open) {
+      const locationToReset = getInitialLocationIds(user);
       form.reset({
         displayName: user.displayName,
         bio: user.bio || "",
-        provinceCode: user.provinceCode || null,
-        districtCode: user.districtCode || null,
-        wardCode: user.wardCode || null,
+        interests: user.interests || [],
+        countryCode: locationToReset.countryCode,
+        provinceCode: locationToReset.provinceCode,
+        districtCode: locationToReset.districtCode,
       });
     }
   }, [open, user, form]);
@@ -73,6 +107,10 @@ export default function EditProfileDialog({
   const [croppedAvatar, setCroppedAvatar] = useState<Blob | null>(null);
 
   // Watch location fields - must be called at top level, not inside render callback
+  const countryCode = useWatch({
+    control: form.control,
+    name: "countryCode",
+  });
   const provinceCode = useWatch({
     control: form.control,
     name: "provinceCode",
@@ -81,11 +119,12 @@ export default function EditProfileDialog({
     control: form.control,
     name: "districtCode",
   });
-  const wardCode = useWatch({ control: form.control, name: "wardCode" });
 
   async function onSubmit(values: UpdateUserProfileValues) {
     const newAvatarFile = croppedAvatar
-      ? new File([croppedAvatar], `avatar_${user.id}.webp`)
+      ? new File([croppedAvatar], `avatar_${user.id}.webp`, {
+          type: "image/webp",
+        }) // <--- FIX HERE
       : undefined;
 
     mutation.mutate(
@@ -104,93 +143,134 @@ export default function EditProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="flex max-h-[90vh] flex-col">
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
         </DialogHeader>
-        <div className="space-y-1.5">
-          <Label>Avatar</Label>
-          <AvatarInput
-            src={
-              croppedAvatar
-                ? URL.createObjectURL(croppedAvatar)
-                : user.avatarUrl || avatarPlaceholder
-            }
-            onImageCropped={setCroppedAvatar}
-          />
+        <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+          <div className="space-y-1.5">
+            <Label>Avatar</Label>
+            <AvatarInput
+              src={
+                croppedAvatar
+                  ? URL.createObjectURL(croppedAvatar)
+                  : user.avatarUrl || avatarPlaceholder
+              }
+              onImageCropped={setCroppedAvatar}
+            />
+          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your display name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Tell us a little bit about yourself"
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="interests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interests</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-2">
+                        {INTEREST_TAGS.map((interest) => {
+                          const currentInterests = field.value || [];
+                          const isSelected =
+                            currentInterests.includes(interest);
+                          const isDisabled = false;
+                          return (
+                            <Badge
+                              key={interest}
+                              variant={isSelected ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => {
+                                if (isSelected) {
+                                  field.onChange(
+                                    currentInterests.filter(
+                                      (i) => i !== interest
+                                    )
+                                  );
+                                } else {
+                                  field.onChange([
+                                    ...currentInterests,
+                                    interest,
+                                  ]);
+                                }
+                              }}
+                            >
+                              {interest}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="countryCode"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <LocationSelector
+                        countryCode={countryCode}
+                        provinceCode={provinceCode}
+                        districtCode={districtCode}
+                        onCountryChange={(code) => {
+                          form.setValue("countryCode", code);
+                          form.setValue("provinceCode", null);
+                          form.setValue("districtCode", null);
+                        }}
+                        onProvinceChange={(code) => {
+                          form.setValue("provinceCode", code);
+                          form.setValue("districtCode", null);
+                        }}
+                        onDistrictChange={(code) => {
+                          form.setValue("districtCode", code);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="mt-4 border-t pt-4">
+                <LoadingButton type="submit" loading={mutation.isPending}>
+                  Save
+                </LoadingButton>
+              </DialogFooter>
+            </form>
+          </Form>
         </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Display name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your display name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bio</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Tell us a little bit about yourself"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="provinceCode"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <LocationSelector
-                      provinceCode={provinceCode}
-                      districtCode={districtCode}
-                      wardCode={wardCode}
-                      onProvinceChange={(code) => {
-                        form.setValue("provinceCode", code);
-                        form.setValue("districtCode", null);
-                        form.setValue("wardCode", null);
-                      }}
-                      onDistrictChange={(code) => {
-                        form.setValue("districtCode", code);
-                        // Don't clear wardCode here - it's set automatically when ward is selected
-                      }}
-                      onWardChange={(code) => {
-                        form.setValue("wardCode", code, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                          shouldTouch: true,
-                        });
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <LoadingButton type="submit" loading={mutation.isPending}>
-                Save
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
       </DialogContent>
     </Dialog>
   );

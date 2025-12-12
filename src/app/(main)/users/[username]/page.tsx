@@ -6,6 +6,7 @@ import Linkify from "@/components/Linkify";
 import TrendsSidebarClient from "@/components/TrendsSidebarClient";
 import UserAvatar from "@/components/UserAvatar";
 import UserLocation from "@/components/UserLocation";
+import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
 import { FollowerInfo, getUserDataSelect, UserData } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
@@ -17,7 +18,7 @@ import EditProfileButton from "./EditProfileButton";
 import UserPosts from "./UserPosts";
 
 interface PageProps {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }
 
 const getUser = cache(
@@ -39,8 +40,9 @@ const getUser = cache(
 );
 
 export async function generateMetadata({
-  params: { username },
+  params,
 }: PageProps): Promise<Metadata> {
+  const { username } = await params;
   const { user: loggedInUser } = await validateRequest();
 
   if (!loggedInUser) return {};
@@ -52,7 +54,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params: { username } }: PageProps) {
+export default async function Page({ params }: PageProps) {
+  const { username } = await params;
   const { user: loggedInUser } = await validateRequest();
 
   if (!loggedInUser) {
@@ -109,9 +112,9 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </div>
           <div>Member since {formatDate(user.createdAt, "MMM d, yyyy")}</div>
           <UserLocation
+            countryCode={user.countryCode}
             provinceCode={user.provinceCode}
             districtCode={user.districtCode}
-            wardCode={user.wardCode}
           />
           <div className="flex items-center gap-3">
             <span>
@@ -144,6 +147,23 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
               {user.bio}
             </div>
           </Linkify>
+        </>
+      )}
+      {user.interests && user.interests.length > 0 && (
+        <>
+          <hr />
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Interests
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {user.interests.map((interest) => (
+                <Badge key={interest} variant="secondary">
+                  {interest}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>

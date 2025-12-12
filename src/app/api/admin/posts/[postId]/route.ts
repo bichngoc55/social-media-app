@@ -4,9 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     await requireAdmin();
 
     const post = await prisma.post.findUnique({
@@ -55,9 +56,10 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     await requireAdmin();
 
     await prisma.post.delete({

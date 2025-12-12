@@ -7,7 +7,12 @@ import {
 } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "../ui/use-toast";
-import { deletePost, toggleBookmark, updatePostPrivacy } from "./actions";
+import {
+  deletePost,
+  toggleBookmark,
+  updatePostPrivacy,
+  updatePost,
+} from "./actions";
 
 export function useDeletePostMutation() {
   const { toast } = useToast();
@@ -86,4 +91,48 @@ export function useUpdatePostPrivacy() {
       queryClient.invalidateQueries({ queryKey: ["post-feed"] });
     },
   });
+}
+
+export function useEditPostMutation() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: updatePost,
+    onSuccess: async (updatedPost) => {
+      const queryFilter: QueryFilters = { queryKey: ["post-feed"] };
+
+      await queryClient.cancelQueries(queryFilter);
+
+      queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
+        queryFilter,
+        (oldData) => {
+          if (!oldData) return;
+
+          return {
+            pageParams: oldData.pageParams,
+            pages: oldData.pages.map((page) => ({
+              nextCursor: page.nextCursor,
+              posts: page.posts.map((p) =>
+                p.id === updatedPost.id ? updatedPost : p
+              ),
+            })),
+          };
+        }
+      );
+
+      toast({
+        description: "Post updated successfully",
+      });
+    },
+    onError(error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        description: "Failed to update post. Please try again.",
+      });
+    },
+  });
+
+  return mutation;
 }
