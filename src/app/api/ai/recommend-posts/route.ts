@@ -12,15 +12,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Query tasteEmbedding as raw string and parse it
     const userWithEmbedding = await prisma.$queryRaw<
       Array<{
         tasteEmbedding: string | null;
         interests: string[];
         dislikedEmbeddings: string[] | null;
+        dislikedTopics: string[] | null;
       }>
     >`
-      SELECT "tasteEmbedding"::text as "tasteEmbedding", interests, "dislikedPostTopicsEmbedding"::text[] as "dislikedEmbeddings"
+      SELECT "tasteEmbedding"::text as "tasteEmbedding", interests, "dislikedPostTopicsEmbedding"::text[] as "dislikedEmbeddings", "dislikedTopics"
       FROM users
       WHERE id = ${authUser.id}
     `;
@@ -37,9 +37,11 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Parse the vector string to array
-    const { tasteEmbedding: tasteStr, dislikedEmbeddings: dislikedStrArr } =
-      userWithEmbedding[0];
+    const {
+      tasteEmbedding: tasteStr,
+      dislikedEmbeddings: dislikedStrArr,
+      dislikedTopics: dislikedTopicsArr,
+    } = userWithEmbedding[0];
 
     // Parse Taste Embedding
     let tasteEmbedding: number[] | null = null;
@@ -117,6 +119,8 @@ export async function GET() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 20);
     const hasDislikes = dislikedStrArr && dislikedStrArr.length > 0;
     const dislikedVectorSql = hasDislikes ? dislikedStrArr : [];
+    const blockedTopicNames = dislikedTopicsArr || [];
+    const hasBlockedKeywords = blockedTopicNames.length > 0;
 
     // const recommendations = await prisma.$queryRaw<
     //   Array<{
@@ -211,8 +215,7 @@ export async function GET() {
           END as similarity
         FROM posts p
         WHERE 
-          -- REMOVED DATE FILTER so results don't disappear during presentation
-          p."userId" != ${user.id}
+           p."userId" != ${user.id}
           AND p."userId" != ALL(${blockedUserIds}::text[])
           AND p.id NOT IN (
             SELECT "postId" FROM likes WHERE "userId" = ${user.id}
@@ -224,13 +227,19 @@ export async function GET() {
             p.privacy = 'PUBLIC'
             OR (p.privacy = 'FOLLOWERS' AND p."userId" = ANY(${followingIds}::text[]))
           ) 
+            AND (
+             -- 1. Check String Block (Exact Match)
+             -- If post topics overlap (&&) with blocked names, exclude it.
+             ${!hasBlockedKeywords} 
+             OR NOT (p.topics && ${blockedTopicNames}::text[])
+          )
           AND (
              ${!hasDislikes}  
              OR NOT EXISTS (
                SELECT 1
                FROM unnest(p."topicEmbeddings") AS pt
               CROSS JOIN unnest(${dislikedVectorSql}::text[]::vector[]) AS dt               
-              WHERE (1 - (pt <=> dt)) > 0.75
+              WHERE (1 - (pt <=> dt)) > 0.95
              )
           )
       )
@@ -257,8 +266,7 @@ export async function GET() {
           -- 3. Popularity (15%) - Slight boost for liked posts
           (LOG(COUNT(l."userId") + 1) / 8.0) * 0.15
           
-          -- REMOVED: Time Decay. Now the score is constant.
-        ) as final_score
+         ) as final_score
       FROM post_topic_similarity pts
       LEFT JOIN likes l ON pts.id = l."postId"
       WHERE pts.similarity > 0

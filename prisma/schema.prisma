@@ -65,6 +65,7 @@ model User {
   // dislike
   dislikedPostTopicsEmbedding Unsupported("vector(768)")[] // Array of embeddings for disliked post topics
   blockedPosts                PostBlock[]
+  dislikedTopics              String[]                     @default([])
 
   @@map("users")
 }
