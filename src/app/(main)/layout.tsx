@@ -1,8 +1,12 @@
 import { validateRequest } from "@/auth";
+import prisma from "@/lib/prisma";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import SessionProvider from "./SessionProvider";
 import SocketProvider from "./SocketProvider";
+import { MusicPlayerProvider } from "./MusicPlayerContext";
+import GlobalMusicPlayer from "./GlobalMusicPlayer";
 
 // Lazy load components để giảm initial bundle
 const Navbar = dynamic(() => import("./Navbar"), {
@@ -11,6 +15,14 @@ const Navbar = dynamic(() => import("./Navbar"), {
 
 const MenuBar = dynamic(() => import("./MenuBar"), {
   ssr: true,
+});
+
+const checkOnboarding = cache(async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { interests: true, countryCode: true },
+  });
+  return user;
 });
 
 export default async function Layout({
@@ -22,17 +34,27 @@ export default async function Layout({
 
   if (!session.user) redirect("/login");
 
+  const user = await checkOnboarding(session.user.id);
+
+  // Check if user has completed onboarding (has exactly 3 interests and country)
+  if (!user?.interests || user.interests.length !== 3 || !user?.countryCode) {
+    redirect("/onboarding");
+  }
+
   return (
     <SessionProvider value={session}>
       <SocketProvider>
-        <div className="flex min-h-screen flex-col">
-          <Navbar />
-          <div className="mx-auto flex w-full max-w-7xl grow gap-5 p-5">
-            <MenuBar className="card-glass sticky top-[5.25rem] hidden h-fit flex-none space-y-3 rounded-2xl px-4 py-6 sm:block lg:px-6 xl:w-80" />
-            {children}
+        <MusicPlayerProvider>
+          <div className="flex min-h-screen flex-col pb-20">
+            <Navbar />
+            <div className="mx-auto flex w-full max-w-7xl grow gap-5 p-5">
+              <MenuBar className="card-glass sticky top-[5.25rem] hidden h-fit flex-none space-y-3 rounded-2xl px-4 py-6 sm:block lg:px-6 xl:w-80" />
+              {children}
+            </div>
+            <MenuBar className="card-glass sticky bottom-[80px] flex w-full justify-center gap-5 border-t p-4 sm:hidden" />
+            <GlobalMusicPlayer />
           </div>
-          <MenuBar className="card-glass sticky bottom-0 flex w-full justify-center gap-5 border-t p-4 sm:hidden" />
-        </div>
+        </MusicPlayerProvider>
       </SocketProvider>
     </SessionProvider>
   );

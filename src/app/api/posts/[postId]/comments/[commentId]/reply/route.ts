@@ -1,16 +1,16 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
+import { sendNotification } from "@/lib/socket";
 import { getCommentDataInclude } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  {
-    params: { postId, commentId },
-  }: { params: { postId: string; commentId: string } }
+  { params }: { params: Promise<{ postId: string; commentId: string }> }
 ) {
   try {
+    const { postId, commentId } = await params;
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
@@ -30,8 +30,16 @@ export async function POST(
       content: content || "",
     });
 
+    // 1. Fetch parent comment AND the post author in one query
     const parentComment = await prisma.comment.findUnique({
       where: { id: commentId },
+      include: {
+        post: {
+          select: {
+            userId: true, // Get the Post Author ID
+          },
+        },
+      },
     });
 
     if (!parentComment) {
@@ -53,16 +61,37 @@ export async function POST(
       },
       include: getCommentDataInclude(loggedInUser.id),
     });
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { userId: true },
+    });
+    if (!post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
 
-    if (parentComment.userId !== loggedInUser.id) {
-      await prisma.notification.create({
-        data: {
-          issuerId: loggedInUser.id,
-          recipientId: parentComment.userId,
-          postId,
-          type: "COMMENT",
-        },
-      });
+    console.log(
+      "creator id",
+      post?.userId,
+      "logged in user id",
+      loggedInUser.id
+    );
+
+    if (post?.userId !== loggedInUser.id) {
+      await sendNotification(post.userId, loggedInUser.id, "COMMENT", postId);
+    }
+
+    if (
+      parentComment.userId !== loggedInUser.id &&
+      parentComment.userId !== post?.userId
+    ) {
+      {
+        await sendNotification(
+          parentComment.userId,
+          loggedInUser.id,
+          "COMMENT",
+          postId
+        );
+      }
     }
 
     return NextResponse.json({

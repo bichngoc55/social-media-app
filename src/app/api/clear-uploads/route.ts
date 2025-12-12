@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { UTApi } from "uploadthing/server";
+import { deleteFile } from "@/lib/gcs";
 
 export async function GET(req: Request) {
   try {
@@ -29,10 +29,14 @@ export async function GET(req: Request) {
       },
     });
 
-    new UTApi().deleteFiles(
-      unusedMedia.map(
-        (m) => m.url.split(`/a/${process.env.UPLOADTHING_APP_ID}/`)[1]
-      )
+    await Promise.all(
+      unusedMedia.map((m) => {
+        const filePath = m.url.replace(
+          `https://storage.googleapis.com/${process.env.GCS_BUCKET}/`,
+          ""
+        );
+        return deleteFile(filePath).catch(console.error);
+      })
     );
 
     await prisma.media.deleteMany({

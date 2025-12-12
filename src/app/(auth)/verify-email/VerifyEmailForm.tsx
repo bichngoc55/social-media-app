@@ -46,7 +46,7 @@ export default function VerifyEmailForm() {
           description:
             "Email đã được xác thực thành công! Bạn đã được đăng nhập.",
         });
-        router.push("/");
+        router.push("/onboarding");
       } else {
         setError("otp", { message: result.error || "Có lỗi xảy ra" });
         toast({

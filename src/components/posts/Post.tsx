@@ -4,7 +4,15 @@ import { useSession } from "@/app/(main)/SessionProvider";
 import { PostDataLightweight } from "@/lib/types";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import { Media } from "@prisma/client";
-import { ChevronLeft, ChevronRight, MessageSquare, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  X,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -18,6 +26,15 @@ import LikeButton from "./LikeButton";
 import PostMoreButton from "./PostMoreButton";
 import UserTagging from "./UserTagging";
 import TagRequestBanner from "./TagRequestBanner";
+import MediaSlider from "./MediaSlider";
+import PostDetailModal from "./PostDetailModal";
+import { Button } from "../ui/button";
+import BlockPostButton from "./BlockPostButton";
+const privacyBadgeColors = {
+  PUBLIC: "bg-green-100 text-green-800",
+  FOLLOWERS: "bg-blue-100 text-blue-800",
+  DRAFT: "bg-gray-100 text-gray-800",
+};
 
 interface PostProps {
   post: PostDataLightweight;
@@ -28,6 +45,9 @@ export default function Post({ post }: PostProps) {
 
   const [showComments, setShowComments] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isHarmfulContentRevealed, setIsHarmfulContentRevealed] =
+    useState(false);
 
   return (
     <article className="group/post card-glass post-hover-lift space-y-3 rounded-2xl p-6 fade-in">
@@ -61,7 +81,7 @@ export default function Post({ post }: PostProps) {
               {(post as any).post_tags &&
                 (post as any).post_tags.length > 0 && (
                   <span className="text-sm text-muted-foreground">
-                    {" đang cùng với "}
+                    {" is with "}
                     {(
                       (post as any).post_tags as Array<{
                         users: { displayName: string };
@@ -71,6 +91,11 @@ export default function Post({ post }: PostProps) {
                       .join(", ")}
                   </span>
                 )}
+              <span
+                className={`${privacyBadgeColors[post.privacy] || "bg-gray-100 text-gray-800"} rounded-full px-2 py-1 text-xs font-semibold`}
+              >
+                {post.privacy.replace(/_/g, " ")}
+              </span>
             </div>
             <Link
               href={`/posts/${post.id}`}
@@ -88,17 +113,69 @@ export default function Post({ post }: PostProps) {
           />
         )}
       </div>
-      {post.content && (
-        <Linkify>
-          <div className="whitespace-pre-line break-words">{post.content}</div>
-        </Linkify>
-      )}
-      {!!post.attachments.length && (
-        <MediaPreviews
-          attachments={post.attachments}
-          layout={(post as any).mediaLayout || null}
-        />
-      )}
+      <div onClick={() => setShowDetailModal(true)} className="cursor-pointer">
+        {post.harmful &&
+        !isHarmfulContentRevealed &&
+        user.id !== post.userId ? (
+          <div
+            className="relative flex min-h-[200px] flex-col items-center justify-center space-y-4 rounded-xl border-2 border-destructive/20 bg-muted/50 p-8 backdrop-blur-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsHarmfulContentRevealed(true);
+            }}
+          >
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="rounded-full bg-destructive/10 p-4">
+                <EyeOff className="h-8 w-8 text-destructive" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Sensitive Content</h3>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  This post may contain sensitive or potentially harmful
+                  content. Click to reveal if you wish to continue.
+                </p>
+                {post.harmfulTypes && post.harmfulTypes.length > 0 && (
+                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+                    {post.harmfulTypes.map((type: string) => (
+                      <span
+                        key={type}
+                        className="rounded-full bg-destructive/20 px-2 py-1 text-xs text-destructive"
+                      >
+                        {type.replace(/_/g, " ")}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsHarmfulContentRevealed(true);
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Show Content
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {post.content && (
+              <Linkify>
+                <div className="whitespace-pre-line break-words">
+                  {post.content}
+                </div>
+              </Linkify>
+            )}
+            {!!post.attachments.length && (
+              <MediaSlider attachments={post.attachments} />
+            )}
+          </>
+        )}
+      </div>
       <hr className="text-muted-foreground" />
       <div className="flex justify-between gap-5">
         <div className="flex items-center gap-5">
@@ -115,6 +192,8 @@ export default function Post({ post }: PostProps) {
           />
         </div>
         <div className="flex items-center gap-2">
+          <BlockPostButton postId={post.id} />
+
           <BookmarkButton
             postId={post.id}
             initialState={{
@@ -126,101 +205,12 @@ export default function Post({ post }: PostProps) {
         </div>
       </div>
       {showComments && <Comments post={post} />}
+      <PostDetailModal
+        post={post}
+        open={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+      />
     </article>
-  );
-}
-
-interface MediaPreviewsProps {
-  attachments: Media[];
-  layout?: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME" | null;
-}
-
-function MediaPreviews({ attachments, layout }: MediaPreviewsProps) {
-  const imageAttachments = attachments.filter((m) => m.type === "IMAGE");
-  const videoAttachments = attachments.filter((m) => m.type === "VIDEO");
-  const MAX_DISPLAY = 6;
-  const remainingCount = imageAttachments.length - MAX_DISPLAY;
-
-  // Default layout nếu không có
-  const effectiveLayout = layout || "GRID";
-
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
-    null
-  );
-
-  const getLayoutClasses = () => {
-    switch (effectiveLayout) {
-      case "GRID":
-        if (imageAttachments.length === 1) return "flex flex-col gap-3";
-        if (imageAttachments.length === 2) return "grid grid-cols-2 gap-3";
-        if (imageAttachments.length === 3) return "grid grid-cols-3 gap-3";
-        if (imageAttachments.length === 4) return "grid grid-cols-2 gap-3";
-        return "grid grid-cols-3 gap-3";
-      case "CAROUSEL":
-        return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
-      case "COLUMNS":
-        // Mỗi ảnh là một cột riêng biệt, cho phép scroll ngang
-        return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
-      case "FRAME":
-        // Container sẽ có border và background, bao tất cả ảnh
-        if (imageAttachments.length === 1) return "flex flex-col gap-3";
-        if (imageAttachments.length === 2) return "grid grid-cols-2 gap-3";
-        if (imageAttachments.length === 3) return "grid grid-cols-3 gap-3";
-        if (imageAttachments.length === 4) return "grid grid-cols-2 gap-3";
-        return "grid grid-cols-3 gap-3";
-      default:
-        return "grid grid-cols-3 gap-3";
-    }
-  };
-
-  // Chỉ hiển thị tối đa 6 ảnh, ảnh cuối hiện "+X" nếu có
-  const displayImages = imageAttachments.slice(0, MAX_DISPLAY);
-
-  return (
-    <div className="space-y-3">
-      {/* Images */}
-      {imageAttachments.length > 0 && (
-        <div
-          className={cn(
-            getLayoutClasses(),
-            effectiveLayout === "FRAME" &&
-              "rounded-2xl border-4 border-primary/20 bg-primary/5 p-4"
-          )}
-        >
-          {displayImages.map((m, index) => {
-            const isLast = index === displayImages.length - 1;
-            const showOverlay = remainingCount > 0 && isLast;
-
-            return (
-              <MediaPreview
-                key={m.id}
-                media={m}
-                layout={effectiveLayout}
-                showOverlay={showOverlay}
-                overlayCount={remainingCount}
-                onClick={() => setSelectedImageIndex(index)}
-              />
-            );
-          })}
-        </div>
-      )}
-      {/* Videos */}
-      {videoAttachments.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {videoAttachments.map((m) => (
-            <MediaPreview key={m.id} media={m} layout={effectiveLayout} />
-          ))}
-        </div>
-      )}
-      {/* Image Viewer Modal */}
-      {selectedImageIndex !== null && (
-        <ImageViewer
-          images={imageAttachments}
-          initialIndex={selectedImageIndex}
-          onClose={() => setSelectedImageIndex(null)}
-        />
-      )}
-    </div>
   );
 }
 

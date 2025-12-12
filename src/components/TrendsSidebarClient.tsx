@@ -17,7 +17,8 @@ interface User {
   bio: string | null;
   provinceCode: string | null;
   districtCode: string | null;
-  wardCode: string | null;
+  countryCode: string | null;
+  interests: string[];
   followers: Array<{ followerId: string }>;
   blockedByUsers: Array<{ id: string }>;
   _count?: {

@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { sendNotification, processMentions } from "@/lib/socket";
 import { getCommentDataInclude } from "@/lib/types";
 import { createCommentSchema } from "@/lib/validation";
+import { updateUserTasteEmbedding } from "@/lib/recommendation";
 
 export async function submitComment({
   postId,
@@ -56,6 +57,9 @@ export async function submitComment({
   if (post.user.id !== user.id && !isPostAuthorMentioned) {
     await sendNotification(post.user.id, user.id, "COMMENT", post.id);
   }
+
+  // Update user taste based on post topics (non-blocking)
+  updateUserTasteEmbedding(user.id).catch(() => {});
   return JSON.parse(JSON.stringify(newComment));
 }
 

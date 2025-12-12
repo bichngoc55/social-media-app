@@ -1,6 +1,5 @@
 import { useToast } from "@/components/ui/use-toast";
 import { PostsPage } from "@/lib/types";
-import { useUploadThing } from "@/lib/uploadthing";
 import { UpdateUserProfileValues } from "@/lib/validation";
 import {
   InfiniteData,
@@ -11,14 +10,59 @@ import {
 import { useRouter } from "next/navigation";
 import { updateUserProfile } from "./actions";
 
+async function uploadAvatar(file: File): Promise<string> {
+  if (!file) {
+    throw new Error("No file selected");
+  }
+  console.log("Uploading file:", file);
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only images are allowed");
+  }
+  if (file.size > 512 * 1024) {
+    throw new Error("File too large. Max 512KB");
+  }
+
+  const signedUrlResponse = await fetch("/api/upload/avatar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contentType: file.type,
+      fileSize: file.size,
+    }),
+  });
+
+  if (!signedUrlResponse.ok) {
+    const error = await signedUrlResponse.json();
+    throw new Error(error.error || "Failed to get upload URL");
+  }
+
+  const { uploadUrl, fileName } = await signedUrlResponse.json();
+
+  await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+  });
+
+  const completeResponse = await fetch("/api/upload/avatar/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName }),
+  });
+
+  if (!completeResponse.ok) {
+    throw new Error("Failed to complete upload");
+  }
+
+  const { avatarUrl } = await completeResponse.json();
+  return avatarUrl;
+}
+
 export function useUpdateProfileMutation() {
   const { toast } = useToast();
 
   const router = useRouter();
 
   const queryClient = useQueryClient();
-
-  const { startUpload: startAvatarUpload } = useUploadThing("avatar");
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -30,12 +74,10 @@ export function useUpdateProfileMutation() {
     }) => {
       return Promise.all([
         updateUserProfile(values),
-        avatar && startAvatarUpload([avatar]),
+        avatar ? uploadAvatar(avatar) : Promise.resolve(null),
       ]);
     },
-    onSuccess: async ([updatedUser, uploadResult]) => {
-      const newAvatarUrl = uploadResult?.[0].serverData.avatarUrl;
-
+    onSuccess: async ([updatedUser, newAvatarUrl]) => {
       const queryFilter: QueryFilters = {
         queryKey: ["post-feed"],
       };

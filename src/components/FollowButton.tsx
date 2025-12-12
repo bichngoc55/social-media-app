@@ -43,6 +43,10 @@ export default function FollowButton({
 
       return { previousState };
     },
+    onSuccess: () => {
+      // Invalidate following feed so it updates immediately
+      queryClient.invalidateQueries({ queryKey: ["post-feed", "following"] });
+    },
     onError(error, variables, context) {
       queryClient.setQueryData(queryKey, context?.previousState);
       console.error(error);

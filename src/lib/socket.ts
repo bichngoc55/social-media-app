@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 export async function sendNotification(
   recipientId: string,
   issuerId: string,
-  type: "LIKE" | "FOLLOW" | "COMMENT" | "MENTION" | "MESSAGE",
+  type: "LIKE" | "FOLLOW" | "COMMENT" | "MENTION" | "MESSAGE" | "TAG_REQUEST",
   postId?: string
 ) {
   try {

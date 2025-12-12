@@ -1,13 +1,15 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
+import { updateUserTasteEmbedding } from "@/lib/recommendation";
 import { CommentsPage, getCommentDataInclude } from "@/lib/types";
 import { NextRequest } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params: { postId } }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params;
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
 
     const pageSize = 5;
@@ -32,6 +34,7 @@ export async function GET(
       comments: comments.length > pageSize ? comments.slice(1) : comments,
       previousCursor,
     };
+    updateUserTasteEmbedding(user.id).catch(() => {});
 
     return Response.json(data);
   } catch (error) {

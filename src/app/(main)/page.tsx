@@ -1,30 +1,8 @@
-import dynamic from "next/dynamic";
+import PostEditor from "@/components/posts/editor/PostEditor";
+import TrendsSidebarClient from "@/components/TrendsSidebarClient";
+import ForYouFeed from "./ForYouFeed";
+import FollowingFeed from "./FollowingFeed";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Lazy load heavy components để giảm initial bundle size
-const PostEditor = dynamic(
-  () => import("@/components/posts/editor/PostEditor"),
-  {
-    ssr: false,
-    loading: () => <div className="h-32 animate-pulse rounded-2xl bg-muted" />,
-  }
-);
-
-const TrendsSidebar = dynamic(
-  () => import("@/components/TrendsSidebarClient"),
-  {
-    ssr: false,
-  }
-);
-
-// Lazy load feeds để giảm bundle size
-const ForYouFeed = dynamic(() => import("./ForYouFeed"), {
-  loading: () => <div className="space-y-5" />,
-});
-
-const FollowingFeed = dynamic(() => import("./FollowingFeed"), {
-  loading: () => <div className="space-y-5" />,
-});
 
 export default function Home() {
   return (
@@ -44,7 +22,7 @@ export default function Home() {
           </TabsContent>
         </Tabs>
       </div>
-      <TrendsSidebar />
+      <TrendsSidebarClient />
     </main>
   );
 }
