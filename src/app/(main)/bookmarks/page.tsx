@@ -150,15 +150,15 @@ export default function BookmarksPage() {
 
               <div className="space-y-4">
                 <h2 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-4xl font-bold text-transparent">
-                  Chưa có bookmark nào
+                  No bookmarks yet
                 </h2>
                 <p className="mx-auto max-w-lg text-lg leading-relaxed text-muted-foreground">
-                  Lưu bài đăng yêu thích để xem lại sau. Chỉ cần click vào icon
-                  bookmark trên bất kỳ bài đăng nào!
+                  Save your favorite posts to view them later. Just click the
+                  bookmark icon on any post!
                 </p>
               </div>
 
-              <div className="flex flex-col justify-center gap-4 sm:flex-row">
+              {/* <div className="flex flex-col justify-center gap-4 sm:flex-row">
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
@@ -170,7 +170,7 @@ export default function BookmarksPage() {
                   <User className="mr-2 h-4 w-4" />
                   Theo dõi người dùng
                 </Button>
-              </div>
+              </div> */}
             </div>
           </div>
 
