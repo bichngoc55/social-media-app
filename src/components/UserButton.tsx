@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import UserAvatar from "./UserAvatar";
+import { SEEN_POSTS_KEY } from "@/app/(main)/ForYouFeed";
 
 interface UserButtonProps {
   className?: string;
@@ -91,6 +92,9 @@ export default function UserButton({ className }: UserButtonProps) {
         <DropdownMenuItem
           onClick={() => {
             queryClient.clear();
+            localStorage.removeItem(SEEN_POSTS_KEY);
+            console.log("localStorage cleared", localStorage.length);
+
             logout();
           }}
         >

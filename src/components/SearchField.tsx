@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon, X, Loader2, Clock, History } from "lucide-react";
+import { SearchIcon, X, Loader2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Input } from "./ui/input";
@@ -119,6 +119,41 @@ export default function SearchField() {
 
       abortControllerRef.current = new AbortController();
       setIsLoading(true);
+      try {
+        // --- MISSING PART ADDED BELOW ---
+
+        // Replace '/api/search' with your actual endpoint
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(debouncedQuery)}`,
+          {
+            signal: abortControllerRef.current.signal,
+          }
+        );
+
+        if (!response.ok) throw new Error("Search failed");
+
+        const data = await response.json();
+
+        // Update State
+        setSuggestions(data); // Assuming data is Suggestion[]
+        setIsOpen(data.length > 0);
+        setShowHistory(false);
+
+        // Save to Cache
+        searchCache.set(debouncedQuery, {
+          data: data,
+          timestamp: Date.now(),
+        });
+      } catch (error: any) {
+        if (error.name === "AbortError") {
+          console.log("Query cancelled");
+        } else {
+          console.error("Search error:", error);
+          setSuggestions([]); // Optional: clear suggestions on error
+        }
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchSuggestions();
