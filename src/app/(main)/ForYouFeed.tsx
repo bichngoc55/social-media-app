@@ -8,8 +8,25 @@ import kyInstance from "@/lib/ky";
 import { PostsPage } from "@/lib/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+export const SEEN_POSTS_KEY = "seen_posts_v1";
 
 export default function ForYouFeed() {
+  const [initialCursor, setInitialCursor] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(SEEN_POSTS_KEY);
+      console.log("Loaded initial cursor from localStorage:", saved);
+      if (saved) {
+        setInitialCursor(saved);
+      }
+      setIsReady(true);
+    }
+  }, []);
+
   const {
     data,
     fetchNextPage,
@@ -19,67 +36,65 @@ export default function ForYouFeed() {
     status,
   } = useInfiniteQuery({
     queryKey: ["post-feed", "for-you"],
+    // Only run query when we have checked localStorage
+    enabled: isReady,
     queryFn: async ({ pageParam }) => {
-      try {
-        // Tăng timeout lên 60 giây vì AI API cần thời gian xử lý
-        const response = await kyInstance.get("/api/posts/for-you", {
-          ...(pageParam ? { searchParams: { cursor: pageParam } } : {}),
-          timeout: 60000, // 60 seconds
-        });
-        const data = await response.json<PostsPage>();
+      const cursorToSend = pageParam ?? initialCursor;
 
-        return data;
-      } catch (error) {
-        console.error("[ForYouFeed] Error fetching posts:", error);
-        throw error;
-      }
+      const response = await kyInstance.get("/api/posts/for-you", {
+        searchParams: cursorToSend ? { cursor: cursorToSend } : {},
+        timeout: 60000,
+      });
+      return response.json<PostsPage>();
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    gcTime: 0, // Clear cache immediately để debug
   });
+
+  useEffect(() => {
+    if (data?.pages) {
+      const lastPage = data.pages[data.pages.length - 1];
+      if (lastPage.nextCursor) {
+        localStorage.setItem(SEEN_POSTS_KEY, lastPage.nextCursor);
+      }
+    }
+  }, [data]);
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  if (status === "pending") {
+  if (!isReady || status === "pending") {
     return <PostsLoadingSkeleton />;
   }
 
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
-      <p className="text-center text-muted-foreground">
-        No one has posted anything yet.
-      </p>
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-center text-muted-foreground">
+          No new posts found right now.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            // Clear history to restart
+            localStorage.removeItem(SEEN_POSTS_KEY);
+            window.location.reload();
+          }}
+        >
+          Reset Feed History
+        </Button>
+      </div>
     );
   }
 
   if (status === "error") {
     return (
       <div className="space-y-2 text-center">
-        <p className="text-destructive">
-          An error occurred while loading posts.
-        </p>
-        <Button
-          onClick={() => window.location.reload()}
-          variant="outline"
-          size="sm"
-        >
+        <p className="text-destructive">An error occurred.</p>
+        <Button onClick={() => window.location.reload()} variant="outline">
           Retry
         </Button>
       </div>
     );
-  }
-
-  // Nếu có posts nhưng không render được, log để debug
-  if (status === "success" && posts.length > 0) {
-    const postsWithoutUser = posts.filter((p) => !p.user);
-
-    if (postsWithoutUser.length > 0) {
-      console.warn(
-        `[ForYouFeed] ${postsWithoutUser.length} posts will be skipped (no user data):`,
-        postsWithoutUser.map((p) => p.id).slice(0, 5)
-      );
-    }
   }
 
   return (
@@ -92,42 +107,13 @@ export default function ForYouFeed() {
           }
         }}
       >
-        {posts.map((post) => {
-          if (!post || !post.id) {
-            console.warn("[ForYouFeed] Invalid post:", post);
-            return null;
-          }
-          if (!post.user) {
-            console.warn("[ForYouFeed] Post missing user:", post.id);
-            return null;
-          }
-          return <Post key={post.id} post={post} />;
-        })}
+        {posts.map((post) => (
+          <Post key={post.id} post={post} />
+        ))}
         {isFetchingNextPage && (
           <Loader2 className="mx-auto my-3 animate-spin" />
         )}
       </InfiniteScrollContainer>
-
-      {/* See more button - hiển thị khi có nhiều hơn 10 posts và không đang fetch */}
-      {hasNextPage && !isFetchingNextPage && posts.length >= 10 && (
-        <div className="flex justify-center pt-4">
-          <Button
-            onClick={() => fetchNextPage()}
-            variant="outline"
-            disabled={isFetching || isFetchingNextPage}
-            className="w-full sm:w-auto"
-          >
-            {isFetching || isFetchingNextPage ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              "See more"
-            )}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

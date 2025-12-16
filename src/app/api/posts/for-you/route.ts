@@ -19,14 +19,19 @@ export async function GET(req: NextRequest) {
     }
     console.log("[FOR-YOU] User:", user.id);
 
-    const excludePostIds: string[] = cursor
-      ? cursor.split(",").filter(Boolean)
-      : [];
-
+    const excludePostIdsString = cursor || "";
+    const excludePostIds = excludePostIdsString.split(",").filter(Boolean);
     const baseUrl =
       process.env.NEXT_PUBLIC_BASE_URL ||
       `http://localhost:${process.env.PORT || 3000}`;
-    const response = (await fetch(`${baseUrl}/api/ai/recommend-posts`, {
+
+    // 2. Pass 'excludeIds' to the AI service
+    const aiUrl = new URL(`${baseUrl}/api/ai/recommend-posts`);
+    if (excludePostIdsString) {
+      aiUrl.searchParams.set("excludeIds", excludePostIdsString);
+    }
+
+    const response = (await fetch(aiUrl.toString(), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -51,17 +56,22 @@ export async function GET(req: NextRequest) {
       .filter((post) => !excludePostIds.includes(post.id) && post.user)
       .slice(0, pageSize);
 
-    const allExcludedIds = [
-      ...excludePostIds,
-      ...filteredPosts.map((p) => p.id),
-    ];
+    // const allExcludedIds = [
+    //   ...excludePostIds,
+    //   ...filteredPosts.map((p) => p.id),
+    // ];
 
+    const newPostIds = filteredPosts.map((p) => p.id);
+    const allSeenIds = [...excludePostIds, ...newPostIds];
+    const trimmedSeenIds = allSeenIds.slice(-100);
     const nextCursor =
-      response.posts.length > pageSize ? allExcludedIds.join(",") : null;
+      response.posts.length > 0 ? trimmedSeenIds.join(",") : null;
+    // const nextCursor =
+    //   response.posts.length > pageSize ? allExcludedIds.join(",") : null;
 
     const data: PostsPage = {
       posts: filteredPosts,
-      nextCursor: filteredPosts.length > 0 ? nextCursor : null,
+      nextCursor: nextCursor,
     };
 
     console.log("[FOR-YOU] Returning", data.posts.length, "posts");

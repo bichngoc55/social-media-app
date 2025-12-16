@@ -13,27 +13,32 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { id: authUser.id },
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Query tasteEmbedding as raw string and parse it
-    const userWithEmbedding = await prisma.$queryRaw<
-      Array<{ tasteEmbedding: string | null }>
+    const currentUserRaw = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        tasteEmbedding: string | null;
+        interests: string[];
+        provinceCode: string | null;
+        generalEmotion: string | null;
+      }>
     >`
-      SELECT "tasteEmbedding"::text as "tasteEmbedding"
+      SELECT 
+        id, 
+        "tasteEmbedding"::text as "tasteEmbedding", 
+        interests, 
+        "provinceCode", 
+        "generalEmotion"
       FROM users
       WHERE id = ${authUser.id}
     `;
 
+    if (!currentUserRaw || currentUserRaw.length === 0) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    const currentUser = currentUserRaw[0];
     let tasteEmbedding: number[] | null = null;
-    if (userWithEmbedding[0]?.tasteEmbedding) {
-      const vectorStr = userWithEmbedding[0].tasteEmbedding;
-      tasteEmbedding = vectorStr
+    if (currentUser.tasteEmbedding) {
+      tasteEmbedding = currentUser.tasteEmbedding
         .slice(1, -1)
         .split(",")
         .map((v) => parseFloat(v));
@@ -60,7 +65,8 @@ export async function GET() {
     const userTasteStr = `[${tasteEmbedding.join(",")}]`;
     const userProvince = currentUser.provinceCode || "";
     const userEmotion = currentUser.generalEmotion || "NEUTRAL";
-
+    const userInterestsSql =
+      currentUser.interests.length > 0 ? currentUser.interests : [];
     const recommendations = await prisma.$queryRaw<
       Array<{
         id: string;
@@ -69,6 +75,7 @@ export async function GET() {
         avatarUrl: string | null;
         generalEmotion: string | null;
         mutual_friends: bigint;
+        shared_interests_count: bigint; // New field for debugging/metadata
         similarity: number;
         final_score: number;
       }>
@@ -79,49 +86,70 @@ export async function GET() {
         u."displayName",
         u."avatarUrl",
         u."generalEmotion",
+        
+        -- 1. Mutual Friends Count
         (
           SELECT COUNT(*)
           FROM follows f1
           JOIN follows f2 ON f1."followingId" = f2."followingId"
-          WHERE f1."followerId" = ${currentUser.id}
+          WHERE f1."followerId" = ${authUser.id}
             AND f2."followerId" = u.id
         ) as mutual_friends,
-        -- Exact Cosine Similarity (1 - distance)
-        (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
+
+        -- 2. Shared Interests Count (Intersection)
         (
-          -- 1. Behavioral Match (45%)
-          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.45 +
+           SELECT COUNT(*)
+           FROM unnest(u.interests) AS i
+           WHERE i = ANY(${userInterestsSql}::text[])
+        ) as shared_interests_count,
+
+        -- 3. Embedding Similarity
+        (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
+
+        -- 4. FINAL WEIGHTED SCORE
+        (
+          -- A. Behavioral Match (40%) - Reduced to make room for interests
+          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.40 +
           
-          -- 2. Social Proof (25%) - Capped at 15 mutual friends
-          -- Formula: LEAST(count, 15) / 15.0 * 0.25
+          -- B. Interest Match (20%) - NEW
+          -- Formula: Min(shared_count, 4) / 4.0 * 0.20
+          -- If they share 4 or more interests, they get max points for this section.
+          (
+            LEAST(
+              (SELECT COUNT(*) FROM unnest(u.interests) AS i WHERE i = ANY(${userInterestsSql}::text[])), 
+              4
+            )::float / 4.0
+          ) * 0.20 +
+
+          -- C. Social Proof (20%) - Capped at 10 mutual friends
           (LEAST((
             SELECT COUNT(*)
             FROM follows f1
             JOIN follows f2 ON f1."followingId" = f2."followingId"
-            WHERE f1."followerId" = ${currentUser.id}
+            WHERE f1."followerId" = ${authUser.id}
               AND f2."followerId" = u.id
-          ), 15)::float / 15.0) * 0.25 +
+          ), 10)::float / 10.0) * 0.20 +
 
-          -- 3. Emotion Compatibility (15%)
+          -- D. Emotion Compatibility (10%)
           (CASE 
             WHEN u."generalEmotion"::text = ${userEmotion} THEN 1.0
             WHEN (u."generalEmotion"::text = 'POSITIVE' AND ${userEmotion} = 'NEUTRAL') 
               OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
-            WHEN u."generalEmotion" IS NULL THEN 0.2
             ELSE 0.0
-          END) * 0.15 +
+          END) * 0.10 +
 
-          -- 4. Location (15%)
-          (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.15 
+          -- E. Location (10%)
+          (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.10 
         ) as final_score
+
       FROM users u
       WHERE u."tasteEmbedding" IS NOT NULL
-        AND u.id != ${currentUser.id}
+        AND u.id != ${authUser.id}
         -- Filter out already followed users
-        AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${currentUser.id})
+        AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${authUser.id})
         -- Filter out blocked interactions
-        AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${currentUser.id})
-        AND u.id NOT IN (SELECT "blockerId" FROM user_blocks WHERE "blockedId" = ${currentUser.id})
+        AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${authUser.id})
+        AND u.id NOT IN (SELECT "blockerId" FROM user_blocks WHERE "blockedId" = ${authUser.id})
       ORDER BY final_score DESC
       LIMIT 20
     `;
@@ -162,17 +190,18 @@ export async function GET() {
       .map((rec) => userMap.get(rec.id))
       .filter(Boolean);
 
-    const metadata = recommendations.map((rec) => ({
-      userId: rec.id,
-      mutualFriends: Number(rec.mutual_friends),
-      similarity: Number(rec.similarity.toFixed(3)),
-      finalScore: Number(rec.final_score.toFixed(3)),
-    }));
+    // const metadata = recommendations.map((rec) => ({
+    //   userId: rec.id,
+    //   mutualFriends: Number(rec.mutual_friends),
+    //   sharedInterests: Number(rec.shared_interests_count),
+    //   similarity: Number(rec.similarity.toFixed(3)),
+    //   finalScore: Number(rec.final_score.toFixed(3)),
+    // }));
 
     console.log("[RECOMMEND-FRIENDS] Returning", sortedUsers.length, "users");
     return NextResponse.json({
       users: sortedUsers,
-      metadata,
+      // metadata,
     });
   } catch (error) {
     console.error("[RECOMMEND-FRIENDS] Error:", error);

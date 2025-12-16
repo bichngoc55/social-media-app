@@ -36,29 +36,7 @@ interface UsersResponse {
 export default function SearchResults({ query }: SearchResultsProps) {
   const [activeTab, setActiveTab] = useState<"all" | "posts" | "users">("all");
 
-  // Query for "All" tab
-  const allQuery = useQuery({
-    queryKey: ["search", "all", query],
-    queryFn: async () => {
-      const [postsRes, usersRes] = await Promise.all([
-        kyInstance
-          .get("/api/search/semantic", {
-            searchParams: { q: query, limit: "5" },
-          })
-          .json<SemanticSearchResponse>(),
-        kyInstance
-          .get("/api/search/users", { searchParams: { q: query } })
-          .json<UsersResponse>(),
-      ]);
-      return {
-        posts: postsRes.posts || [],
-        users: usersRes.users || [],
-        emotionAnalysis: postsRes.emotionAnalysis,
-      };
-    },
-    enabled: activeTab === "all",
-  });
-
+  // 1. Posts Query (Used for 'All' and 'Posts' tabs)
   const postsQuery = useInfiniteQuery({
     queryKey: ["search", "posts", query],
     queryFn: ({ pageParam }) =>
@@ -73,10 +51,12 @@ export default function SearchResults({ query }: SearchResultsProps) {
         .json<SemanticSearchResponse>(),
     initialPageParam: 0 as number | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: activeTab === "posts",
+    enabled: !!query,
     gcTime: 0,
+    staleTime: 0,
   });
 
+  // 2. Users Query (Used for 'All' and 'Users' tabs)
   const usersQuery = useQuery({
     queryKey: ["search", "users", query],
     queryFn: () =>
@@ -85,36 +65,21 @@ export default function SearchResults({ query }: SearchResultsProps) {
           searchParams: { q: query },
         })
         .json<UsersResponse>(),
-    enabled: activeTab === "users",
+    enabled: !!query,
   });
 
-  const allPosts = allQuery.data?.posts || [];
-  const allUsers = allQuery.data?.users || [];
+  // 3. Derived Data
   const posts =
     postsQuery.data?.pages.flatMap((page) => page.posts || []) || [];
   const users = usersQuery.data?.users || [];
 
-  const emotionAnalysis =
-    allQuery.data?.emotionAnalysis ||
-    postsQuery.data?.pages[0]?.emotionAnalysis;
+  // Get emotion analysis from the first page of results
+  const emotionAnalysis = postsQuery.data?.pages[0]?.emotionAnalysis;
 
-  const isLoading =
-    (activeTab === "all" && allQuery.isLoading) ||
-    (activeTab === "posts" && postsQuery.isLoading) ||
-    (activeTab === "users" && usersQuery.isLoading);
-
-  if (isLoading) return <PostsLoadingSkeleton />;
-
-  if (
-    (activeTab === "all" && allQuery.isError) ||
-    (activeTab === "posts" && postsQuery.isError)
-  ) {
-    return (
-      <p className="text-center text-destructive">
-        An error occurred while loading results.
-      </p>
-    );
-  }
+  const isPostsLoading = postsQuery.isLoading;
+  const isUsersLoading = usersQuery.isLoading;
+  const isPostsError = postsQuery.isError;
+  const isUsersError = usersQuery.isError;
 
   return (
     <div className="space-y-5">
@@ -151,7 +116,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Posts {activeTab === "posts" && `(${posts.length})`}
+          Posts {posts.length > 0 && `(${posts.length})`}
         </button>
         <button
           onClick={() => setActiveTab("users")}
@@ -165,7 +130,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
         </button>
       </div>
 
-      {/* "All" Tab View */}
+      {/* --- TAB VIEW: ALL --- */}
       {activeTab === "all" && (
         <div className="space-y-8">
           <div>
@@ -178,14 +143,21 @@ export default function SearchResults({ query }: SearchResultsProps) {
                 See all
               </button>
             </div>
-            {allPosts.length === 0 ? (
+
+            {isPostsLoading ? (
+              <PostsLoadingSkeleton />
+            ) : isPostsError ? (
+              <p className="text-center text-destructive">
+                Error loading posts.
+              </p>
+            ) : posts.length === 0 ? (
               <p className="text-center text-muted-foreground">
                 No posts found.
               </p>
             ) : (
               <div className="space-y-5">
-                {/* REMOVED .slice(0, 5) - now shows whatever 'limit' returned */}
-                {allPosts.map((post) => (
+                {/* Limit to first 3 posts for the summary view */}
+                {posts.slice(0, 3).map((post) => (
                   <Post key={post.id} post={post} />
                 ))}
               </div>
@@ -194,13 +166,17 @@ export default function SearchResults({ query }: SearchResultsProps) {
 
           <div>
             <h2 className="mb-3 text-lg font-semibold">Users</h2>
-            {allUsers.length === 0 ? (
+            {isUsersLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="animate-spin" />
+              </div>
+            ) : users.length === 0 ? (
               <p className="text-center text-muted-foreground">
                 No users found.
               </p>
             ) : (
               <div className="space-y-3">
-                {allUsers.slice(0, 5).map((user) => (
+                {users.slice(0, 3).map((user) => (
                   <Link
                     key={user.id}
                     href={`/users/${user.username}`}
@@ -223,14 +199,22 @@ export default function SearchResults({ query }: SearchResultsProps) {
         </div>
       )}
 
-      {/* "Posts" Tab View (Infinite Scroll) */}
+      {/* --- TAB VIEW: POSTS --- */}
       {activeTab === "posts" && (
         <>
-          {posts.length === 0 && !postsQuery.isFetching ? (
-            <p className="text-center text-muted-foreground">
-              No posts found for this query.
+          {isPostsLoading && <PostsLoadingSkeleton />}
+
+          {!isPostsLoading && posts.length === 0 && !isPostsError && (
+            <p className="text-center text-muted-foreground">No posts found.</p>
+          )}
+
+          {isPostsError && (
+            <p className="text-center text-destructive">
+              An error occurred while loading results.
             </p>
-          ) : (
+          )}
+
+          {posts.length > 0 && (
             <InfiniteScrollContainer
               className="space-y-5"
               onBottomReached={() => {
@@ -250,9 +234,19 @@ export default function SearchResults({ query }: SearchResultsProps) {
         </>
       )}
 
-      {/* "Users" Tab View */}
+      {/* --- TAB VIEW: USERS --- */}
       {activeTab === "users" && (
         <div className="space-y-3">
+          {isUsersLoading && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="animate-spin" />
+            </div>
+          )}
+
+          {!isUsersLoading && users.length === 0 && (
+            <p className="text-center text-muted-foreground">No users found.</p>
+          )}
+
           {users.map((user) => (
             <Link
               key={user.id}

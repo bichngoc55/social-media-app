@@ -1,16 +1,18 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getPostDataInclude } from "@/lib/types";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const { user: authUser } = await validateRequest();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const excludeIdsParam = req.nextUrl.searchParams.get("excludeIds") || "";
+    const excludeIds = excludeIdsParam.split(",").filter(Boolean);
 
     const userWithEmbedding = await prisma.$queryRaw<
       Array<{
@@ -39,6 +41,7 @@ export async function GET() {
 
     const {
       tasteEmbedding: tasteStr,
+      interests: userInterestsArr,
       dislikedEmbeddings: dislikedStrArr,
       dislikedTopics: dislikedTopicsArr,
     } = userWithEmbedding[0];
@@ -49,22 +52,23 @@ export async function GET() {
       tasteEmbedding = tasteStr.slice(1, -1).split(",").map(parseFloat);
     }
 
-    if (!tasteEmbedding || tasteEmbedding.length === 0) {
-      console.log("[RECOMMEND-POSTS] No tasteEmbedding, using fallback");
-      // Get blocked users for fallback query
-      const blockedUsers = await prisma.userBlock.findMany({
-        where: { blockerId: user.id },
-        select: { blockedId: true },
-      });
-      const blockedUserIds = blockedUsers.map((b) => b.blockedId);
+    const blockedUsers = await prisma.userBlock.findMany({
+      where: { blockerId: user.id },
+      select: { blockedId: true },
+    });
+    const blockedUserIds = blockedUsers.map((b) => b.blockedId);
 
+    if (!tasteEmbedding || tasteEmbedding.length === 0) {
       const fallbackPosts = await prisma.post.findMany({
         where: {
           privacy: "PUBLIC",
           userId: { not: user.id, notIn: blockedUserIds },
+          id: { notIn: excludeIds },
+          // Optional: You could filter by interests here directly if you wanted strict matching
+          // OR: { topics: { hasSome: userInterestsArr } }
         },
         include: getPostDataInclude(user.id, true),
-        take: 25,
+        take: 15,
         orderBy: { createdAt: "desc" },
       });
 
@@ -76,7 +80,8 @@ export async function GET() {
 
     const userTasteStr = `[${tasteEmbedding.join(",")}]`;
     const userGeneralEmotion = user.generalEmotion || "NEUTRAL";
-
+    const userInterestsSql =
+      userInterestsArr.length > 0 ? userInterestsArr : [];
     const recentInteractions = await prisma.post.findMany({
       where: {
         OR: [
@@ -107,13 +112,6 @@ export async function GET() {
       select: { followingId: true },
     });
     const followingIds = following.map((f) => f.followingId);
-
-    // Get blocked users
-    const blockedUsers = await prisma.userBlock.findMany({
-      where: { blockerId: user.id },
-      select: { blockedId: true },
-    });
-    const blockedUserIds = blockedUsers.map((b) => b.blockedId);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 20);
@@ -192,44 +190,56 @@ export async function GET() {
       Array<{
         id: string;
         similarity: number;
+        topic_match: number;
         emotion_match: number;
         likes_count: bigint;
         final_score: number;
       }>
     >`
-      WITH post_topic_similarity AS (
+      WITH post_metrics AS (
         SELECT 
           p.id,
           p."userId",
           p."primaryEmotion",
           p.emotions,
           p.privacy,
+          
+          -- 1. Semantic Similarity (Vector)
           CASE 
             WHEN p."topicEmbeddings" IS NOT NULL AND array_length(p."topicEmbeddings", 1) > 0 
             THEN (
-              -- KNN: Exact average distance
               SELECT AVG(1 - (topic_emb <=> ${userTasteStr}::vector))
               FROM unnest(p."topicEmbeddings") AS topic_emb
             )
             ELSE 0
-          END as similarity
+          END as similarity,
+
+          -- 2. Explicit Interest Match (String Overlap)
+          -- Returns 1.0 if ANY user interest is in post topics, else 0.0
+          CASE 
+             WHEN array_length(${userInterestsSql}::text[], 1) > 0 AND (p.topics && ${userInterestsSql}::text[]) THEN 1.0
+             ELSE 0.0
+          END as topic_match
+
         FROM posts p
         WHERE 
-           p."userId" != ${user.id}
+          p."userId" != ${user.id}
           AND p."userId" != ALL(${blockedUserIds}::text[])
+          
+          -- Exclude ID from LocalStorage (Seen posts)
+          AND p.id != ALL(${excludeIds}::text[])   
+
           AND p.id NOT IN (
             SELECT "postId" FROM likes WHERE "userId" = ${user.id}
           )
-            AND p.id NOT IN (
+          AND p.id NOT IN (
              SELECT "postId" FROM post_blocks WHERE "userId" = ${user.id}
           )
           AND (
             p.privacy = 'PUBLIC'
             OR (p.privacy = 'FOLLOWERS' AND p."userId" = ANY(${followingIds}::text[]))
           ) 
-            AND (
-             -- 1. Check String Block (Exact Match)
-             -- If post topics overlap (&&) with blocked names, exclude it.
+          AND (
              ${!hasBlockedKeywords} 
              OR NOT (p.topics && ${blockedTopicNames}::text[])
           )
@@ -244,35 +254,39 @@ export async function GET() {
           )
       )
       SELECT 
-        pts.id,
-        pts.similarity,
+        pm.id,
+        pm.similarity,
+        pm.topic_match,
+        
+        -- Emotion Scoring
         CASE 
-          WHEN pts."primaryEmotion" = ANY(${preferredEmotions}::text[]) THEN 1.0
-          WHEN pts.emotions::text = ${userGeneralEmotion} THEN 0.5
+          WHEN pm."primaryEmotion" = ANY(${preferredEmotions}::text[]) THEN 1.0
+          WHEN pm.emotions::text = ${userGeneralEmotion} THEN 0.5
           ELSE 0.0
         END as emotion_match,
+        
         COUNT(l."userId") as likes_count,
+
+        -- Final Weighted Score
         (
-          -- 1. Topic Similarity (60%) - Heavy weight on content match
-          pts.similarity * 0.60 + 
-
-          -- 2. Emotion Match (25%) - Medium weight on vibe
-          (CASE 
-            WHEN pts."primaryEmotion" = ANY(${preferredEmotions}::text[]) THEN 1.0
-            WHEN pts.emotions::text = ${userGeneralEmotion} THEN 0.5
-            ELSE 0.0
-          END) * 0.25 + 
-
-          -- 3. Popularity (15%) - Slight boost for liked posts
-          (LOG(COUNT(l."userId") + 1) / 8.0) * 0.15
-          
+          (pm.similarity * 0.40) +        -- 40% Vector Semantics (Vibe/Meaning)
+          (pm.topic_match * 0.30) +       -- 30% Direct Interest Match (Explicit Keywords)
+          (                               -- 20% Emotion Match
+            CASE 
+              WHEN pm."primaryEmotion" = ANY(${preferredEmotions}::text[]) THEN 1.0
+              WHEN pm.emotions::text = ${userGeneralEmotion} THEN 0.5
+              ELSE 0.0
+            END
+          ) * 0.20 + 
+          (LOG(COUNT(l."userId") + 1) / 8.0) * 0.10 -- 10% Popularity
          ) as final_score
-      FROM post_topic_similarity pts
-      LEFT JOIN likes l ON pts.id = l."postId"
-      WHERE pts.similarity > 0
-      GROUP BY pts.id, pts.similarity, pts."primaryEmotion", pts.emotions
+
+      FROM post_metrics pm
+      LEFT JOIN likes l ON pm.id = l."postId"
+      WHERE pm.similarity > 0 OR pm.topic_match > 0
+      GROUP BY pm.id, pm.similarity, pm.topic_match, pm."primaryEmotion", pm.emotions
       ORDER BY final_score DESC
-      LIMIT 100
+      LIMIT 20
     `;
     const postIds = recommendations.map((r) => r.id);
 
@@ -281,16 +295,16 @@ export async function GET() {
         where: {
           privacy: "PUBLIC",
           userId: { not: user.id, notIn: blockedUserIds },
-          createdAt: { gte: sevenDaysAgo },
+          id: { notIn: excludeIds },
         },
         include: getPostDataInclude(user.id, true),
-        take: 25,
+        take: 10,
         orderBy: { createdAt: "desc" },
       });
 
       return NextResponse.json({
         posts: fallbackPosts,
-        message: "Showing recent posts",
+        message: "Showing recent posts (Fallback)",
       });
     }
 
@@ -301,12 +315,12 @@ export async function GET() {
     });
 
     const postMap = new Map(posts.map((p) => [p.id, p]));
-    const sortedPosts = recommendations
-      .map((rec) => postMap.get(rec.id))
-      .filter(Boolean) as any[];
+    // const sortedPosts = recommendations
+    //   .map((rec) => postMap.get(rec.id))
+    //   .filter(Boolean) as any[];
 
     return NextResponse.json({
-      posts: sortedPosts,
+      posts: posts,
       userPreferences: {
         preferredEmotions,
         generalEmotion: userGeneralEmotion,
