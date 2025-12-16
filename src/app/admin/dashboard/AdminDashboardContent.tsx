@@ -11,6 +11,24 @@ import { Users, FileText, Flag, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import kyInstance from "@/lib/ky";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function StatCard({
   title,
@@ -44,43 +62,97 @@ function StatCard({
 }
 
 function EmotionAnalytics() {
+  const [selectedYear, setSelectedYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-emotions"],
+    queryKey: ["admin-emotions", selectedYear, selectedMonth],
     queryFn: async () => {
       try {
+        const searchParams: Record<string, string> = { year: selectedYear };
+        if (selectedMonth && selectedMonth !== "all") {
+          searchParams.month = selectedMonth;
+        }
         const res = await kyInstance
-          .get("/api/admin/analytics/emotions")
-          .json<{ emotions: Record<string, number> }>();
-        return res.emotions;
+          .get("/api/admin/analytics/emotions", { searchParams })
+          .json<{
+            emotions: Record<string, number>;
+            percentages: Record<string, number>;
+            total: number;
+          }>();
+        return res;
       } catch {
         // Fallback demo distribution
         return {
-          positive: 48,
-          neutral: 32,
-          negative: 20,
-          joy: 35,
-          sadness: 10,
-          anger: 7,
-          surprise: 8,
-          fear: 4,
-        } as Record<string, number>;
+          emotions: {
+            positive: 48,
+            neutral: 32,
+            negative: 20,
+          },
+          percentages: {
+            positive: 48,
+            neutral: 32,
+            negative: 20,
+          },
+          total: 100,
+        };
       }
     },
   });
 
-  const entries = Object.entries(data || {});
+  const entries = Object.entries(data?.emotions || {});
   const total = entries.reduce((a, [, v]) => a + v, 0) || 1;
+
+  // Generate year options (current year and 2 years before)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - i);
+
+  // Generate month options
+  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
     <Card className="card-glass">
       <CardHeader>
-        <CardTitle>Emotion Overview</CardTitle>
-        <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Emotion Overview</CardTitle>
+            <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Năm" />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Tất cả tháng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tháng</SelectItem>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month} value={month.toString()}>
+                    Tháng {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-3 w-2/3" />
@@ -88,17 +160,10 @@ function EmotionAnalytics() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-3">
-              {entries.slice(0, 3).map(([label, value]) => (
-                <Bar key={label} label={label} value={(value / total) * 100} />
-              ))}
-            </div>
-            <div className="space-y-3">
-              {entries.slice(3).map(([label, value]) => (
-                <Bar key={label} label={label} value={(value / total) * 100} />
-              ))}
-            </div>
+          <div className="space-y-3">
+            {entries.map(([label, value]) => (
+              <Bar key={label} label={label} value={(value / total) * 100} />
+            ))}
           </div>
         )}
       </CardContent>
@@ -124,30 +189,193 @@ function Bar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Sparkline({ data }: { data: number[] }) {
-  const width = 240;
-  const height = 60;
-  const max = Math.max(...data);
-  const points = data
-    .map((y, i) => {
-      const x = (i / (data.length - 1)) * width;
-      const ny = height - (y / max) * height;
-      return `${x},${ny}`;
-    })
-    .join(" ");
+function EmotionGrowthChart() {
+  const [selectedYear, setSelectedYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
+  const [monthsToShow, setMonthsToShow] = useState<string>("6");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-emotions-growth", selectedYear, monthsToShow],
+    queryFn: async () => {
+      try {
+        const numMonths = parseInt(monthsToShow);
+        const selectedYearNum = parseInt(selectedYear);
+        const currentDate = new Date();
+        const isCurrentYear = selectedYearNum === currentDate.getFullYear();
+
+        // Calculate end month: if current year, use current month, otherwise use December
+        const endMonth = isCurrentYear ? currentDate.getMonth() + 1 : 12;
+        const startMonth = Math.max(1, endMonth - numMonths + 1);
+
+        // Fetch data for each month
+        const promises: Promise<{
+          month: number;
+          year: number;
+          positive: number;
+          neutral: number;
+          negative: number;
+        }>[] = [];
+
+        for (let i = 0; i < numMonths; i++) {
+          const month = startMonth + i;
+          // Skip if month exceeds endMonth for current year
+          if (isCurrentYear && month > endMonth) break;
+
+          const year = selectedYearNum;
+
+          promises.push(
+            kyInstance
+              .get("/api/admin/analytics/emotions", {
+                searchParams: {
+                  year: year.toString(),
+                  month: month.toString(),
+                },
+              })
+              .json<{
+                emotions: Record<string, number>;
+                percentages: Record<string, number>;
+                total: number;
+              }>()
+              .then((res) => ({
+                month: month,
+                year: year,
+                positive: res.percentages.positive || 0,
+                neutral: res.percentages.neutral || 0,
+                negative: res.percentages.negative || 0,
+              }))
+              .catch(() => ({
+                month: month,
+                year: year,
+                positive: 0,
+                neutral: 0,
+                negative: 0,
+              }))
+          );
+        }
+
+        const results = await Promise.all(promises);
+        return results.map((r) => ({
+          name: `T${r.month}/${r.year}`,
+          positive: r.positive,
+          neutral: r.neutral,
+          negative: r.negative,
+        }));
+      } catch {
+        // Fallback demo data
+        return Array.from({ length: parseInt(monthsToShow) }, (_, i) => ({
+          name: `T${12 - parseInt(monthsToShow) + i + 1}/${selectedYear}`,
+          positive: 40 + Math.random() * 20,
+          neutral: 30 + Math.random() * 15,
+          negative: 20 + Math.random() * 10,
+        }));
+      }
+    },
+  });
+
+  // Generate year options
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 3 }, (_, i) => currentYear - i);
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
-      <polyline
-        fill="none"
-        stroke="hsl(var(--primary))"
-        strokeWidth="2"
-        points={points}
-      />
-      <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
-        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-      </linearGradient>
-    </svg>
+    <Card className="card-glass">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Tốc Độ Tăng Trưởng Cảm Xúc</CardTitle>
+            <CardDescription>
+              Xu hướng thay đổi tỉ lệ cảm xúc theo thời gian
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Năm" />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={monthsToShow} onValueChange={setMonthsToShow}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Số tháng" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">3 tháng</SelectItem>
+                <SelectItem value="6">6 tháng</SelectItem>
+                <SelectItem value="12">12 tháng</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex h-[400px] items-center justify-center">
+            <Skeleton className="h-full w-full" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={data || []}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 12 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => `${value}%`}
+              />
+              <Tooltip
+                formatter={(value: number) => [`${value.toFixed(2)}%`, ""]}
+                labelFormatter={(label) => `Tháng: ${label}`}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "6px",
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="positive"
+                stroke="hsl(320, 65%, 70%)"
+                strokeWidth={2.5}
+                name="Positive"
+                dot={{ r: 5, fill: "hsl(320, 65%, 70%)" }}
+                activeDot={{ r: 7, fill: "hsl(320, 65%, 75%)" }}
+              />
+              <Line
+                type="monotone"
+                dataKey="neutral"
+                stroke="hsl(280, 40%, 80%)"
+                strokeWidth={2.5}
+                name="Neutral"
+                dot={{ r: 5, fill: "hsl(280, 40%, 80%)" }}
+                activeDot={{ r: 7, fill: "hsl(280, 40%, 85%)" }}
+              />
+              <Line
+                type="monotone"
+                dataKey="negative"
+                stroke="hsl(15, 60%, 65%)"
+                strokeWidth={2.5}
+                name="Negative"
+                dot={{ r: 5, fill: "hsl(15, 60%, 65%)" }}
+                activeDot={{ r: 7, fill: "hsl(15, 60%, 70%)" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -155,28 +383,41 @@ export default function AdminDashboardContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard-summary"],
     queryFn: async () => {
-      const [usersAll, usersAdmin, posts, reports] = await Promise.all([
-        kyInstance
-          .get("/api/admin/users", { searchParams: { page: 1, limit: 1 } })
-          .json<{ users: any[]; pagination: any }>(),
-        kyInstance
-          .get("/api/admin/users", {
-            searchParams: { page: 1, limit: 1, role: "ADMIN" },
-          })
-          .json<{ users: any[]; pagination: any }>(),
-        kyInstance
-          .get("/api/admin/posts", { searchParams: { page: 1, limit: 1 } })
-          .json<{ posts: any[]; pagination: any }>(),
-        kyInstance
-          .get("/api/admin/reports", { searchParams: { page: 1, limit: 1 } })
-          .json<{ reports: any[]; pagination: any }>(),
-      ]);
-      return {
-        totalUsers: usersAll.pagination?.total ?? usersAll.users.length,
-        totalAdmins: usersAdmin.pagination?.total ?? usersAdmin.users.length,
-        totalPosts: posts.pagination?.total ?? posts.posts.length,
-        totalReports: reports.pagination?.total ?? reports.reports.length,
-      };
+      try {
+        const [usersAll, usersAdmin, posts, reports] = await Promise.all([
+          kyInstance
+            .get("/api/admin/users", { searchParams: { page: 1, limit: 1 } })
+            .json<{ users: any[]; pagination: any }>(),
+          kyInstance
+            .get("/api/admin/users", {
+              searchParams: { page: 1, limit: 1, role: "ADMIN" },
+            })
+            .json<{ users: any[]; pagination: any }>(),
+          kyInstance
+            .get("/api/admin/posts", { searchParams: { page: 1, limit: 1 } })
+            .json<{ posts: any[]; pagination: any }>(),
+          kyInstance
+            .get("/api/admin/reports", { searchParams: { page: 1, limit: 1 } })
+            .json<{ reports: any[]; pagination: any }>(),
+        ]);
+        return {
+          totalUsers: usersAll.pagination?.total ?? usersAll.users.length ?? 0,
+          totalAdmins:
+            usersAdmin.pagination?.total ?? usersAdmin.users.length ?? 0,
+          totalPosts: posts.pagination?.total ?? posts.posts.length ?? 0,
+          totalReports:
+            reports.pagination?.total ?? reports.reports.length ?? 0,
+        };
+      } catch (error) {
+        console.error("Error fetching dashboard summary:", error);
+        // Return fallback values
+        return {
+          totalUsers: 0,
+          totalAdmins: 0,
+          totalPosts: 0,
+          totalReports: 0,
+        };
+      }
     },
   });
 
@@ -200,18 +441,26 @@ export default function AdminDashboardContent() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-4">
-          <StatCard title="Total Users" value={data!.totalUsers} icon={Users} />
+          <StatCard
+            title="Total Users"
+            value={data?.totalUsers ?? 0}
+            icon={Users}
+          />
           <StatCard
             title="Total Posts"
-            value={data!.totalPosts}
+            value={data?.totalPosts ?? 0}
             icon={FileText}
           />
           <StatCard
             title="Total Reports"
-            value={data!.totalReports}
+            value={data?.totalReports ?? 0}
             icon={Flag}
           />
-          <StatCard title="Admins" value={data!.totalAdmins} icon={Shield} />
+          <StatCard
+            title="Admins"
+            value={data?.totalAdmins ?? 0}
+            icon={Shield}
+          />
         </div>
       )}
 
@@ -219,6 +468,9 @@ export default function AdminDashboardContent() {
 
       {/* Emotion analytics */}
       <EmotionAnalytics />
+
+      {/* Emotion growth chart */}
+      <EmotionGrowthChart />
     </div>
   );
 }

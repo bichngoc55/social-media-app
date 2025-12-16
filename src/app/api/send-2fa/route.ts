@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
     // Sử dụng device info từ client nếu có, nếu không thì tạo mới từ headers
     const deviceInfo =
       clientDeviceInfo ||
-      (() => {
-        const headersList = headers();
+      (async () => {
+        const headersList = await headers(); // Add 'await' here
         const userAgent = headersList.get("user-agent") || "Unknown";
         const ipAddress =
           headersList.get("x-forwarded-for") ||
