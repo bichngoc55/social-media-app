@@ -57,9 +57,11 @@ export async function PATCH(
           // Post already deleted, just update report status
           console.log(`Post ${report.post.id} already deleted`);
         } else {
-          const postContent = postExists.content ? postExists.content.substring(0, 50) : "Bài viết";
+          const postContent = postExists.content
+            ? postExists.content.substring(0, 50)
+            : "Bài viết";
           const postContentFull = postExists.content || "";
-          
+
           // Create notifications before deleting the post
           const notifications = await Promise.all([
             // Notify reporter that their report was resolved and post was deleted
@@ -69,7 +71,6 @@ export async function PATCH(
                 issuerId: admin.id,
                 type: "MESSAGE",
                 postId: null,
-                content: `Bài viết bạn báo cáo ("${postContent}${postContentFull.length > 50 ? "..." : ""}") đã bị xóa bởi quản trị viên.`,
               },
             }),
             // Notify post owner (if different from reporter) that their post was deleted
@@ -80,21 +81,33 @@ export async function PATCH(
                     issuerId: admin.id,
                     type: "MESSAGE",
                     postId: null,
-                    content: `Bài viết của bạn ("${postContent}${postContentFull.length > 50 ? "..." : ""}") đã bị xóa bởi quản trị viên do vi phạm chính sách.`,
                   },
                 })
               : Promise.resolve(null),
           ]);
 
           // Send socket notifications if available
-          if (typeof global !== "undefined" && global.io && global.userSockets) {
-            notifications.forEach((notification) => {
+          if (
+            typeof global !== "undefined" &&
+            global.io &&
+            global.userSockets
+          ) {
+            notifications.forEach((notification, index) => {
               if (notification) {
-                const socketId = global.userSockets.get(notification.recipientId);
+                const socketId = global.userSockets.get(
+                  notification.recipientId
+                );
                 if (socketId) {
+                  // Include custom message in socket emission (not stored in DB)
+                  const customMessage =
+                    index === 0
+                      ? `Bài viết bạn báo cáo ("${postContent}${postContentFull.length > 50 ? "..." : ""}") đã bị xóa bởi quản trị viên.`
+                      : `Bài viết của bạn ("${postContent}${postContentFull.length > 50 ? "..." : ""}") đã bị xóa bởi quản trị viên do vi phạm chính sách.`;
+
                   global.io.to(socketId).emit("notification", {
                     ...notification,
                     timestamp: new Date().toISOString(),
+                    customMessage,
                   });
                 }
               }

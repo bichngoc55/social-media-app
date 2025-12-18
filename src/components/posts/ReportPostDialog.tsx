@@ -31,14 +31,44 @@ import { useToast } from "@/components/ui/use-toast";
 
 import { cn } from "@/lib/utils";
 const REPORT_TYPES = [
-  { value: "SPAM", label: "Spam", icon: AlertTriangle, color: "text-yellow-600" },
-  { value: "HARASSMENT", label: "Harassment", icon: Ban, color: "text-red-600" },
-  { value: "HATE_SPEECH", label: "Hate Speech", icon: ShieldAlert, color: "text-red-700" },
+  {
+    value: "SPAM",
+    label: "Spam",
+    icon: AlertTriangle,
+    color: "text-yellow-600",
+  },
+  {
+    value: "HARASSMENT",
+    label: "Harassment",
+    icon: Ban,
+    color: "text-red-600",
+  },
+  {
+    value: "HATE_SPEECH",
+    label: "Hate Speech",
+    icon: ShieldAlert,
+    color: "text-red-700",
+  },
   { value: "VIOLENCE", label: "Violence", icon: Zap, color: "text-orange-600" },
   { value: "NUDITY", label: "Nudity", icon: EyeOff, color: "text-pink-600" },
-  { value: "COPYRIGHT", label: "Copyright", icon: Copyright, color: "text-blue-600" },
-  { value: "IMPERSONATION", label: "Impersonation", icon: UserX, color: "text-purple-600" },
-  { value: "OTHER", label: "Other", icon: MessageSquare, color: "text-gray-600" },
+  {
+    value: "COPYRIGHT",
+    label: "Copyright",
+    icon: Copyright,
+    color: "text-blue-600",
+  },
+  {
+    value: "IMPERSONATION",
+    label: "Impersonation",
+    icon: UserX,
+    color: "text-purple-600",
+  },
+  {
+    value: "OTHER",
+    label: "Other",
+    icon: MessageSquare,
+    color: "text-gray-600",
+  },
 ];
 
 interface ReportPostDialogProps {
@@ -95,9 +125,7 @@ export default function ReportPostDialog({
       });
       return;
     }
-    // Combine type label with additional details
-    const selectedTypeLabel =
-    
+
     if (selectedType === "OTHER" && !reason.trim()) {
       toast({
         title: "Additional details required",
@@ -106,7 +134,9 @@ export default function ReportPostDialog({
       });
       return;
     }
-    
+
+    // Combine type label with additional details
+    const selectedTypeLabel =
       REPORT_TYPES.find((t) => t.value === selectedType)?.label || selectedType;
     const fullReason = reason.trim()
       ? `${selectedTypeLabel}: ${reason.trim()}`
@@ -116,7 +146,17 @@ export default function ReportPostDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+          // Reset form when dialog closes
+          setSelectedType("");
+          setReason("");
+        }
+      }}
+    >
       {children ? (
         <div onClick={() => setOpen(true)}>{children}</div>
       ) : (
@@ -126,16 +166,19 @@ export default function ReportPostDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl bg-[rgba(244,231,248,0.95)] backdrop-blur-[20px] border-[rgba(195,199,244,0.4)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)]">
+      <DialogContent className="max-w-2xl border-[rgba(195,199,244,0.4)] bg-[rgba(244,231,248,0.95)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] backdrop-blur-[20px]">
         <DialogHeader className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
               <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold">Report Post</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground mt-1">
-                Help us keep the community safe by reporting inappropriate content
+              <DialogTitle className="text-2xl font-bold">
+                Report Post
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                Help us keep the community safe by reporting inappropriate
+                content
               </DialogDescription>
             </div>
           </div>
@@ -182,7 +225,7 @@ export default function ReportPostDialog({
                       />
                       <span
                         className={cn(
-                          "font-medium flex-1",
+                          "flex-1 font-medium",
                           isSelected && "text-pink-700 dark:text-pink-300"
                         )}
                       >
@@ -198,7 +241,9 @@ export default function ReportPostDialog({
             <Label htmlFor="reason" className="text-base font-semibold">
               Additional details
               {selectedType === "OTHER" && (
-                <span className="ml-2 text-sm font-normal text-destructive">(required)</span>
+                <span className="ml-2 text-sm font-normal text-destructive">
+                  (required)
+                </span>
               )}
             </Label>
             <Textarea
@@ -215,14 +260,15 @@ export default function ReportPostDialog({
             />
           </div>
         </div>
-          <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3 dark:border-orange-900 dark:bg-orange-950/20">
-            <p className="flex items-start gap-2 text-sm text-orange-800 dark:text-orange-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>
-                This post will be hidden from your feed immediately after you submit the report.
-              </span>
-            </p>
-          </div>
+        <div className="rounded-lg border border-orange-200 bg-orange-50/50 p-3 dark:border-orange-900 dark:bg-orange-950/20">
+          <p className="flex items-start gap-2 text-sm text-orange-800 dark:text-orange-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>
+              This post will be hidden from your feed immediately after you
+              submit the report.
+            </span>
+          </p>
+        </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
             variant="outline"
@@ -237,7 +283,11 @@ export default function ReportPostDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={reportMutation.isPending || !selectedType || (selectedType === "OTHER" && !reason.trim())}
+            disabled={
+              reportMutation.isPending ||
+              !selectedType ||
+              (selectedType === "OTHER" && !reason.trim())
+            }
             className="rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
           >
             {reportMutation.isPending ? (
