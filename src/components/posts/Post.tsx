@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  Flag,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,6 +31,7 @@ import MediaSlider from "./MediaSlider";
 import PostDetailModal from "./PostDetailModal";
 import { Button } from "../ui/button";
 import BlockPostButton from "./BlockPostButton";
+import ReportPostDialog from "./ReportPostDialog";
 const privacyBadgeColors = {
   PUBLIC: "bg-green-100 text-green-800",
   FOLLOWERS: "bg-blue-100 text-blue-800",
@@ -193,6 +195,19 @@ export default function Post({ post }: PostProps) {
         </div>
         <div className="flex items-center gap-2">
           <BlockPostButton postId={post.id} />
+          
+          {user.id !== post.userId && (
+            <ReportPostDialog postId={post.id}>
+              <button
+                title="Report this post"
+                className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
+              >
+                <Flag
+                  className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500"
+                />
+              </button>
+            </ReportPostDialog>
+          )}
 
           <BookmarkButton
             postId={post.id}

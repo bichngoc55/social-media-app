@@ -119,8 +119,8 @@ function EmotionAnalytics() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Emotion Overview</CardTitle>
-            <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
+        <CardTitle>Emotion Overview</CardTitle>
+        <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
           </div>
           <div className="flex gap-2">
             <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -537,7 +537,7 @@ export default function AdminDashboardContent() {
       } catch (error) {
         console.error("Error fetching dashboard summary:", error);
         // Return fallback values
-        return {
+      return {
           totalUsers: 0,
           totalAdmins: 0,
           totalPosts: 0,
@@ -550,8 +550,17 @@ export default function AdminDashboardContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Shield className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Tổng Quan</h1>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
+          <Shield className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            Tổng Quan
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Overview of platform statistics and analytics
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
@@ -610,13 +619,13 @@ function TrendingAnalytics() {
         const res = await kyInstance
           .get("/api/admin/analytics/trending", {
             searchParams: { page, limit: 10 },
-          })
-          .json<{
+              })
+              .json<{
             topics: { tag: string; count: number }[];
             pagination: {
               page: number;
               limit: number;
-              total: number;
+                total: number;
               totalPages: number;
             };
           }>();
@@ -651,21 +660,21 @@ function TrendingAnalytics() {
           </div>
         ) : data && data.topics && data.topics.length > 0 ? (
           <>
-            <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2">
               {data.topics.map((t, idx) => {
                 const globalIndex = (page - 1) * 10 + idx;
                 return (
-                  <div
-                    key={t.tag}
-                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+              <div
+                key={t.tag}
+                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                       {globalIndex + 1}
-                    </div>
-                    <div className="font-medium">{t.tag}</div>
-                    <div className="ms-auto text-sm text-muted-foreground">
-                      {t.count.toLocaleString()} posts
-                    </div>
+                </div>
+                <div className="font-medium">{t.tag}</div>
+                <div className="ms-auto text-sm text-muted-foreground">
+                  {t.count.toLocaleString()} posts
+                </div>
                   </div>
                 );
               })}

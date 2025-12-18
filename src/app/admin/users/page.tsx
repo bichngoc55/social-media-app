@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import kyInstance from "@/lib/ky";
-import { formatRelativeDate } from "@/lib/utils";
+import { formatRelativeDate, cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,10 +154,19 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          <Users className="h-8 w-8" />
-          Quản lý Người dùng
-        </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
+            <Users className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              Quản lý Người dùng
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage user accounts and permissions
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="card-glass">
@@ -185,7 +194,7 @@ export default function AdminUsersPage() {
 
       {isLoading ? (
         <div className="space-y-4">
-          <Card className="overflow-hidden">
+          <Card className="card-glass overflow-hidden border-2">
             <CardContent className="p-0">
               <div className="border-b p-4">
                 <Skeleton className="h-4 w-24" />
@@ -208,7 +217,7 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="card-glass overflow-hidden border-2">
             <CardContent className="p-0">
               <table className="w-full">
                 <thead>
@@ -247,9 +256,13 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="p-4">
                         <Badge
-                          variant={
-                            user.role === "ADMIN" ? "default" : "secondary"
-                          }
+                          variant="outline"
+                          className={cn(
+                            "rounded-full font-semibold",
+                            user.role === "ADMIN"
+                              ? "border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300"
+                              : "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
+                          )}
                         >
                           {user.role}
                         </Badge>

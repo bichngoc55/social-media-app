@@ -21,6 +21,7 @@ import {
   Users,
   Globe,
   Lock,
+  Flag,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import {
@@ -28,6 +29,7 @@ import {
   useToggleBookmark,
   useUpdatePostPrivacy,
 } from "./mutations";
+import ReportPostDialog from "./ReportPostDialog";
 
 interface PostMenuProps {
   post: PostData;
@@ -183,6 +185,24 @@ export default function PostMenu({ post, onEdit, className }: PostMenuProps) {
             <Share className="mr-2 h-4 w-4" />
             Chia sẻ
           </DropdownMenuItem>
+
+          {/* Report - Only show for other users' posts */}
+          {!isOwnPost && (
+            <>
+              <DropdownMenuSeparator />
+              <ReportPostDialog postId={post.id}>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                  }}
+                >
+                  <Flag className="mr-2 h-4 w-4" />
+                  Báo cáo
+                </DropdownMenuItem>
+              </ReportPostDialog>
+            </>
+          )}
 
           {/* Owner actions */}
           {isOwnPost && (

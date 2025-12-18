@@ -235,6 +235,9 @@ export async function GET(req: NextRequest) {
           AND p.id NOT IN (
              SELECT "postId" FROM post_blocks WHERE "userId" = ${user.id}
           )
+          AND p.id NOT IN (
+             SELECT "postId" FROM reports WHERE "reporterId" = ${user.id} AND "postId" IS NOT NULL
+          )
           AND (
             p.privacy = 'PUBLIC'
             OR (p.privacy = 'FOLLOWERS' AND p."userId" = ANY(${followingIds}::text[]))
