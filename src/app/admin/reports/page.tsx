@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Flag, Search, Check, X, Clock, ArrowLeft } from "lucide-react";
+import { Flag, Search, Check, X, Clock, ArrowLeft, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -93,11 +93,15 @@ export default function AdminReportsPage() {
     },
   });
 
-  const handleUpdateReport = (status: string) => {
+  const handleUpdateReport = (status: string, deletePost = false) => {
     if (!selectedReport) return;
     updateReportMutation.mutate({
       reportId: selectedReport.id,
-      data: { status, adminNotes: adminNotes || null },
+      data: {
+        status,
+        adminNotes: adminNotes || null,
+        deletePost,
+      },
     });
   };
 
@@ -267,6 +271,27 @@ export default function AdminReportsPage() {
                           <DialogTitle>Review Report</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
+                          {selectedReport.post && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                              <p className="mb-2 text-sm font-medium text-red-900">
+                                Related Post:
+                              </p>
+                              <p className="mb-3 line-clamp-3 text-sm text-red-800">
+                                {selectedReport.post.content}
+                              </p>
+                              <Button
+                                variant="destructive"
+                                onClick={() =>
+                                  handleUpdateReport("RESOLVED", true)
+                                }
+                                disabled={updateReportMutation.isPending}
+                                className="w-full"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Post & Resolve
+                              </Button>
+                            </div>
+                          )}
                           <div>
                             <label className="text-sm font-medium">
                               Admin Notes

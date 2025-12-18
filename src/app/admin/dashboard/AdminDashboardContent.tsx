@@ -11,6 +11,7 @@ import { Users, FileText, Flag, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import kyInstance from "@/lib/ky";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   LineChart,
   Line,
@@ -29,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Pagination } from "@/components/ui/pagination";
 
 function StatCard({
   title,
@@ -173,16 +175,74 @@ function EmotionAnalytics() {
 
 function Bar({ label, value }: { label: string; value: number }) {
   const pct = Math.round(value);
+
+  // Map emotion labels to colors with light background and dark text
+  const getEmotionStyle = (emotion: string) => {
+    const lowerEmotion = emotion.toLowerCase();
+    if (lowerEmotion === "positive") {
+      return {
+        backgroundColor: "#DCFCE7", // Light green background (nhạt bên ngoài)
+        color: "#216D3E", // Dark green text (đậm bên trong)
+        borderColor: "#86efac", // Light green border (nhạt hơn text)
+        barColor: "#86efac", // Light green for bar
+        badgeText: "Above 60%: Positive",
+      };
+    }
+    if (lowerEmotion === "neutral") {
+      return {
+        backgroundColor: "#F3F4F6", // Light grey background (nhạt bên ngoài)
+        color: "#6F767F", // Dark grey text (đậm bên trong)
+        borderColor: "#d1d5db", // Light grey border (nhạt hơn text)
+        barColor: "#d1d5db", // Light grey for bar
+        badgeText: "40-60%: Neutral",
+      };
+    }
+    if (lowerEmotion === "negative") {
+      return {
+        backgroundColor: "#FEE2E2", // Light red background (nhạt bên ngoài)
+        color: "#991B1B", // Dark red text (đậm bên trong)
+        borderColor: "#fca5a5", // Light red border (nhạt hơn text)
+        barColor: "#fca5a5", // Light red for bar
+        badgeText: "Below 40%: Negative",
+      };
+    }
+    return {
+      backgroundColor: "hsl(var(--muted))",
+      color: "hsl(var(--foreground))",
+      borderColor: "hsl(var(--border))",
+      barColor: "hsl(var(--primary))",
+      badgeText: label,
+    };
+  };
+
+  const style = getEmotionStyle(label);
+
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-        <span>{label}</span>
-        <span>{pct}%</span>
+      <div className="mb-1 flex items-center justify-between">
+        <Badge
+          variant="outline"
+          className="rounded-full border-2 px-3 py-0.5 text-xs font-bold"
+          style={{
+            backgroundColor: style.backgroundColor,
+            color: style.color,
+            borderColor: style.borderColor,
+            borderWidth: "1px",
+          }}
+        >
+          {style.badgeText}
+        </Badge>
+        <span className="text-xs font-semibold text-muted-foreground">
+          {pct}%
+        </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: style.barColor,
+          }}
         />
       </div>
     </div>
@@ -343,33 +403,116 @@ function EmotionGrowthChart() {
                   borderRadius: "6px",
                 }}
               />
-              <Legend />
+              <Legend
+                content={({ payload }) => (
+                  <div className="mt-4 flex justify-center gap-4">
+                    {payload?.map((entry, index) => {
+                      let style = {
+                        backgroundColor: "#F3F4F6",
+                        color: "#6F767F",
+                        borderColor: "#d1d5db",
+                        badgeText: entry.value || "",
+                      };
+                      if (entry.dataKey === "positive") {
+                        style = {
+                          backgroundColor: "#DCFCE7",
+                          color: "#216D3E",
+                          borderColor: "#86efac",
+                          badgeText: "Positive",
+                        };
+                      } else if (entry.dataKey === "neutral") {
+                        style = {
+                          backgroundColor: "#F3F4F6",
+                          color: "#6F767F",
+                          borderColor: "#d1d5db",
+                          badgeText: "Neutral",
+                        };
+                      } else if (entry.dataKey === "negative") {
+                        style = {
+                          backgroundColor: "#FEE2E2",
+                          color: "#991B1B",
+                          borderColor: "#fca5a5",
+                          badgeText: "Negative",
+                        };
+                      }
+                      return (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="rounded-full border px-3 py-0.5 text-xs font-bold"
+                          style={{
+                            backgroundColor: style.backgroundColor,
+                            color: style.color,
+                            borderColor: style.borderColor,
+                            borderWidth: "1px",
+                          }}
+                        >
+                          {style.badgeText}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              />
               <Line
                 type="monotone"
                 dataKey="positive"
-                stroke="hsl(320, 65%, 70%)"
-                strokeWidth={2.5}
+                stroke="#86efac"
+                strokeWidth={2}
                 name="Positive"
-                dot={{ r: 5, fill: "hsl(320, 65%, 70%)" }}
-                activeDot={{ r: 7, fill: "hsl(320, 65%, 75%)" }}
+                strokeDasharray="0"
+                dot={{
+                  r: 5,
+                  fill: "#86efac",
+                  strokeWidth: 2,
+                  stroke: "#216D3E",
+                }}
+                activeDot={{
+                  r: 7,
+                  fill: "#86efac",
+                  strokeWidth: 2,
+                  stroke: "#216D3E",
+                }}
               />
               <Line
                 type="monotone"
                 dataKey="neutral"
-                stroke="hsl(280, 40%, 80%)"
-                strokeWidth={2.5}
+                stroke="#d1d5db"
+                strokeWidth={2}
                 name="Neutral"
-                dot={{ r: 5, fill: "hsl(280, 40%, 80%)" }}
-                activeDot={{ r: 7, fill: "hsl(280, 40%, 85%)" }}
+                strokeDasharray="0"
+                dot={{
+                  r: 5,
+                  fill: "#d1d5db",
+                  strokeWidth: 2,
+                  stroke: "#6F767F",
+                }}
+                activeDot={{
+                  r: 7,
+                  fill: "#d1d5db",
+                  strokeWidth: 2,
+                  stroke: "#6F767F",
+                }}
               />
               <Line
                 type="monotone"
                 dataKey="negative"
-                stroke="hsl(15, 60%, 65%)"
-                strokeWidth={2.5}
+                stroke="#fca5a5"
+                strokeWidth={2}
                 name="Negative"
-                dot={{ r: 5, fill: "hsl(15, 60%, 65%)" }}
-                activeDot={{ r: 7, fill: "hsl(15, 60%, 70%)" }}
+                strokeDasharray="0"
+                dot={{
+                  r: 5,
+                  fill: "#fca5a5",
+                  strokeWidth: 2,
+                  stroke: "#991B1B",
+                }}
+                activeDot={{
+                  r: 7,
+                  fill: "#fca5a5",
+                  strokeWidth: 2,
+                  stroke: "#991B1B",
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -384,30 +527,13 @@ export default function AdminDashboardContent() {
     queryKey: ["admin-dashboard-summary"],
     queryFn: async () => {
       try {
-        const [usersAll, usersAdmin, posts, reports] = await Promise.all([
-          kyInstance
-            .get("/api/admin/users", { searchParams: { page: 1, limit: 1 } })
-            .json<{ users: any[]; pagination: any }>(),
-          kyInstance
-            .get("/api/admin/users", {
-              searchParams: { page: 1, limit: 1, role: "ADMIN" },
-            })
-            .json<{ users: any[]; pagination: any }>(),
-          kyInstance
-            .get("/api/admin/posts", { searchParams: { page: 1, limit: 1 } })
-            .json<{ posts: any[]; pagination: any }>(),
-          kyInstance
-            .get("/api/admin/reports", { searchParams: { page: 1, limit: 1 } })
-            .json<{ reports: any[]; pagination: any }>(),
-        ]);
-        return {
-          totalUsers: usersAll.pagination?.total ?? usersAll.users.length ?? 0,
-          totalAdmins:
-            usersAdmin.pagination?.total ?? usersAdmin.users.length ?? 0,
-          totalPosts: posts.pagination?.total ?? posts.posts.length ?? 0,
-          totalReports:
-            reports.pagination?.total ?? reports.reports.length ?? 0,
-        };
+        const res = await kyInstance.get("/api/admin/analytics/summary").json<{
+          totalUsers: number;
+          totalAdmins: number;
+          totalPosts: number;
+          totalReports: number;
+        }>();
+        return res;
       } catch (error) {
         console.error("Error fetching dashboard summary:", error);
         // Return fallback values
@@ -476,28 +602,32 @@ export default function AdminDashboardContent() {
 }
 
 function TrendingAnalytics() {
+  const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-trending"],
+    queryKey: ["admin-trending", page],
     queryFn: async () => {
       try {
         const res = await kyInstance
-          .get("/api/admin/analytics/trending", { searchParams: { limit: 10 } })
-          .json<{ topics: { tag: string; count: number; delta?: number }[] }>();
-        return res.topics;
-      } catch {
-        // Fallback demo
-        return [
-          { tag: "#loopy", count: 1240, delta: 12 },
-          { tag: "#fun", count: 980, delta: 5 },
-          { tag: "#coding", count: 870, delta: -3 },
-          { tag: "#music", count: 760, delta: 7 },
-          { tag: "#travel", count: 650, delta: 2 },
-          { tag: "#food", count: 580, delta: -1 },
-          { tag: "#meme", count: 520, delta: 9 },
-          { tag: "#ai", count: 490, delta: 14 },
-          { tag: "#games", count: 460, delta: 4 },
-          { tag: "#life", count: 420, delta: -2 },
-        ];
+          .get("/api/admin/analytics/trending", {
+            searchParams: { page, limit: 10 },
+          })
+          .json<{
+            topics: { tag: string; count: number }[];
+            pagination: {
+              page: number;
+              limit: number;
+              total: number;
+              totalPages: number;
+            };
+          }>();
+
+        return res;
+      } catch (error) {
+        console.error("Error fetching trending topics:", error);
+        return {
+          topics: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        };
       }
     },
   });
@@ -519,30 +649,44 @@ function TrendingAnalytics() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="grid gap-2 md:grid-cols-2">
-            {(data || []).map((t, idx) => (
-              <div
-                key={t.tag}
-                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {idx + 1}
-                </div>
-                <div className="font-medium">{t.tag}</div>
-                <div className="ms-auto text-sm text-muted-foreground">
-                  {t.count.toLocaleString()} posts
-                </div>
-                {typeof t.delta === "number" && (
+        ) : data && data.topics && data.topics.length > 0 ? (
+          <>
+            <div className="grid gap-2 md:grid-cols-2">
+              {data.topics.map((t, idx) => {
+                const globalIndex = (page - 1) * 10 + idx;
+                return (
                   <div
-                    className={`ms-3 text-xs ${t.delta >= 0 ? "text-green-600" : "text-red-600"}`}
+                    key={t.tag}
+                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
                   >
-                    {t.delta >= 0 ? "+" : ""}
-                    {t.delta}%
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {globalIndex + 1}
+                    </div>
+                    <div className="font-medium">{t.tag}</div>
+                    <div className="ms-auto text-sm text-muted-foreground">
+                      {t.count.toLocaleString()} posts
+                    </div>
                   </div>
-                )}
+                );
+              })}
+            </div>
+            {data.pagination && data.pagination.totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Trang {data.pagination.page} / {data.pagination.totalPages} (
+                  {data.pagination.total} topics)
+                </div>
+                <Pagination
+                  currentPage={data.pagination.page}
+                  totalPages={data.pagination.totalPages}
+                  onPageChange={setPage}
+                />
               </div>
-            ))}
+            )}
+          </>
+        ) : (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Không có dữ liệu trending topics
           </div>
         )}
       </CardContent>
