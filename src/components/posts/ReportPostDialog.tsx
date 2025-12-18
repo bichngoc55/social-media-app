@@ -101,8 +101,42 @@ export default function ReportPostDialog({
       setOpen(false);
       setSelectedType("");
       setReason("");
-      // Invalidate posts to refresh feed
+
+      // Remove post from cache immediately for instant UI update
+      queryClient.setQueriesData(
+        { queryKey: ["post-feed"] },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts:
+                  page.posts?.filter((post: any) => post.id !== postId) || [],
+              })),
+            };
+          }
+
+          // Handle regular query structure
+          if (oldData.posts) {
+            return {
+              ...oldData,
+              posts: oldData.posts.filter((post: any) => post.id !== postId),
+            };
+          }
+
+          return oldData;
+        }
+      );
+
+      // Invalidate all post-related queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post-feed"] });
+      queryClient.invalidateQueries({ queryKey: ["post-feed", "for-you"] });
+      queryClient.invalidateQueries({ queryKey: ["post-feed", "following"] });
     },
     onError: (error: any) => {
       const message =
@@ -256,7 +290,7 @@ export default function ReportPostDialog({
                   : "Add any additional context that might help us review this report (optional)..."
               }
               rows={4}
-              className="resize-none border-2 focus:border-pink-400 focus:ring-pink-400/20"
+              className="resize-none border-2 focus:border-pink-400 focus:ring-0"
             />
           </div>
         </div>

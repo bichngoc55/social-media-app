@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions", "fullTextSearch"]
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
 }
 
 datasource db {
@@ -9,63 +9,55 @@ datasource db {
   extensions = [vector]
 }
 
-enum HARMFULTYPES {
-  VIOLENCE
-  HATE_SPEECH
-  NUDITY
-  SPAM
-  HARASSMENT
-  OTHER
-}
-
 model User {
-  id                          String                       @id
-  username                    String                       @unique
+  id                          String                   @id
+  username                    String                   @unique
   displayName                 String
-  email                       String?                      @unique
+  email                       String?                  @unique
   passwordHash                String?
-  googleId                    String?                      @unique
+  googleId                    String?                  @unique
   avatarUrl                   String?
   bio                         String?
-  interests                   String[]                     @default([])
-  provinceCode                String? // Province/State ID from location data
-  districtCode                String? // District/City ID from location data
-  countryCode                 String? // Country ID from location data
-  createdAt                   DateTime                     @default(now())
-  emailVerified               Boolean                      @default(false)
-  role                        UserRole                     @default(USER)
+  createdAt                   DateTime                 @default(now())
+  emailVerified               Boolean                  @default(false)
+  role                        UserRole                 @default(USER)
+  provinceCode                String?
+  districtCode                String?
+  countryCode                 String?
+  emotionScore                Float?
+  generalEmotion              EMOTION?
+  interests                   String[]                 @default([])
+  tasteEmbedding              Unsupported("vector")?
+  topicEmbeddings             Unsupported("_vector")[]
+  dislikedPostTopicsEmbedding Unsupported("_vector")[]
+  dislikedTopics              String[]                 @default([])
   bookmarks                   Bookmark[]
   comments                    Comment[]
   deviceSessions              DeviceSession[]
   emailVerifications          EmailVerification[]
-  following                   Follow[]                     @relation("Following")
-  followers                   Follow[]                     @relation("Followers")
+  following                   Follow[]                 @relation("Following")
+  followers                   Follow[]                 @relation("Followers")
   likes                       Like[]
-  mentionsIssued              Mention[]                    @relation("MentionedBy")
-  mentions                    Mention[]                    @relation("Mentioned")
-  issuedNotifications         Notification[]               @relation("Issuer")
-  receivedNotifications       Notification[]               @relation("Recipient")
+  mentionsIssued              Mention[]                @relation("MentionedBy")
+  mentions                    Mention[]                @relation("Mentioned")
+  issuedNotifications         Notification[]           @relation("Issuer")
+  receivedNotifications       Notification[]           @relation("Recipient")
+  blockedPosts                PostBlock[]
   post_tags                   post_tags[]
   posts                       Post[]
-  reportsReceived             Report[]                     @relation("Reported")
-  reportsIssued               Report[]                     @relation("Reporter")
+  reportsReceived             Report[]                 @relation("Reported")
+  reportsIssued               Report[]                 @relation("Reporter")
   sessions                    Session[]
   twoFactorAuths              TwoFactorAuth[]
-  blockedByUsers              UserBlock[]                  @relation("Blocked")
-  blockedUsers                UserBlock[]                  @relation("Blocker")
-  topicEmbeddings             Unsupported("vector(768)")[]
-  tasteEmbedding              Unsupported("vector(768)")?
-  // AI Recommendations - Cached metrics for performance
   aiMetrics                   UserAIMetrics?
-  aiRecommendations           UserRecommendation[]         @relation("RecommendedUser")
-  recommendationsFor          UserRecommendation[]         @relation("RecommendedTo")
-  // emotion
-  generalEmotion              EMOTION?
-  emotionScore                Float?
-  // dislike
-  dislikedPostTopicsEmbedding Unsupported("vector(768)")[] // Array of embeddings for disliked post topics
-  blockedPosts                PostBlock[]
-  dislikedTopics              String[]                     @default([])
+  blockedByUsers              UserBlock[]              @relation("Blocked")
+  blockedUsers                UserBlock[]              @relation("Blocker")
+  recommendationsFor          UserRecommendation[]     @relation("RecommendedTo")
+  aiRecommendations           UserRecommendation[]     @relation("RecommendedUser")
+  moderatedContent            ModerationCase[]        @relation("ModeratedUser")
+  assignedModerationCases     ModerationCase[]        @relation("AssignedModerator")
+  moderationDecisions         ModerationCase[]        @relation("DecisionModerator")
+  supervisorApprovals         ModerationCase[]        @relation("SupervisorApproval")
 
   @@map("users")
 }
@@ -105,55 +97,52 @@ model Follow {
   @@map("follows")
 }
 
-enum EMOTION {
-  POSITIVE
-  NEGATIVE
-  NEUTRAL
-}
-
 model Post {
-  id                    String                       @id @default(cuid())
+  id                    String                   @id @default(cuid())
   content               String
   userId                String
-  createdAt             DateTime                     @default(now())
-  privacy               PostPrivacy                  @default(PUBLIC)
+  createdAt             DateTime                 @default(now())
+  privacy               PostPrivacy              @default(PUBLIC)
   mediaLayout           MediaLayout?
-  hashtags              String[]                     @default([])
+  embedding             Unsupported("vector")?
+  emotionScore          Float?
+  emotions              EMOTION?
+  harmful               Boolean                  @default(false)
+  harmfulTypes          String[]                 @default([])
+  hashtags              String[]                 @default([])
+  primaryEmotion        String?
+  topicEmbeddings       Unsupported("_vector")[]
+  topics                String[]                 @default([])
+  wisdomOrAdviceMessage String?
   bookmarks             Bookmark[]
   comments              Comment[]
   likes                 Like[]
   mentions              Mention[]
   linkedNotifications   Notification[]
+  postBlocks            PostBlock[]
   attachments           Media[]
   post_tags             post_tags[]
-  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports               Report[]
-  embedding             Unsupported("vector(1408)")? // Multimodal embedding (text+image+video)
-  topicEmbeddings       Unsupported("vector(768)")[] // Array of embeddings for each topic
-  emotions              EMOTION?
-  emotionScore          Float?
-  harmful               Boolean                      @default(false)
-  harmfulTypes          String[]                     @default([])
-  primaryEmotion        String? // e.g. "joy", "sadness", "anger", "gratitude", "loneliness"
-  topics                String[]                     @default([]) // e.g. ["beach vacation", "new job", "breakup"]
-  wisdomOrAdviceMessage String?
-  postBlocks            PostBlock[]
+  moderationCases       ModerationCase[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([privacy, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([content(ops: raw("gist_trgm_ops"))], map: "posts_content_trgm_idx", type: Gist)
+  @@index([embedding])
   @@map("posts")
 }
 
 model Media {
   id        String    @id @default(cuid())
   postId    String?
-  commentId String?
   type      MediaType
   url       String
   createdAt DateTime  @default(now())
-  post      Post?     @relation(fields: [postId], references: [id])
+  commentId String?
   comment   Comment?  @relation(fields: [commentId], references: [id])
+  post      Post?     @relation(fields: [postId], references: [id])
 
   @@map("post_media")
 }
@@ -321,6 +310,65 @@ model Mention {
   @@map("mentions")
 }
 
+model UserAIMetrics {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  totalPosts         Int       @default(0)
+  totalLikes         Int       @default(0)
+  totalComments      Int       @default(0)
+  totalFollowers     Int       @default(0)
+  totalFollowing     Int       @default(0)
+  postsLast30Days    Int       @default(0)
+  postsLast7Days     Int       @default(0)
+  isActiveLast7Days  Boolean   @default(false)
+  lastPostDate       DateTime?
+  topHashtags        String[]  @default([])
+  hashtagCounts      Json?
+  engagementRate     Float     @default(0)
+  avgLikesPerPost    Float     @default(0)
+  avgCommentsPerPost Float     @default(0)
+  updatedAt          DateTime  @default(now()) @updatedAt
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("user_ai_metrics")
+}
+
+model UserRecommendation {
+  id                String   @id @default(cuid())
+  recommendedToId   String
+  recommendedUserId String
+  score             Float
+  reason            String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+  recommendedTo     User     @relation("RecommendedTo", fields: [recommendedToId], references: [id], onDelete: Cascade)
+  recommendedUser   User     @relation("RecommendedUser", fields: [recommendedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([recommendedToId, recommendedUserId])
+  @@index([recommendedToId, score(sort: Desc)])
+  @@index([recommendedToId, expiresAt])
+  @@index([expiresAt])
+  @@map("user_recommendations")
+}
+
+enum HARMFULTYPES {
+  VIOLENCE
+  HATE_SPEECH
+  NUDITY
+  SPAM
+  HARASSMENT
+  OTHER
+}
+
+enum EMOTION {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -376,61 +424,141 @@ enum TagStatus {
 enum UserRole {
   USER
   ADMIN
+  SUPERVISOR
 }
 
-// AI Recommendations - Cached metrics for performance
-model UserAIMetrics {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum ModerationSource {
+  AI
+  USER_REPORT
+  ADMIN_MANUAL
+}
 
-  // Engagement metrics (cached)
-  totalPosts     Int @default(0)
-  totalLikes     Int @default(0)
-  totalComments  Int @default(0)
-  totalFollowers Int @default(0)
-  totalFollowing Int @default(0)
+enum ModerationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
 
-  // Activity metrics
-  postsLast30Days   Int       @default(0)
-  postsLast7Days    Int       @default(0)
-  isActiveLast7Days Boolean   @default(false)
-  lastPostDate      DateTime?
+enum ModerationAutoAction {
+  NONE
+  BLUR
+  REDUCE_DISTRIBUTION
+  TEMP_REMOVE
+  AUTO_REMOVE
+}
 
-  // Hashtag preferences (top 10 hashtags user uses)
-  topHashtags   String[] @default([])
-  hashtagCounts Json? // Map of hashtag -> count
+enum ModerationStatus {
+  DETECTED
+  QUEUED
+  IN_REVIEW
+  CONFIRMED
+  RESTORED
+  DISMISSED
+  ESCALATED
+  APPEALED
+}
 
-  // Content quality score (0-100)
-  engagementRate     Float @default(0)
-  avgLikesPerPost    Float @default(0)
-  avgCommentsPerPost Float @default(0)
+enum ModerationDecision {
+  CONFIRM_VIOLATION
+  RESTORE
+  DISMISS
+  ESCALATE
+  NEED_MORE_CONTEXT
+}
 
-  // Last updated timestamp
-  updatedAt DateTime @default(now()) @updatedAt
+enum ModerationPolicyArea {
+  NUDITY
+  VIOLENCE
+  HATE_SPEECH
+  HARASSMENT
+  SELF_HARM
+  SPAM
+  SCAM
+  COPYRIGHT
+  IMPERSONATION
+  OTHER
+}
 
+// Moderation Case - Professional moderation system
+model ModerationCase {
+  id                    String                 @id @default(cuid())
+  postId                String?
+  userId                String? // User who created the content
+  source                ModerationSource        @default(AI)
+  
+  // AI Detection fields
+  policyAreaPredicted   ModerationPolicyArea?
+  confidence            Float?                  // 0.0 - 1.0
+  severity              ModerationSeverity      @default(MEDIUM)
+  modelVersion          String?
+  harmfulTypes          String[]                @default([])
+  
+  // Auto-action applied
+  autoAction            ModerationAutoAction    @default(NONE)
+  autoActionAppliedAt  DateTime?
+  
+  // Status & Priority
+  status                ModerationStatus        @default(DETECTED)
+  priorityScore         Float                   @default(0.0) // Calculated: severity × virality × confidence
+  assignedTo            String?                 // Admin user ID
+  slaDueAt              DateTime?               // SLA deadline for review
+  
+  // Decision
+  decision              ModerationDecision?
+  decisionAt            DateTime?
+  decisionBy            String?                 // Admin user ID
+  policyArea            ModerationPolicyArea?   // Confirmed policy area
+  reasonCode            String?                 // Standardized reason code
+  supervisorApproved    Boolean                 @default(false)
+  supervisorApprovedBy  String?                 // Supervisor user ID
+  supervisorApprovedAt  DateTime?
+  
+  // Evidence & Context
+  evidence              Json?                   // Snapshot of content, model signals, etc.
+  adminNotes            String?
+  
+  // Relations
+  post                  Post?                   @relation(fields: [postId], references: [id], onDelete: SetNull)
+  user                  User?                   @relation("ModeratedUser", fields: [userId], references: [id], onDelete: SetNull)
+  assignedAdmin         User?                   @relation("AssignedModerator", fields: [assignedTo], references: [id], onDelete: SetNull)
+  decisionAdmin         User?                   @relation("DecisionModerator", fields: [decisionBy], references: [id], onDelete: SetNull)
+  supervisor            User?                   @relation("SupervisorApproval", fields: [supervisorApprovedBy], references: [id], onDelete: SetNull)
+  auditTrail            ModerationAuditLog[]
+  
+  // Timestamps
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  
+  @@index([status, priorityScore(sort: Desc)])
+  @@index([assignedTo, status])
+  @@index([postId])
   @@index([userId])
-  @@index([updatedAt])
-  @@map("user_ai_metrics")
+  @@index([slaDueAt])
+  @@index([source, status])
+  @@map("moderation_cases")
 }
 
-// AI Recommendations - Store recommendations for users
-model UserRecommendation {
-  id                String   @id @default(cuid())
-  recommendedToId   String // User who will see this recommendation
-  recommendedUserId String // User being recommended
-  score             Float // AI recommendation score (0-100)
-  reason            String? // Why this user is recommended
-  metadata          Json? // Additional metadata (hashtags, mutual connections, etc.)
-  createdAt         DateTime @default(now())
-  expiresAt         DateTime // When this recommendation expires
-
-  recommendedTo   User @relation("RecommendedTo", fields: [recommendedToId], references: [id], onDelete: Cascade)
-  recommendedUser User @relation("RecommendedUser", fields: [recommendedUserId], references: [id], onDelete: Cascade)
-
-  @@unique([recommendedToId, recommendedUserId])
-  @@index([recommendedToId, score(sort: Desc)])
-  @@index([recommendedToId, expiresAt])
-  @@index([expiresAt])
-  @@map("user_recommendations")
+// Audit Trail - Immutable log of all moderation actions
+model ModerationAuditLog {
+  id            String                 @id @default(cuid())
+  caseId        String
+  action        String                 // "CASE_CREATED", "STATUS_CHANGED", "DECISION_MADE", etc.
+  actorId       String                 // User ID who performed the action
+  actorRole     UserRole               // ADMIN | SUPERVISOR
+  previousState Json?                  // State before change
+  newState      Json?                  // State after change
+  reason        String?                // Reason for action
+  policyArea    ModerationPolicyArea?  // Policy area if applicable
+  modelVersion  String?                // AI model version if applicable
+  confidence    Float?                 // AI confidence if applicable
+  evidenceHash  String?                // Hash for integrity verification
+  createdAt     DateTime               @default(now())
+  
+  // Relations
+  case          ModerationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  @@index([caseId, createdAt(sort: Desc)])
+  @@index([actorId])
+  @@map("moderation_audit_logs")
 }
