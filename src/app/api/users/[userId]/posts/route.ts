@@ -53,6 +53,18 @@ export async function GET(
       },
     });
 
+    // Get reported post IDs
+    const reportedPosts = await prisma.report.findMany({
+      where: {
+        reporterId: user.id,
+        postId: { not: null },
+      },
+      select: { postId: true },
+    });
+    const reportedPostIds = reportedPosts
+      .map((r) => r.postId)
+      .filter((id): id is string => id !== null);
+
     const posts = await prisma.post.findMany({
       where: {
         AND: [
@@ -69,6 +81,10 @@ export async function GET(
               ...(isOwnProfile ? [{ privacy: "DRAFT" as const }] : []),
             ],
           },
+          // Exclude reported posts (only if not own profile)
+          ...(!isOwnProfile && reportedPostIds.length > 0
+            ? [{ id: { notIn: reportedPostIds } }]
+            : []),
         ],
       },
       include: getPostDataInclude(user.id),

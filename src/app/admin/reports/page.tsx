@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Flag, Search, Check, X, Clock, ArrowLeft } from "lucide-react";
+import { Flag, Search, Check, X, Clock, ArrowLeft, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,8 +23,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import kyInstance from "@/lib/ky";
-import { formatRelativeDate } from "@/lib/utils";
+import { formatRelativeDate, cn } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -52,6 +53,11 @@ interface Report {
     id: string;
     content: string;
     createdAt: Date;
+    attachments: {
+      id: string;
+      url: string;
+      type: string;
+    }[];
   } | null;
 }
 
@@ -61,6 +67,7 @@ export default function AdminReportsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -90,43 +97,142 @@ export default function AdminReportsPage() {
       toast({ description: "Report updated successfully" });
       setSelectedReport(null);
       setAdminNotes("");
+      setIsDialogOpen(false);
     },
   });
 
-  const handleUpdateReport = (status: string) => {
+  const handleUpdateReport = (status: string, deletePost = false) => {
     if (!selectedReport) return;
     updateReportMutation.mutate({
       reportId: selectedReport.id,
-      data: { status, adminNotes: adminNotes || null },
+      data: {
+        status,
+        adminNotes: adminNotes || null,
+        deletePost,
+      },
     });
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
-        return <Badge variant="outline">Pending</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+          >
+            Pending
+          </Badge>
+        );
       case "REVIEWED":
-        return <Badge variant="secondary">Reviewed</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
+          >
+            Reviewed
+          </Badge>
+        );
       case "RESOLVED":
-        return <Badge variant="default">Resolved</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950/30 dark:text-green-300"
+          >
+            Resolved
+          </Badge>
+        );
       case "DISMISSED":
-        return <Badge variant="destructive">Dismissed</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-950/30 dark:text-gray-300"
+          >
+            Dismissed
+          </Badge>
+        );
       default:
         return null;
     }
   };
 
   const getTypeBadge = (type: string) => {
-    return <Badge variant="outline">{type}</Badge>;
+    const typeConfig: Record<string, { bg: string; text: string; border: string }> = {
+      SPAM: {
+        bg: "bg-yellow-50 dark:bg-yellow-950/30",
+        text: "text-yellow-700 dark:text-yellow-300",
+        border: "border-yellow-300 dark:border-yellow-700",
+      },
+      HARASSMENT: {
+        bg: "bg-red-50 dark:bg-red-950/30",
+        text: "text-red-700 dark:text-red-300",
+        border: "border-red-300 dark:border-red-700",
+      },
+      HATE_SPEECH: {
+        bg: "bg-orange-50 dark:bg-orange-950/30",
+        text: "text-orange-700 dark:text-orange-300",
+        border: "border-orange-300 dark:border-orange-700",
+      },
+      VIOLENCE: {
+        bg: "bg-red-100 dark:bg-red-950/40",
+        text: "text-red-800 dark:text-red-200",
+        border: "border-red-400 dark:border-red-600",
+      },
+      NUDITY: {
+        bg: "bg-pink-50 dark:bg-pink-950/30",
+        text: "text-pink-700 dark:text-pink-300",
+        border: "border-pink-300 dark:border-pink-700",
+      },
+      COPYRIGHT: {
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        text: "text-blue-700 dark:text-blue-300",
+        border: "border-blue-300 dark:border-blue-700",
+      },
+      IMPERSONATION: {
+        bg: "bg-purple-50 dark:bg-purple-950/30",
+        text: "text-purple-700 dark:text-purple-300",
+        border: "border-purple-300 dark:border-purple-700",
+      },
+      OTHER: {
+        bg: "bg-gray-50 dark:bg-gray-950/30",
+        text: "text-gray-700 dark:text-gray-300",
+        border: "border-gray-300 dark:border-gray-700",
+      },
+    };
+
+    const config = typeConfig[type] || typeConfig.OTHER;
+
+    return (
+      <Badge
+        variant="outline"
+        className={cn(
+          "rounded-full font-semibold",
+          config.bg,
+          config.text,
+          config.border
+        )}
+      >
+        {type}
+      </Badge>
+    );
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          <Flag className="h-8 w-8" />
-          Quản lý Báo cáo
-        </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
+            <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              Quản lý Báo cáo
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Review and manage user reports
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="card-glass">
@@ -191,8 +297,8 @@ export default function AdminReportsPage() {
         <>
           <div className="space-y-4">
             {data?.reports.map((report) => (
-              <Card key={report.id}>
-                <CardContent className="space-y-3 p-4">
+              <Card key={report.id} className="card-glass border-2 hover:border-pink-300 transition-colors">
+                <CardContent className="space-y-3 p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
@@ -249,7 +355,13 @@ export default function AdminReportsPage() {
                         </div>
                       )}
                     </div>
-                    <Dialog>
+                    <Dialog open={isDialogOpen && selectedReport?.id === report.id} onOpenChange={(open) => {
+                      setIsDialogOpen(open);
+                      if (!open) {
+                        setSelectedReport(null);
+                        setAdminNotes("");
+                      }
+                    }}>
                       <DialogTrigger asChild>
                         <Button
                           variant="outline"
@@ -257,53 +369,180 @@ export default function AdminReportsPage() {
                           onClick={() => {
                             setSelectedReport(report);
                             setAdminNotes(report.adminNotes || "");
+                            setIsDialogOpen(true);
                           }}
                         >
                           Review
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Review Report</DialogTitle>
+                      <DialogContent className="max-w-3xl max-h-[85vh] bg-[rgba(244,231,248,0.95)] backdrop-blur-[20px] border-[rgba(195,199,244,0.4)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] flex flex-col">
+                        <DialogHeader className="space-y-2 flex-shrink-0">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
+                              <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                            </div>
+                            <div>
+                              <DialogTitle className="text-2xl font-bold">Review Report</DialogTitle>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Review and take action on this report
+                              </p>
+                            </div>
+                          </div>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium">
+                        <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0">
+                          {selectedReport?.post && (
+                            <div className="space-y-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-5 dark:border-orange-900 dark:from-orange-950/30 dark:to-red-950/30">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Flag className="h-5 w-5 text-orange-600" />
+                                  <p className="text-base font-semibold text-orange-900 dark:text-orange-200">
+                                    Reported Post
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="border-orange-300 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                  {formatRelativeDate(new Date(selectedReport.post.createdAt))}
+                                </Badge>
+                              </div>
+                              
+                              <div className="rounded-lg bg-white/80 p-4 dark:bg-gray-900/50">
+                                <p className="whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
+                                  {selectedReport.post.content}
+                                </p>
+                              </div>
+
+                              {selectedReport.post.attachments && selectedReport.post.attachments.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                                    Attachments ({selectedReport.post.attachments.length}):
+                                  </p>
+                                  <div className={cn(
+                                    "grid gap-3",
+                                    selectedReport.post.attachments.length === 1 ? "grid-cols-1 max-w-2xl mx-auto" :
+                                    selectedReport.post.attachments.length === 2 ? "grid-cols-2" :
+                                    "grid-cols-3"
+                                  )}>
+                                    {selectedReport.post.attachments.map((attachment) => (
+                                      <div
+                                        key={attachment.id}
+                                        className={cn(
+                                          "group relative overflow-hidden rounded-lg border-2 border-orange-200 bg-white dark:border-orange-800 dark:bg-gray-900",
+                                          selectedReport.post.attachments.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-square max-h-[200px]"
+                                        )}
+                                      >
+                                        {attachment.type === "IMAGE" ? (
+                                          <Image
+                                            src={attachment.url}
+                                            alt="Post attachment"
+                                            width={400}
+                                            height={400}
+                                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                            unoptimized
+                                          />
+                                        ) : attachment.type === "VIDEO" ? (
+                                          <video
+                                            src={attachment.url}
+                                            controls
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <Button
+                                variant="destructive"
+                                onClick={() =>
+                                  handleUpdateReport("RESOLVED", true)
+                                }
+                                disabled={updateReportMutation.isPending || selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED"}
+                                className="w-full rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Post & Resolve
+                              </Button>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold">
                               Admin Notes
                             </label>
                             <Textarea
                               value={adminNotes}
                               onChange={(e) => setAdminNotes(e.target.value)}
                               placeholder="Add notes about this report..."
-                              rows={4}
+                              rows={3}
+                              disabled={selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED"}
+                              className="resize-none border-2 focus:border-pink-400 focus:ring-pink-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="default"
-                              onClick={() => handleUpdateReport("RESOLVED")}
-                              disabled={updateReportMutation.isPending}
-                            >
-                              <Check className="mr-2 h-4 w-4" />
-                              Resolve
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={() => handleUpdateReport("DISMISSED")}
-                              disabled={updateReportMutation.isPending}
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Dismiss
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              onClick={() => handleUpdateReport("REVIEWED")}
-                              disabled={updateReportMutation.isPending}
-                            >
-                              <Clock className="mr-2 h-4 w-4" />
-                              Mark Reviewed
-                            </Button>
+
+                          {selectedReport && (
+                            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                              <div className="flex items-start gap-2">
+                                <div className="mt-0.5">
+                                  <Flag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                                    Report Details
+                                  </p>
+                                  <div className="mt-1 space-y-1 text-xs text-blue-800 dark:text-blue-300">
+                                    <p><span className="font-medium">Type:</span> {selectedReport.type}</p>
+                                    <p><span className="font-medium">Reason:</span> {selectedReport.reason}</p>
+                                    <p><span className="font-medium">Reporter:</span> {selectedReport.reporter.displayName} (@{selectedReport.reporter.username})</p>
+                                    <p><span className="font-medium">Reported User:</span> {selectedReport.reported.displayName} (@{selectedReport.reported.username})</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 flex-shrink-0 border-t pt-4 mt-4">
+                            {selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED" ? (
+                              <div className="w-full rounded-lg border-2 border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20">
+                                <div className="flex items-center gap-2">
+                                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                                    This report has been {selectedReport.status === "RESOLVED" ? "resolved" : "dismissed"}. No further actions can be taken.
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="default"
+                                  onClick={() => handleUpdateReport("RESOLVED")}
+                                  disabled={updateReportMutation.isPending}
+                                  className="flex-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                                >
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Resolve
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleUpdateReport("DISMISSED")}
+                                  disabled={updateReportMutation.isPending}
+                                  className="flex-1 rounded-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
+                                >
+                                  <X className="mr-2 h-4 w-4" />
+                                  Dismiss
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => handleUpdateReport("REVIEWED")}
+                                  disabled={updateReportMutation.isPending}
+                                  className="flex-1 rounded-full"
+                                >
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Mark Reviewed
+                                </Button>
+                              </>
+                            )}
                           </div>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>

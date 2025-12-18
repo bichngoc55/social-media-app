@@ -44,6 +44,13 @@ export async function GET(req: NextRequest) {
               id: true,
               content: true,
               createdAt: true,
+              attachments: {
+                select: {
+                  id: true,
+                  url: true,
+                  type: true,
+                },
+              },
             },
           },
         },

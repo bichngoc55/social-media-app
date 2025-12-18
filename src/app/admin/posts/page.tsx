@@ -27,6 +27,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Post {
   id: string;
@@ -59,6 +69,10 @@ export default function AdminPostsPage() {
   const queryClient = useQueryClient();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    post: Post | null;
+  }>({ open: false, post: null });
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-posts", page, search, privacyFilter],
@@ -86,12 +100,13 @@ export default function AdminPostsPage() {
   });
 
   const handleDeletePost = (post: Post) => {
-    if (
-      confirm(
-        `Are you sure you want to delete this post? This action cannot be undone.`
-      )
-    ) {
-      deletePostMutation.mutate(post.id);
+    setDeleteDialog({ open: true, post });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteDialog.post) {
+      deletePostMutation.mutate(deleteDialog.post.id);
+      setDeleteDialog({ open: false, post: null });
     }
   };
 
@@ -114,11 +129,32 @@ export default function AdminPostsPage() {
   const getPrivacyBadge = (privacy: string) => {
     switch (privacy) {
       case "PUBLIC":
-        return <Badge variant="default">Public</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-green-200 bg-green-100 text-green-700 dark:border-green-700 dark:bg-green-950/30 dark:text-green-300"
+          >
+            Public
+          </Badge>
+        );
       case "FOLLOWERS":
-        return <Badge variant="secondary">Followers</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+          >
+            Followers
+          </Badge>
+        );
       case "DRAFT":
-        return <Badge variant="outline">Draft</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="rounded-full border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-950/30 dark:text-gray-300"
+          >
+            Draft
+          </Badge>
+        );
       default:
         return null;
     }
@@ -127,17 +163,26 @@ export default function AdminPostsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          <FileText className="h-8 w-8" />
-          Quản lý Bài viết
-        </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
+            <FileText className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              Quản lý Bài viết
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and moderate user posts
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="card-glass">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex w-full items-center gap-4 sm:w-auto">
             <Input
-              placeholder="Search posts..."
+              placeholder="Search posts or author name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
@@ -186,8 +231,8 @@ export default function AdminPostsPage() {
         <>
           <div className="space-y-4">
             {data?.posts.map((post) => (
-              <Card key={post.id}>
-                <CardContent className="space-y-3 p-4">
+              <Card key={post.id} className="card-glass border-2 hover:border-pink-300 transition-colors">
+                <CardContent className="space-y-3 p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="mb-2 flex items-center gap-2">
@@ -309,6 +354,33 @@ export default function AdminPostsPage() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog
+            open={deleteDialog.open}
+            onOpenChange={(open) =>
+              !open && setDeleteDialog({ open: false, post: null })
+            }
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Xóa bài viết</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Bạn có chắc chắn muốn xóa bài viết này? Hành động này không
+                  thể hoàn tác.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Xóa
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {data?.pagination && (
             <div className="flex items-center justify-between">

@@ -17,7 +17,29 @@ export async function GET(req: NextRequest) {
 
     const where: Prisma.PostWhereInput = {
       ...(search && {
-        content: { contains: search, mode: Prisma.QueryMode.insensitive },
+        OR: [
+          {
+            content: { contains: search, mode: Prisma.QueryMode.insensitive },
+          },
+          {
+            user: {
+              OR: [
+                {
+                  displayName: {
+                    contains: search,
+                    mode: Prisma.QueryMode.insensitive,
+                  },
+                },
+                {
+                  username: {
+                    contains: search,
+                    mode: Prisma.QueryMode.insensitive,
+                  },
+                },
+              ],
+            },
+          },
+        ],
       }),
       ...(privacy && { privacy: privacy as "PUBLIC" | "FOLLOWERS" | "DRAFT" }),
     };
