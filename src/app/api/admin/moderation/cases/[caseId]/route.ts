@@ -220,21 +220,11 @@ export async function PATCH(
 
       // Determine new status based on decision
       let newStatus: ModerationStatus;
-      let needsSupervisorApproval = false;
 
       switch (decision) {
         case ModerationDecision.CONFIRM_VIOLATION:
-          // Check if supervisor approval needed
-          if (
-            currentCase.severity === "CRITICAL" ||
-            currentCase.severity === "HIGH"
-          ) {
-            needsSupervisorApproval = true;
-            newStatus = ModerationStatus.ESCALATED;
-            updateData.supervisorApproved = false;
-          } else {
-            newStatus = ModerationStatus.CONFIRMED;
-          }
+          // Always confirm and delete post (no supervisor approval needed)
+          newStatus = ModerationStatus.CONFIRMED;
           break;
         case ModerationDecision.RESTORE:
           newStatus = ModerationStatus.RESTORED;
@@ -248,11 +238,6 @@ export async function PATCH(
           break;
         case ModerationDecision.DISMISS:
           newStatus = ModerationStatus.DISMISSED;
-          break;
-        case ModerationDecision.ESCALATE:
-          newStatus = ModerationStatus.ESCALATED;
-          needsSupervisorApproval = true;
-          updateData.supervisorApproved = false;
           break;
         case ModerationDecision.NEED_MORE_CONTEXT:
           newStatus = ModerationStatus.IN_REVIEW;
@@ -279,10 +264,9 @@ export async function PATCH(
         policyArea,
       });
 
-      // If CONFIRM_VIOLATION and no supervisor approval needed, delete post
+      // If CONFIRM_VIOLATION, delete post immediately
       if (
         decision === ModerationDecision.CONFIRM_VIOLATION &&
-        !needsSupervisorApproval &&
         currentCase.postId
       ) {
         try {
@@ -295,61 +279,14 @@ export async function PATCH(
       }
     }
 
-    // Handle supervisor approval
-    if (
-      supervisorApproved !== undefined &&
-      admin.role === UserRole.SUPERVISOR
-    ) {
-      if (supervisorApproved) {
-        updateData.supervisorApproved = true;
-        updateData.supervisorApprovedBy = admin.id;
-        updateData.supervisorApprovedAt = new Date();
-        updateData.status = ModerationStatus.CONFIRMED;
-
-        // Delete post if confirmed violation
-        if (
-          currentCase.decision === ModerationDecision.CONFIRM_VIOLATION &&
-          currentCase.postId
-        ) {
-          try {
-            await prisma.post.delete({
-              where: { id: currentCase.postId },
-            });
-          } catch (error) {
-            console.error("Error deleting post:", error);
-          }
-        }
-
-        auditLogs.push({
-          action: "SUPERVISOR_APPROVED",
-          previousState: {
-            supervisorApproved: currentCase.supervisorApproved,
-            status: currentCase.status,
-          },
-          newState: {
-            supervisorApproved: true,
-            status: ModerationStatus.CONFIRMED,
-          },
-          reason: "Supervisor approved decision",
-        });
-      } else {
-        // Supervisor rejected, revert to IN_REVIEW
-        updateData.status = ModerationStatus.IN_REVIEW;
-        updateData.supervisorApproved = false;
-        auditLogs.push({
-          action: "SUPERVISOR_REJECTED",
-          previousState: {
-            supervisorApproved: currentCase.supervisorApproved,
-            status: currentCase.status,
-          },
-          newState: {
-            supervisorApproved: false,
-            status: ModerationStatus.IN_REVIEW,
-          },
-          reason: "Supervisor rejected decision",
-        });
-      }
-    }
+    // Supervisor approval disabled - no SUPERVISOR role in system
+    // All decisions are made directly by admins
+    // if (
+    //   supervisorApproved !== undefined &&
+    //   admin.role === UserRole.SUPERVISOR
+    // ) {
+    //   ...
+    // }
 
     // Update case
     const updatedCase = await prisma.moderationCase.update({

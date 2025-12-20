@@ -3,7 +3,7 @@
 import { PostDataLightweight } from "@/lib/types";
 import { formatRelativeDate } from "@/lib/utils";
 import Link from "next/link";
-import { Dialog, DialogContent } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import Linkify from "../Linkify";
 import UserAvatar from "../UserAvatar";
 import UserTooltip from "../UserTooltip";
@@ -29,6 +29,9 @@ export default function PostDetailModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto p-0">
+        <DialogTitle className="sr-only">
+          Post by {post.user.displayName}
+        </DialogTitle>
         <div className="space-y-4 p-6">
           {/* Header */}
           <div className="flex items-start gap-3">

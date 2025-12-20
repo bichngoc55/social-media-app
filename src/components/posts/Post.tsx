@@ -17,7 +17,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import Comments from "../comments/Comments";
 import Linkify from "../Linkify";
 import UserAvatar from "../UserAvatar";
@@ -195,16 +195,14 @@ export default function Post({ post }: PostProps) {
         </div>
         <div className="flex items-center gap-2">
           <BlockPostButton postId={post.id} />
-          
+
           {user.id !== post.userId && (
             <ReportPostDialog postId={post.id}>
               <button
                 title="Report this post"
                 className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
               >
-                <Flag
-                  className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500"
-                />
+                <Flag className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500" />
               </button>
             </ReportPostDialog>
           )}
@@ -353,6 +351,9 @@ function ImageViewer({ images, initialIndex, onClose }: ImageViewerProps) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="h-auto max-h-[95vh] w-auto max-w-[95vw] border-none bg-black/95 p-0 [&>button]:hidden">
+        <DialogTitle className="sr-only">
+          Image {currentIndex + 1} of {images.length}
+        </DialogTitle>
         <div className="relative flex h-full w-full items-center justify-center">
           {/* Close button */}
           <button

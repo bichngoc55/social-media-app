@@ -97,7 +97,6 @@ interface ModerationCase {
     | "CONFIRMED"
     | "RESTORED"
     | "DISMISSED"
-    | "ESCALATED"
     | "APPEALED";
   priorityScore: number;
   assignedTo: string | null;
@@ -1007,11 +1006,6 @@ function AIFlagsTab() {
           text: "text-gray-700 dark:text-gray-300",
           border: "border-gray-300 dark:border-gray-700",
         },
-        ESCALATED: {
-          bg: "bg-orange-50 dark:bg-orange-950/30",
-          text: "text-orange-700 dark:text-orange-300",
-          border: "border-orange-300 dark:border-orange-700",
-        },
       };
 
     const cfg = config[status] || config.DETECTED;
@@ -1129,7 +1123,6 @@ function AIFlagsTab() {
                 <SelectItem value="CONFIRMED">Confirmed</SelectItem>
                 <SelectItem value="RESTORED">Restored</SelectItem>
                 <SelectItem value="DISMISSED">Dismissed</SelectItem>
-                <SelectItem value="ESCALATED">Escalated</SelectItem>
               </SelectContent>
             </Select>
             <Select value={severityFilter} onValueChange={setSeverityFilter}>
@@ -1508,9 +1501,6 @@ function AIFlagsTab() {
                                     </SelectItem>
                                     <SelectItem value="DISMISS">
                                       Dismiss
-                                    </SelectItem>
-                                    <SelectItem value="ESCALATE">
-                                      Escalate
                                     </SelectItem>
                                     <SelectItem value="NEED_MORE_CONTEXT">
                                       Need More Context
