@@ -7,6 +7,34 @@ export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin();
 
+    // Parse search params first (before any Prisma checks)
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const status = searchParams.get("status");
+    const severity = searchParams.get("severity");
+    const source = searchParams.get("source");
+    const policyArea = searchParams.get("policyArea");
+    const assignedTo = searchParams.get("assignedTo");
+    const sortBy = searchParams.get("sortBy") || "priorityScore"; // priorityScore | slaDueAt | createdAt
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ModerationCaseWhereInput = {
+      ...(status && { status: status as any }),
+      ...(severity && { severity: severity as any }),
+      ...(source && { source: source as any }),
+      ...(policyArea && { policyAreaPredicted: policyArea as any }),
+      ...(assignedTo && { assignedTo }),
+    };
+
+    const orderBy: Prisma.ModerationCaseOrderByWithRelationInput =
+      sortBy === "slaDueAt"
+        ? { slaDueAt: "asc" }
+        : sortBy === "createdAt"
+          ? { createdAt: "desc" }
+          : { priorityScore: "desc" };
+
     // Debug: Check if ModerationCase exists in Prisma client
     if (!prisma.moderationCase) {
       const availableModels = Object.keys(prisma).filter(
@@ -114,33 +142,6 @@ export async function GET(req: NextRequest) {
         { status: 503 }
       );
     }
-
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const status = searchParams.get("status");
-    const severity = searchParams.get("severity");
-    const source = searchParams.get("source");
-    const policyArea = searchParams.get("policyArea");
-    const assignedTo = searchParams.get("assignedTo");
-    const sortBy = searchParams.get("sortBy") || "priorityScore"; // priorityScore | slaDueAt | createdAt
-
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.ModerationCaseWhereInput = {
-      ...(status && { status: status as any }),
-      ...(severity && { severity: severity as any }),
-      ...(source && { source: source as any }),
-      ...(policyArea && { policyAreaPredicted: policyArea as any }),
-      ...(assignedTo && { assignedTo }),
-    };
-
-    const orderBy: Prisma.ModerationCaseOrderByWithRelationInput =
-      sortBy === "slaDueAt"
-        ? { slaDueAt: "asc" }
-        : sortBy === "createdAt"
-          ? { createdAt: "desc" }
-          : { priorityScore: "desc" };
 
     const [cases, total] = await Promise.all([
       prisma.moderationCase.findMany({

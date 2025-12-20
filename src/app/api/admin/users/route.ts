@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
               posts: true,
               followers: true,
               following: true,
+              reportsReceived: true, // Count of reports against this user
             },
           },
         } as any, // Cast to any until Prisma Client fully regenerates

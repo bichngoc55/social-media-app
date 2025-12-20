@@ -123,7 +123,12 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
                 {formatNumber(user._count.posts)}
               </span>
             </span>
-            <FollowerCount userId={user.id} initialState={followerInfo} />
+            <FollowerCount
+              userId={user.id}
+              username={user.username}
+              initialState={followerInfo}
+              followingCount={user._count.following}
+            />
           </div>
         </div>
         {user.id === loggedInUserId ? (
