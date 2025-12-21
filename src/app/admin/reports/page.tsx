@@ -157,7 +157,10 @@ export default function AdminReportsPage() {
   };
 
   const getTypeBadge = (type: string) => {
-    const typeConfig: Record<string, { bg: string; text: string; border: string }> = {
+    const typeConfig: Record<
+      string,
+      { bg: string; text: string; border: string }
+    > = {
       SPAM: {
         bg: "bg-yellow-50 dark:bg-yellow-950/30",
         text: "text-yellow-700 dark:text-yellow-300",
@@ -225,10 +228,10 @@ export default function AdminReportsPage() {
             <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
               Quản lý Báo cáo
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               Review and manage user reports
             </p>
           </div>
@@ -297,7 +300,10 @@ export default function AdminReportsPage() {
         <>
           <div className="space-y-4">
             {data?.reports.map((report) => (
-              <Card key={report.id} className="card-glass border-2 hover:border-pink-300 transition-colors">
+              <Card
+                key={report.id}
+                className="card-glass border-2 transition-colors hover:border-pink-300"
+              >
                 <CardContent className="space-y-3 p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
@@ -355,13 +361,16 @@ export default function AdminReportsPage() {
                         </div>
                       )}
                     </div>
-                    <Dialog open={isDialogOpen && selectedReport?.id === report.id} onOpenChange={(open) => {
-                      setIsDialogOpen(open);
-                      if (!open) {
-                        setSelectedReport(null);
-                        setAdminNotes("");
-                      }
-                    }}>
+                    <Dialog
+                      open={isDialogOpen && selectedReport?.id === report.id}
+                      onOpenChange={(open) => {
+                        setIsDialogOpen(open);
+                        if (!open) {
+                          setSelectedReport(null);
+                          setAdminNotes("");
+                        }
+                      }}
+                    >
                       <DialogTrigger asChild>
                         <Button
                           variant="outline"
@@ -375,21 +384,23 @@ export default function AdminReportsPage() {
                           Review
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-3xl max-h-[85vh] bg-[rgba(244,231,248,0.95)] backdrop-blur-[20px] border-[rgba(195,199,244,0.4)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] flex flex-col">
-                        <DialogHeader className="space-y-2 flex-shrink-0">
+                      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col border-[rgba(195,199,244,0.4)] bg-[rgba(244,231,248,0.95)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] backdrop-blur-[20px]">
+                        <DialogHeader className="flex-shrink-0 space-y-2">
                           <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
                               <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
                             </div>
                             <div>
-                              <DialogTitle className="text-2xl font-bold">Review Report</DialogTitle>
-                              <p className="text-sm text-muted-foreground mt-1">
+                              <DialogTitle className="text-2xl font-bold">
+                                Review Report
+                              </DialogTitle>
+                              <p className="mt-1 text-sm text-muted-foreground">
                                 Review and take action on this report
                               </p>
                             </div>
                           </div>
                         </DialogHeader>
-                        <div className="space-y-6 py-4 overflow-y-auto flex-1 min-h-0">
+                        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
                           {selectedReport?.post && (
                             <div className="space-y-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-5 dark:border-orange-900 dark:from-orange-950/30 dark:to-red-950/30">
                               <div className="flex items-center justify-between">
@@ -399,65 +410,87 @@ export default function AdminReportsPage() {
                                     Reported Post
                                   </p>
                                 </div>
-                                <Badge variant="outline" className="border-orange-300 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                                  {formatRelativeDate(new Date(selectedReport.post.createdAt))}
+                                <Badge
+                                  variant="outline"
+                                  className="border-orange-300 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                                >
+                                  {formatRelativeDate(
+                                    new Date(selectedReport.post.createdAt)
+                                  )}
                                 </Badge>
                               </div>
-                              
+
                               <div className="rounded-lg bg-white/80 p-4 dark:bg-gray-900/50">
                                 <p className="whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
                                   {selectedReport.post.content}
                                 </p>
                               </div>
 
-                              {selectedReport.post.attachments && selectedReport.post.attachments.length > 0 && (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                                    Attachments ({selectedReport.post.attachments.length}):
-                                  </p>
-                                  <div className={cn(
-                                    "grid gap-3",
-                                    selectedReport.post.attachments.length === 1 ? "grid-cols-1 max-w-2xl mx-auto" :
-                                    selectedReport.post.attachments.length === 2 ? "grid-cols-2" :
-                                    "grid-cols-3"
-                                  )}>
-                                    {selectedReport.post.attachments.map((attachment) => (
-                                      <div
-                                        key={attachment.id}
-                                        className={cn(
-                                          "group relative overflow-hidden rounded-lg border-2 border-orange-200 bg-white dark:border-orange-800 dark:bg-gray-900",
-                                          selectedReport.post.attachments.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-square max-h-[200px]"
-                                        )}
-                                      >
-                                        {attachment.type === "IMAGE" ? (
-                                          <Image
-                                            src={attachment.url}
-                                            alt="Post attachment"
-                                            width={400}
-                                            height={400}
-                                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                            unoptimized
-                                          />
-                                        ) : attachment.type === "VIDEO" ? (
-                                          <video
-                                            src={attachment.url}
-                                            controls
-                                            className="h-full w-full object-cover"
-                                          />
-                                        ) : null}
-                                      </div>
-                                    ))}
+                              {selectedReport.post.attachments &&
+                                selectedReport.post.attachments.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                                      Attachments (
+                                      {selectedReport.post.attachments.length}):
+                                    </p>
+                                    <div
+                                      className={cn(
+                                        "grid gap-3",
+                                        selectedReport.post.attachments
+                                          .length === 1
+                                          ? "mx-auto max-w-2xl grid-cols-1"
+                                          : selectedReport.post.attachments
+                                                .length === 2
+                                            ? "grid-cols-2"
+                                            : "grid-cols-3"
+                                      )}
+                                    >
+                                      {selectedReport.post.attachments.map(
+                                        (attachment) => (
+                                          <div
+                                            key={attachment.id}
+                                            className={cn(
+                                              "group relative overflow-hidden rounded-lg border-2 border-orange-200 bg-white dark:border-orange-800 dark:bg-gray-900",
+                                              selectedReport.post!.attachments
+                                                .length === 1
+                                                ? "aspect-auto max-h-[300px]"
+                                                : "aspect-square max-h-[200px]"
+                                            )}
+                                          >
+                                            {attachment.type === "IMAGE" ? (
+                                              <Image
+                                                src={attachment.url}
+                                                alt="Post attachment"
+                                                width={400}
+                                                height={400}
+                                                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                                unoptimized
+                                              />
+                                            ) : attachment.type === "VIDEO" ? (
+                                              <video
+                                                src={attachment.url}
+                                                controls
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : null}
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
                               <Button
                                 variant="destructive"
                                 onClick={() =>
                                   handleUpdateReport("RESOLVED", true)
                                 }
-                                disabled={updateReportMutation.isPending || selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED"}
-                                className="w-full rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                                disabled={
+                                  updateReportMutation.isPending ||
+                                  selectedReport?.status === "RESOLVED" ||
+                                  selectedReport?.status === "DISMISSED"
+                                }
+                                className="w-full rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Post & Resolve
@@ -474,8 +507,11 @@ export default function AdminReportsPage() {
                               onChange={(e) => setAdminNotes(e.target.value)}
                               placeholder="Add notes about this report..."
                               rows={3}
-                              disabled={selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED"}
-                              className="resize-none border-2 focus:border-pink-400 focus:ring-pink-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={
+                                selectedReport?.status === "RESOLVED" ||
+                                selectedReport?.status === "DISMISSED"
+                              }
+                              className="resize-none border-2 focus:border-pink-400 focus:ring-pink-400/20 disabled:cursor-not-allowed disabled:opacity-60"
                             />
                           </div>
 
@@ -490,58 +526,81 @@ export default function AdminReportsPage() {
                                     Report Details
                                   </p>
                                   <div className="mt-1 space-y-1 text-xs text-blue-800 dark:text-blue-300">
-                                    <p><span className="font-medium">Type:</span> {selectedReport.type}</p>
-                                    <p><span className="font-medium">Reason:</span> {selectedReport.reason}</p>
-                                    <p><span className="font-medium">Reporter:</span> {selectedReport.reporter.displayName} (@{selectedReport.reporter.username})</p>
-                                    <p><span className="font-medium">Reported User:</span> {selectedReport.reported.displayName} (@{selectedReport.reported.username})</p>
+                                    <p>
+                                      <span className="font-medium">Type:</span>{" "}
+                                      {selectedReport.type}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">
+                                        Reason:
+                                      </span>{" "}
+                                      {selectedReport.reason}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">
+                                        Reporter:
+                                      </span>{" "}
+                                      {selectedReport.reporter.displayName} (@
+                                      {selectedReport.reporter.username})
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">
+                                        Reported User:
+                                      </span>{" "}
+                                      {selectedReport.reported.displayName} (@
+                                      {selectedReport.reported.username})
+                                    </p>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-2 flex-shrink-0 border-t pt-4 mt-4">
-                            {selectedReport?.status === "RESOLVED" || selectedReport?.status === "DISMISSED" ? (
-                              <div className="w-full rounded-lg border-2 border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20">
-                                <div className="flex items-center gap-2">
-                                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  <p className="text-sm font-medium text-green-900 dark:text-green-200">
-                                    This report has been {selectedReport.status === "RESOLVED" ? "resolved" : "dismissed"}. No further actions can be taken.
-                                  </p>
-                                </div>
+                        <div className="mt-4 flex flex-shrink-0 flex-wrap gap-2 border-t pt-4">
+                          {selectedReport?.status === "RESOLVED" ||
+                          selectedReport?.status === "DISMISSED" ? (
+                            <div className="w-full rounded-lg border-2 border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20">
+                              <div className="flex items-center gap-2">
+                                <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                                  This report has been{" "}
+                                  {selectedReport.status === "RESOLVED"
+                                    ? "resolved"
+                                    : "dismissed"}
+                                  . No further actions can be taken.
+                                </p>
                               </div>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="default"
-                                  onClick={() => handleUpdateReport("RESOLVED")}
-                                  disabled={updateReportMutation.isPending}
-                                  className="flex-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                                >
-                                  <Check className="mr-2 h-4 w-4" />
-                                  Resolve
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  onClick={() => handleUpdateReport("DISMISSED")}
-                                  disabled={updateReportMutation.isPending}
-                                  className="flex-1 rounded-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
-                                >
-                                  <X className="mr-2 h-4 w-4" />
-                                  Dismiss
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => handleUpdateReport("REVIEWED")}
-                                  disabled={updateReportMutation.isPending}
-                                  className="flex-1 rounded-full"
-                                >
-                                  <Clock className="mr-2 h-4 w-4" />
-                                  Mark Reviewed
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <>
+                              <Button
+                                variant="default"
+                                onClick={() => handleUpdateReport("RESOLVED")}
+                                disabled={updateReportMutation.isPending}
+                                className="flex-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                              >
+                                <Check className="mr-2 h-4 w-4" />
+                                Resolve
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={() => handleUpdateReport("DISMISSED")}
+                                disabled={updateReportMutation.isPending}
+                                className="flex-1 rounded-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600"
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Dismiss
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                onClick={() => handleUpdateReport("REVIEWED")}
+                                disabled={updateReportMutation.isPending}
+                                className="flex-1 rounded-full"
+                              >
+                                <Clock className="mr-2 h-4 w-4" />
+                                Mark Reviewed
+                              </Button>
+                            </>
                           )}
                         </div>
                       </DialogContent>

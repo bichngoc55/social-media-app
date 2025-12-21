@@ -194,6 +194,26 @@ export async function submitPost(input: {
           newPost.id
         );
 
+        // Create moderation case if AI detected harmful content
+        if (analysis.harmful && analysis.harmfulTypes.length > 0) {
+          try {
+            const { createModerationCaseFromAI } =
+              await import("@/lib/moderation");
+            const postEngagement = { likes: 0, comments: 0, shares: 0 }; // New post has no engagement yet
+            await createModerationCaseFromAI({
+              postId: newPost.id,
+              userId: user.id,
+              harmful: analysis.harmful,
+              harmfulTypes: analysis.harmfulTypes,
+              confidence: 0.8, // Default confidence, could be improved with actual model confidence
+              postEngagement,
+            });
+          } catch (error) {
+            console.error("Error creating moderation case:", error);
+            // Don't fail post creation if moderation case creation fails
+          }
+        }
+
         const currentUserStats = await prisma.user.findUnique({
           where: { id: user.id },
           select: { emotionScore: true, _count: { select: { posts: true } } },

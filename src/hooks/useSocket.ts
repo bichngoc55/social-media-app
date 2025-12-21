@@ -27,7 +27,20 @@ export function useSocket() {
 
       if (notification.issuerId === user.id) return;
 
-      const { type, issuer } = notification;
+      const { type, issuer, customMessage } = notification;
+
+      // If custom message is provided, use it directly
+      if (customMessage) {
+        toast.success(customMessage);
+        return;
+      }
+
+      // Otherwise, use default messages
+      if (!issuer) {
+        console.warn("Notification missing issuer:", notification);
+        return;
+      }
+
       const messages = {
         LIKE: `${issuer.displayName} liked your post`,
         FOLLOW: `${issuer.displayName} started following you`,

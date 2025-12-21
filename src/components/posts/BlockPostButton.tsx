@@ -4,7 +4,7 @@ import { ShieldOff } from "lucide-react";
 import { QueryKey, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface BlockPostButtonProps {
   postId: string;
@@ -64,9 +64,11 @@ export default function BlockPostButton({ postId }: BlockPostButtonProps) {
       </button>
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-sm">
+          <DialogTitle className="text-lg font-semibold">
+            Block similar content?
+          </DialogTitle>
           <div className="space-y-4 text-center">
             <ShieldOff className="mx-auto mb-2 size-8 text-red-500" />
-            <h2 className="text-lg font-semibold">Block similar content?</h2>
             <p className="text-sm text-muted-foreground">
               Are you sure you want to block this post and see fewer posts with
               similar topics and content?

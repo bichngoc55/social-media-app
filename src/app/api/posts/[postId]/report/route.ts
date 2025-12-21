@@ -22,8 +22,8 @@ export async function POST(
       );
     }
 
-    // Reason is required, especially for OTHER type
-    if (!reason || !reason.trim()) {
+    // Reason is required - frontend always sends reason (at least the type label)
+    if (!reason || typeof reason !== "string") {
       return NextResponse.json(
         { error: "Reason is required" },
         { status: 400 }
