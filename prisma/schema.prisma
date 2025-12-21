@@ -60,7 +60,8 @@ model User {
   supervisorApprovals         ModerationCase[]        @relation("SupervisorApproval")
 
   //  report counts including AI and users
-  totalViolateCounts Int @default(0)
+  totalViolateCounts Int                @default(0)
+  appealUserReports  AppealUserReport[]
 
   @@map("users")
 }
@@ -127,6 +128,17 @@ model Post {
   post_tags             post_tags[]
   user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports               Report[]
+  embedding             Unsupported("vector(1408)")? // Multimodal embedding (text+image+video)
+  topicEmbeddings       Unsupported("vector(768)")[] // Array of embeddings for each topic
+  emotions              EMOTION?
+  emotionScore          Float?
+  harmful               Boolean                      @default(false)
+  harmfulTypes          String[]                     @default([])
+  primaryEmotion        String? // e.g. "joy", "sadness", "anger", "gratitude", "loneliness"
+  topics                String[]                     @default([]) // e.g. ["beach vacation", "new job", "breakup"]
+  wisdomOrAdviceMessage String?
+  postBlocks            PostBlock[]
+  appealUserReports     AppealUserReport[]
   moderationCases       ModerationCase[]
 
   @@index([userId, createdAt(sort: Desc)])
@@ -569,4 +581,26 @@ model ModerationAuditLog {
   @@index([caseId, createdAt(sort: Desc)])
   @@index([actorId])
   @@map("moderation_audit_logs")
+}
+
+enum AppealStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model AppealUserReport {
+  id           String       @id @default(cuid())
+  userId       String
+  postId       String
+  appealReason String
+  status       AppealStatus @default(PENDING)
+  adminNotes   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("appeal_user_reports")
 }
