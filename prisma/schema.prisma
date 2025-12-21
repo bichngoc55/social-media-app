@@ -59,6 +59,9 @@ model User {
   moderationDecisions         ModerationCase[]        @relation("DecisionModerator")
   supervisorApprovals         ModerationCase[]        @relation("SupervisorApproval")
 
+  //  report counts including AI and users
+  totalViolateCounts Int @default(0)
+
   @@map("users")
 }
 
@@ -395,6 +398,11 @@ enum NotificationType {
   MENTION
   TAG
   TAG_REQUEST
+  REPLY
+  // Report related
+  APPEAL_RESPONSE
+  RESOLVED_REPORT
+  VIOLATE_COUNTS_RESPONSE
 }
 
 enum ReportType {

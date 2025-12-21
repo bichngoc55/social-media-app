@@ -36,8 +36,7 @@ export default async function Layout({
 
   const user = await checkOnboarding(session.user.id);
 
-  // Check if user has completed onboarding (has exactly 3 interests and country)
-  if (!user?.interests || user.interests.length !== 3 || !user?.countryCode) {
+  if (!user?.interests || user.interests.length < 3 || !user?.countryCode) {
     redirect("/onboarding");
   }
 

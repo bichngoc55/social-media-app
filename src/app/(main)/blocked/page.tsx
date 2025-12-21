@@ -51,15 +51,16 @@ export default function BlockedUsersPage() {
         const data: BlockedUsersResponse = await response.json();
 
         if (!response.ok) {
-          throw new Error((data as any).error || "Có lỗi xảy ra");
+          throw new Error((data as any).error || "An error occurred");
         }
 
         setBlockedUsers(data.blockedUsers);
         setPagination(data.pagination);
       } catch (error) {
         toast({
-          title: "Lỗi",
-          description: error instanceof Error ? error.message : "Có lỗi xảy ra",
+          title: "Error",
+          description:
+            error instanceof Error ? error.message : "An error occurred",
           variant: "destructive",
         });
       } finally {
@@ -79,7 +80,7 @@ export default function BlockedUsersPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Có lỗi xảy ra");
+        throw new Error(data.error || "An error occurred");
       }
 
       setBlockedUsers((prev) => prev.filter((user) => user.id !== userId));
@@ -89,13 +90,14 @@ export default function BlockedUsersPage() {
       }));
 
       toast({
-        title: "Thành công",
-        description: `Đã bỏ chặn ${username}`,
+        title: "Success",
+        description: `Unblocked ${username}`,
       });
     } catch (error) {
       toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra",
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -115,7 +117,7 @@ export default function BlockedUsersPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Người dùng đã chặn
+                Blocked users
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -149,21 +151,19 @@ export default function BlockedUsersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Người dùng đã chặn
+              Blocked users
             </CardTitle>
             <p className="text-muted-foreground">
-              Quản lý danh sách người dùng bạn đã chặn
+              Manage the list of users you have blocked
             </p>
           </CardHeader>
           <CardContent>
             {blockedUsers.length === 0 ? (
               <div className="py-8 text-center">
                 <UserX className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-semibold">
-                  Chưa có người dùng nào bị chặn
-                </h3>
+                <h3 className="mb-2 text-lg font-semibold">No blocked users</h3>
                 <p className="text-muted-foreground">
-                  Khi bạn chặn ai đó, họ sẽ xuất hiện ở đây.
+                  When you block someone, they will appear here.
                 </p>
               </div>
             ) : (
@@ -198,7 +198,7 @@ export default function BlockedUsersPage() {
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          Chặn ngày{" "}
+                          Blocked on{" "}
                           {formatDate(new Date(user.blockedAt), "dd/MM/yyyy")}
                         </div>
                         {user.blockReason && (
@@ -221,7 +221,7 @@ export default function BlockedUsersPage() {
                       ) : (
                         <Shield className="h-4 w-4" />
                       )}
-                      Bỏ chặn
+                      Unblock
                     </Button>
                   </div>
                 ))}
