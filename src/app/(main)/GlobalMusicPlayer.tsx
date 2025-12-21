@@ -103,6 +103,10 @@ export default function GlobalMusicPlayer() {
             iv_load_policy: 3,
             loop: 1,
             playlist: videoId,
+            origin:
+              typeof window !== "undefined"
+                ? window.location.origin
+                : undefined,
           },
           events: {
             onReady: (event: any) => {

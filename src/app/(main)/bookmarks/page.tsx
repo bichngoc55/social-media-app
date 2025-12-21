@@ -246,13 +246,13 @@ export default function BookmarksPage() {
                         <SelectItem value="oldest">Cũ nhất</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="icon"
                       className="h-12 w-12 border-0 bg-muted/50 hover:bg-muted/80"
                     >
                       <Filter className="h-4 w-4" />
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardContent>
