@@ -10,6 +10,10 @@ import {
   Tag,
   MessageSquare,
   AtSign,
+  Reply,
+  CheckCircle,
+  Shield,
+  AlertCircle,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -19,10 +23,7 @@ interface NotificationProps {
 }
 
 export default function Notification({ notification }: NotificationProps) {
-  const notificationTypeMap: Record<
-    NotificationType,
-    { message: string; icon: JSX.Element; href: string }
-  > = {
+  const notificationTypeMap = {
     FOLLOW: {
       message: "followed you",
       icon: <User2 className="size-7 text-primary" />,
@@ -58,7 +59,30 @@ export default function Notification({ notification }: NotificationProps) {
       icon: <MessageSquare className="size-7 text-blue-500" />,
       href: `/messages`,
     },
-  };
+    REPLY: {
+      message: "replied to your comment",
+      icon: <Reply className="size-7 text-purple-500" />,
+      href: `/posts/${notification.postId}`,
+    },
+    APPEAL_RESPONSE: {
+      message: "responded to your appeal",
+      icon: <CheckCircle className="size-7 text-green-500" />,
+      href: `/posts/${notification.postId || ""}`,
+    },
+    RESOLVED_REPORT: {
+      message: "resolved your report",
+      icon: <Shield className="size-7 text-blue-500" />,
+      href: `/posts/${notification.postId || ""}`,
+    },
+    VIOLATE_COUNTS_RESPONSE: {
+      message: "responded to your violation report",
+      icon: <AlertCircle className="size-7 text-orange-500" />,
+      href: `/posts/${notification.postId || ""}`,
+    },
+  } as Record<
+    NotificationType,
+    { message: string; icon: JSX.Element; href: string }
+  >;
 
   const { message, icon, href } = notificationTypeMap[notification.type];
 

@@ -53,12 +53,11 @@ model User {
   blockedByUsers              UserBlock[]              @relation("Blocked")
   blockedUsers                UserBlock[]              @relation("Blocker")
   recommendationsFor          UserRecommendation[]     @relation("RecommendedTo")
-  aiRecommendations           UserRecommendation[]     @relation("RecommendedUser")
+ aiRecommendations           UserRecommendation[]     @relation("RecommendedUser")
   moderatedContent            ModerationCase[]        @relation("ModeratedUser")
   assignedModerationCases     ModerationCase[]        @relation("AssignedModerator")
   moderationDecisions         ModerationCase[]        @relation("DecisionModerator")
-  supervisorApprovals         ModerationCase[]        @relation("SupervisorApproval")
-
+ 
   //  report counts including AI and users
   totalViolateCounts Int                @default(0)
   appealUserReports  AppealUserReport[]
@@ -444,8 +443,7 @@ enum TagStatus {
 enum UserRole {
   USER
   ADMIN
-  SUPERVISOR
-}
+ }
 
 enum ModerationSource {
   AI
@@ -530,10 +528,7 @@ model ModerationCase {
   decisionBy            String?                 // Admin user ID
   policyArea            ModerationPolicyArea?   // Confirmed policy area
   reasonCode            String?                 // Standardized reason code
-  supervisorApproved    Boolean                 @default(false)
-  supervisorApprovedBy  String?                 // Supervisor user ID
-  supervisorApprovedAt  DateTime?
-  
+ 
   // Evidence & Context
   evidence              Json?                   // Snapshot of content, model signals, etc.
   adminNotes            String?
@@ -543,9 +538,7 @@ model ModerationCase {
   user                  User?                   @relation("ModeratedUser", fields: [userId], references: [id], onDelete: SetNull)
   assignedAdmin         User?                   @relation("AssignedModerator", fields: [assignedTo], references: [id], onDelete: SetNull)
   decisionAdmin         User?                   @relation("DecisionModerator", fields: [decisionBy], references: [id], onDelete: SetNull)
-  supervisor            User?                   @relation("SupervisorApproval", fields: [supervisorApprovedBy], references: [id], onDelete: SetNull)
-  auditTrail            ModerationAuditLog[]
-  
+    
   // Timestamps
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
@@ -558,30 +551,7 @@ model ModerationCase {
   @@index([source, status])
   @@map("moderation_cases")
 }
-
-// Audit Trail - Immutable log of all moderation actions
-model ModerationAuditLog {
-  id            String                 @id @default(cuid())
-  caseId        String
-  action        String                 // "CASE_CREATED", "STATUS_CHANGED", "DECISION_MADE", etc.
-  actorId       String                 // User ID who performed the action
-  actorRole     UserRole               // ADMIN | SUPERVISOR
-  previousState Json?                  // State before change
-  newState      Json?                  // State after change
-  reason        String?                // Reason for action
-  policyArea    ModerationPolicyArea?  // Policy area if applicable
-  modelVersion  String?                // AI model version if applicable
-  confidence    Float?                 // AI confidence if applicable
-  evidenceHash  String?                // Hash for integrity verification
-  createdAt     DateTime               @default(now())
-  
-  // Relations
-  case          ModerationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
-  @@index([caseId, createdAt(sort: Desc)])
-  @@index([actorId])
-  @@map("moderation_audit_logs")
-}
+ 
 
 enum AppealStatus {
   PENDING
