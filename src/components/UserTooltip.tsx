@@ -73,7 +73,14 @@ export default function UserTooltip({ children, user }: UserTooltipProps) {
                 )}
               </div>
             )}
-            <FollowerCount userId={user.id} initialState={followerState} />
+            <FollowerCount
+              userId={user.id}
+              username={user.username}
+              initialState={followerState}
+              followingCount={
+                "_count" in user ? user._count.following : undefined
+              }
+            />
           </div>
         </TooltipContent>
       </Tooltip>

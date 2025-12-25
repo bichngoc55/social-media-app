@@ -8,20 +8,34 @@ declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+let prisma: ReturnType<typeof prismaClientSingleton>;
 
 // In development, ensure we have the latest Prisma client
 if (process.env.NODE_ENV !== "production") {
-  globalThis.prismaGlobal = prisma;
-
-  // Force check for ModerationCase model
-  if (!prisma.moderationCase) {
-    console.warn(
-      "ModerationCase model not found. Clearing global Prisma instance..."
-    );
-    globalThis.prismaGlobal = undefined;
-    // This will be recreated on next import
+  // Check if global instance exists and has all required models
+  if (globalThis.prismaGlobal) {
+    const globalPrisma = globalThis.prismaGlobal;
+    // Check if all required models exist
+    if (
+      globalPrisma.moderationCase &&
+      globalPrisma.userWarning &&
+      globalPrisma.user
+    ) {
+      prisma = globalPrisma;
+    } else {
+      console.warn(
+        "Prisma models missing. Clearing and recreating global instance..."
+      );
+      globalThis.prismaGlobal = undefined;
+      prisma = prismaClientSingleton();
+      globalThis.prismaGlobal = prisma;
+    }
+  } else {
+    prisma = prismaClientSingleton();
+    globalThis.prismaGlobal = prisma;
   }
+} else {
+  prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 }
 
 export default prisma;

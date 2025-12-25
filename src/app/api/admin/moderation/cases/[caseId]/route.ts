@@ -61,24 +61,6 @@ export async function GET(
             displayName: true,
           },
         },
-        supervisor: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-          },
-        },
-        auditTrail: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            case: {
-              select: {
-                id: true,
-                status: true,
-              },
-            },
-          },
-        },
       },
     });
 
@@ -331,28 +313,28 @@ export async function PATCH(
 
     // Create audit logs
     for (const log of auditLogs) {
-      const evidenceHash = currentCase.evidence
-        ? crypto
-            .createHash("sha256")
-            .update(JSON.stringify(currentCase.evidence))
-            .digest("hex")
-        : null;
-
-      await prisma.moderationAuditLog.create({
-        data: {
-          caseId,
-          actorId: admin.id,
-          actorRole: admin.role,
-          action: log.action,
-          previousState: log.previousState as any,
-          newState: log.newState as any,
-          reason: log.reason,
-          policyArea: log.policyArea,
-          modelVersion: currentCase.modelVersion,
-          confidence: currentCase.confidence,
-          evidenceHash,
-        },
-      });
+      // TODO: Uncomment when ModerationAuditLog model is added to schema
+      // const evidenceHash = currentCase.evidence
+      //   ? crypto
+      //       .createHash("sha256")
+      //       .update(JSON.stringify(currentCase.evidence))
+      //       .digest("hex")
+      //   : null;
+      // await prisma.moderationAuditLog.create({
+      //   data: {
+      //     caseId,
+      //     actorId: admin.id,
+      //     actorRole: admin.role,
+      //     action: log.action,
+      //     previousState: log.previousState as any,
+      //     newState: log.newState as any,
+      //     reason: log.reason,
+      //     policyArea: log.policyArea,
+      //     modelVersion: currentCase.modelVersion,
+      //     confidence: currentCase.confidence,
+      //     evidenceHash,
+      //   },
+      // });
     }
 
     return NextResponse.json({ case: updatedCase });

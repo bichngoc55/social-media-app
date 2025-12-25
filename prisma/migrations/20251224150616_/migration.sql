@@ -1,3 +1,6 @@
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
 -- CreateEnum
 CREATE TYPE "ModerationSource" AS ENUM ('AI', 'USER_REPORT', 'ADMIN_MANUAL');
 
@@ -17,7 +20,15 @@ CREATE TYPE "ModerationDecision" AS ENUM ('CONFIRM_VIOLATION', 'RESTORE', 'DISMI
 CREATE TYPE "ModerationPolicyArea" AS ENUM ('NUDITY', 'VIOLENCE', 'HATE_SPEECH', 'HARASSMENT', 'SELF_HARM', 'SPAM', 'SCAM', 'COPYRIGHT', 'IMPERSONATION', 'OTHER');
 
 -- AlterEnum
-ALTER TYPE "UserRole" ADD VALUE 'SUPERVISOR';
+-- This migration adds more than one value to an enum.
+-- With PostgreSQL versions 11 and earlier, this is not possible
+-- in a single migration. This can be worked around by creating
+-- multiple migrations, each migration adding only one value to
+-- the enum.
+
+
+ALTER TYPE "NotificationType" ADD VALUE 'WARNING';
+ALTER TYPE "NotificationType" ADD VALUE 'BAN_NOTICE';
 
 -- CreateTable
 CREATE TABLE "moderation_cases" (
@@ -41,34 +52,12 @@ CREATE TABLE "moderation_cases" (
     "decisionBy" TEXT,
     "policyArea" "ModerationPolicyArea",
     "reasonCode" TEXT,
-    "supervisorApproved" BOOLEAN NOT NULL DEFAULT false,
-    "supervisorApprovedBy" TEXT,
-    "supervisorApprovedAt" TIMESTAMP(3),
     "evidence" JSONB,
     "adminNotes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "moderation_cases_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "moderation_audit_logs" (
-    "id" TEXT NOT NULL,
-    "caseId" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
-    "actorId" TEXT NOT NULL,
-    "actorRole" "UserRole" NOT NULL,
-    "previousState" JSONB,
-    "newState" JSONB,
-    "reason" TEXT,
-    "policyArea" "ModerationPolicyArea",
-    "modelVersion" TEXT,
-    "confidence" DOUBLE PRECISION,
-    "evidenceHash" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "moderation_audit_logs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -90,16 +79,10 @@ CREATE INDEX "moderation_cases_slaDueAt_idx" ON "moderation_cases"("slaDueAt");
 CREATE INDEX "moderation_cases_source_status_idx" ON "moderation_cases"("source", "status");
 
 -- CreateIndex
-CREATE INDEX "moderation_audit_logs_caseId_createdAt_idx" ON "moderation_audit_logs"("caseId", "createdAt" DESC);
+CREATE INDEX "posts_content_trgm_idx" ON "posts" USING GIST ("content" gist_trgm_ops);
 
 -- CreateIndex
-CREATE INDEX "moderation_audit_logs_actorId_idx" ON "moderation_audit_logs"("actorId");
-
--- AddForeignKey
-ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "posts_embedding_idx" ON "posts"("embedding");
 
 -- AddForeignKey
 ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_assignedTo_fkey" FOREIGN KEY ("assignedTo") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -108,8 +91,7 @@ ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_assignedTo_fkey"
 ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_decisionBy_fkey" FOREIGN KEY ("decisionBy") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_supervisorApprovedBy_fkey" FOREIGN KEY ("supervisorApprovedBy") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "moderation_audit_logs" ADD CONSTRAINT "moderation_audit_logs_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "moderation_cases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
+ALTER TABLE "moderation_cases" ADD CONSTRAINT "moderation_cases_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

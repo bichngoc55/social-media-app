@@ -31,6 +31,13 @@ model User {
   topicEmbeddings             Unsupported("_vector")[]
   dislikedPostTopicsEmbedding Unsupported("_vector")[]
   dislikedTopics              String[]                 @default([])
+  totalViolateCounts          Int                      @default(0)
+  warningCount                Int                      @default(0)
+  bannedUntil                 DateTime?
+  lastWarningAt               DateTime?
+  status                      Boolean                  @default(true)
+  appealUserReports           AppealUserReport[]
+  warnings                    UserWarning[]
   bookmarks                   Bookmark[]
   comments                    Comment[]
   deviceSessions              DeviceSession[]
@@ -40,6 +47,9 @@ model User {
   likes                       Like[]
   mentionsIssued              Mention[]                @relation("MentionedBy")
   mentions                    Mention[]                @relation("Mentioned")
+  assignedModerationCases     ModerationCase[]         @relation("AssignedModerator")
+  moderationDecisions         ModerationCase[]         @relation("DecisionModerator")
+  moderatedContent            ModerationCase[]         @relation("ModeratedUser")
   issuedNotifications         Notification[]           @relation("Issuer")
   receivedNotifications       Notification[]           @relation("Recipient")
   blockedPosts                PostBlock[]
@@ -54,14 +64,7 @@ model User {
   blockedUsers                UserBlock[]              @relation("Blocker")
   recommendationsFor          UserRecommendation[]     @relation("RecommendedTo")
   aiRecommendations           UserRecommendation[]     @relation("RecommendedUser")
-  moderatedContent            ModerationCase[]        @relation("ModeratedUser")
-  assignedModerationCases     ModerationCase[]        @relation("AssignedModerator")
-  moderationDecisions         ModerationCase[]        @relation("DecisionModerator")
-  supervisorApprovals         ModerationCase[]        @relation("SupervisorApproval")
-
-  //  report counts including AI and users
-  totalViolateCounts Int                @default(0)
-  appealUserReports  AppealUserReport[]
+  warningsIssued              UserWarning[]           @relation("WarningIssuer")
 
   @@map("users")
 }
@@ -108,38 +111,29 @@ model Post {
   createdAt             DateTime                 @default(now())
   privacy               PostPrivacy              @default(PUBLIC)
   mediaLayout           MediaLayout?
+  hashtags              String[]                 @default([])
   embedding             Unsupported("vector")?
-  emotionScore          Float?
+  topicEmbeddings       Unsupported("_vector")[]
   emotions              EMOTION?
+  emotionScore          Float?
   harmful               Boolean                  @default(false)
   harmfulTypes          String[]                 @default([])
-  hashtags              String[]                 @default([])
   primaryEmotion        String?
-  topicEmbeddings       Unsupported("_vector")[]
   topics                String[]                 @default([])
   wisdomOrAdviceMessage String?
+  appealUserReports     AppealUserReport[]
   bookmarks             Bookmark[]
   comments              Comment[]
   likes                 Like[]
   mentions              Mention[]
+  moderationCases       ModerationCase[]
   linkedNotifications   Notification[]
   postBlocks            PostBlock[]
   attachments           Media[]
   post_tags             post_tags[]
   user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reports               Report[]
-  embedding             Unsupported("vector(1408)")? // Multimodal embedding (text+image+video)
-  topicEmbeddings       Unsupported("vector(768)")[] // Array of embeddings for each topic
-  emotions              EMOTION?
-  emotionScore          Float?
-  harmful               Boolean                      @default(false)
-  harmfulTypes          String[]                     @default([])
-  primaryEmotion        String? // e.g. "joy", "sadness", "anger", "gratitude", "loneliness"
-  topics                String[]                     @default([]) // e.g. ["beach vacation", "new job", "breakup"]
-  wisdomOrAdviceMessage String?
-  postBlocks            PostBlock[]
-  appealUserReports     AppealUserReport[]
-  moderationCases       ModerationCase[]
+  warnings              UserWarning[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([privacy, createdAt(sort: Desc)])
@@ -369,6 +363,78 @@ model UserRecommendation {
   @@map("user_recommendations")
 }
 
+model ModerationCase {
+  id                  String                @id @default(cuid())
+  postId              String?
+  userId              String?
+  source              ModerationSource      @default(AI)
+  policyAreaPredicted ModerationPolicyArea?
+  confidence          Float?
+  severity            ModerationSeverity    @default(MEDIUM)
+  modelVersion        String?
+  harmfulTypes        String[]              @default([])
+  autoAction          ModerationAutoAction  @default(NONE)
+  autoActionAppliedAt DateTime?
+  status              ModerationStatus      @default(DETECTED)
+  priorityScore       Float                 @default(0.0)
+  assignedTo          String?
+  slaDueAt            DateTime?
+  decision            ModerationDecision?
+  decisionAt          DateTime?
+  decisionBy          String?
+  policyArea          ModerationPolicyArea?
+  reasonCode          String?
+  evidence            Json?
+  adminNotes          String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  assignedAdmin       User?                 @relation("AssignedModerator", fields: [assignedTo], references: [id])
+  decisionAdmin       User?                 @relation("DecisionModerator", fields: [decisionBy], references: [id])
+  post                Post?                 @relation(fields: [postId], references: [id])
+  user                User?                 @relation("ModeratedUser", fields: [userId], references: [id])
+
+  @@index([status, priorityScore(sort: Desc)])
+  @@index([assignedTo, status])
+  @@index([postId])
+  @@index([userId])
+  @@index([slaDueAt])
+  @@index([source, status])
+  @@map("moderation_cases")
+}
+
+model AppealUserReport {
+  id           String       @id @default(cuid())
+  userId       String
+  postId       String
+  appealReason String
+  status       AppealStatus @default(PENDING)
+  adminNotes   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("appeal_user_reports")
+}
+
+model UserWarning {
+  id          String   @id @default(cuid())
+  userId      String
+  issuedBy    String
+  message     String
+  deadline    DateTime?
+  postId      String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin       User     @relation("WarningIssuer", fields: [issuedBy], references: [id], onDelete: Cascade)
+  post        Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([postId])
+  @@map("user_warnings")
+}
+
 enum HARMFULTYPES {
   VIOLENCE
   HATE_SPEECH
@@ -411,10 +477,11 @@ enum NotificationType {
   TAG
   TAG_REQUEST
   REPLY
-  // Report related
   APPEAL_RESPONSE
   RESOLVED_REPORT
   VIOLATE_COUNTS_RESPONSE
+  WARNING
+  BAN_NOTICE
 }
 
 enum ReportType {
@@ -444,7 +511,6 @@ enum TagStatus {
 enum UserRole {
   USER
   ADMIN
-  SUPERVISOR
 }
 
 enum ModerationSource {
@@ -500,107 +566,9 @@ enum ModerationPolicyArea {
   OTHER
 }
 
-// Moderation Case - Professional moderation system
-model ModerationCase {
-  id                    String                 @id @default(cuid())
-  postId                String?
-  userId                String? // User who created the content
-  source                ModerationSource        @default(AI)
-  
-  // AI Detection fields
-  policyAreaPredicted   ModerationPolicyArea?
-  confidence            Float?                  // 0.0 - 1.0
-  severity              ModerationSeverity      @default(MEDIUM)
-  modelVersion          String?
-  harmfulTypes          String[]                @default([])
-  
-  // Auto-action applied
-  autoAction            ModerationAutoAction    @default(NONE)
-  autoActionAppliedAt  DateTime?
-  
-  // Status & Priority
-  status                ModerationStatus        @default(DETECTED)
-  priorityScore         Float                   @default(0.0) // Calculated: severity × virality × confidence
-  assignedTo            String?                 // Admin user ID
-  slaDueAt              DateTime?               // SLA deadline for review
-  
-  // Decision
-  decision              ModerationDecision?
-  decisionAt            DateTime?
-  decisionBy            String?                 // Admin user ID
-  policyArea            ModerationPolicyArea?   // Confirmed policy area
-  reasonCode            String?                 // Standardized reason code
-  supervisorApproved    Boolean                 @default(false)
-  supervisorApprovedBy  String?                 // Supervisor user ID
-  supervisorApprovedAt  DateTime?
-  
-  // Evidence & Context
-  evidence              Json?                   // Snapshot of content, model signals, etc.
-  adminNotes            String?
-  
-  // Relations
-  post                  Post?                   @relation(fields: [postId], references: [id], onDelete: SetNull)
-  user                  User?                   @relation("ModeratedUser", fields: [userId], references: [id], onDelete: SetNull)
-  assignedAdmin         User?                   @relation("AssignedModerator", fields: [assignedTo], references: [id], onDelete: SetNull)
-  decisionAdmin         User?                   @relation("DecisionModerator", fields: [decisionBy], references: [id], onDelete: SetNull)
-  supervisor            User?                   @relation("SupervisorApproval", fields: [supervisorApprovedBy], references: [id], onDelete: SetNull)
-  auditTrail            ModerationAuditLog[]
-  
-  // Timestamps
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  
-  @@index([status, priorityScore(sort: Desc)])
-  @@index([assignedTo, status])
-  @@index([postId])
-  @@index([userId])
-  @@index([slaDueAt])
-  @@index([source, status])
-  @@map("moderation_cases")
-}
-
-// Audit Trail - Immutable log of all moderation actions
-model ModerationAuditLog {
-  id            String                 @id @default(cuid())
-  caseId        String
-  action        String                 // "CASE_CREATED", "STATUS_CHANGED", "DECISION_MADE", etc.
-  actorId       String                 // User ID who performed the action
-  actorRole     UserRole               // ADMIN | SUPERVISOR
-  previousState Json?                  // State before change
-  newState      Json?                  // State after change
-  reason        String?                // Reason for action
-  policyArea    ModerationPolicyArea?  // Policy area if applicable
-  modelVersion  String?                // AI model version if applicable
-  confidence    Float?                 // AI confidence if applicable
-  evidenceHash  String?                // Hash for integrity verification
-  createdAt     DateTime               @default(now())
-  
-  // Relations
-  case          ModerationCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
-  @@index([caseId, createdAt(sort: Desc)])
-  @@index([actorId])
-  @@map("moderation_audit_logs")
-}
-
 enum AppealStatus {
   PENDING
   UNDER_REVIEW
   APPROVED
   REJECTED
-}
-
-model AppealUserReport {
-  id           String       @id @default(cuid())
-  userId       String
-  postId       String
-  appealReason String
-  status       AppealStatus @default(PENDING)
-  adminNotes   String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@map("appeal_user_reports")
 }
