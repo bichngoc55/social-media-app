@@ -11,6 +11,10 @@ import {
   ArrowLeft,
   ExternalLink,
   Flag,
+  AlertTriangle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,28 +52,43 @@ interface User {
   role: "USER" | "ADMIN";
   emailVerified: boolean;
   createdAt: Date;
+  warningCount?: number;
+  bannedUntil?: Date | null;
+  lastWarningAt?: Date | null;
+  status?: boolean;
   _count: {
     posts: number;
     followers: number;
     following: number;
     reportsReceived: number; // Count of reports against this user
   };
+  reportStats?: {
+    totalPosts: number;
+    reportedPosts: number;
+    aiDetectedPosts: number;
+    userReportedPosts: number;
+    bothDetectedPosts: number;
+    reportPercentage: number;
+  };
 }
+
+type SortOrder = "asc" | "desc" | null;
 
 export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [sortByReport, setSortByReport] = useState<SortOrder>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    type: "delete" | null;
+    type: "delete" | "ban" | null;
     user: User | null;
   }>({ open: false, type: null, user: null });
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-users", page, search, roleFilter],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-users", page, search, roleFilter, sortByReport],
     queryFn: () =>
       kyInstance
         .get("/api/admin/users", {
@@ -83,6 +102,52 @@ export default function AdminUsersPage() {
         .json<{ users: User[]; pagination: any }>(),
   });
 
+  // Sort users by report percentage
+  const sortedUsers = data?.users
+    ? [...data.users].sort((a, b) => {
+        if (!sortByReport) return 0;
+        const aPercent = a.reportStats?.reportPercentage || 0;
+        const bPercent = b.reportStats?.reportPercentage || 0;
+        return sortByReport === "asc"
+          ? aPercent - bPercent
+          : bPercent - aPercent;
+      })
+    : [];
+
+  const handleSortByReport = () => {
+    if (sortByReport === null) {
+      setSortByReport("desc");
+    } else if (sortByReport === "desc") {
+      setSortByReport("asc");
+    } else {
+      setSortByReport(null);
+    }
+  };
+
+  // Format date time: "HH:mm:ss dd/MM/yyyy"
+  const formatDateTime = (date: Date | string | null) => {
+    if (!date) return "";
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+  };
+
+  // Check if warning button is on cooldown (3 days)
+  const isWarningOnCooldown = (user: User) => {
+    if (!user.lastWarningAt) return false;
+    const lastWarning = new Date(user.lastWarningAt);
+    const now = new Date();
+    const daysSinceWarning =
+      (now.getTime() - lastWarning.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceWarning < 3;
+  };
+
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       return kyInstance.delete(`/api/admin/users/${userId}`).json();
@@ -93,8 +158,52 @@ export default function AdminUsersPage() {
     },
   });
 
+  const warnUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return kyInstance
+        .post(`/api/admin/users/${userId}/warn`, {
+          json: {},
+        })
+        .json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ description: "Cảnh báo đã được gửi thành công" });
+    },
+    onError: (error: any) => {
+      toast({
+        description: error?.message || "Gửi cảnh báo thất bại",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const banUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return kyInstance.post(`/api/admin/users/${userId}/ban`).json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ description: "Người dùng đã bị khóa thành công" });
+    },
+    onError: (error: any) => {
+      toast({
+        description: error?.message || "Khóa người dùng thất bại",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteUser = (user: User) => {
     setConfirmDialog({ open: true, type: "delete", user });
+  };
+
+  const handleWarnUser = (user: User) => {
+    warnUserMutation.mutate(user.id);
+  };
+
+  const handleBanUser = (user: User) => {
+    setConfirmDialog({ open: true, type: "ban", user });
   };
 
   const handleConfirmAction = () => {
@@ -102,6 +211,8 @@ export default function AdminUsersPage() {
 
     if (confirmDialog.type === "delete") {
       deleteUserMutation.mutate(confirmDialog.user.id);
+    } else if (confirmDialog.type === "ban") {
+      banUserMutation.mutate(confirmDialog.user.id);
     }
 
     setConfirmDialog({ open: false, type: null, user: null });
@@ -171,50 +282,91 @@ export default function AdminUsersPage() {
             </CardContent>
           </Card>
         </div>
+      ) : error ? (
+        <Card className="card-glass border-2">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <p className="text-red-500 font-semibold">Error loading users</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+              <Button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["admin-users"] })}
+                className="mt-4"
+              >
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : !data?.users || data.users.length === 0 ? (
+        <Card className="card-glass border-2">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <p className="text-muted-foreground">No users found</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <>
           <Card className="card-glass overflow-hidden border-2">
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="p-4 text-left">User</th>
-                    <th className="p-4 text-left">Email</th>
-                    <th className="p-4 text-left">Role</th>
-                    <th className="p-4 text-left">Stats</th>
-                    <th className="p-4 text-left">Created</th>
-                    <th className="p-4 text-left">Actions</th>
+                    <th className="p-3 text-left text-sm font-semibold">User</th>
+                    <th className="p-3 text-left text-sm font-semibold">Email</th>
+                    <th className="p-3 text-left text-sm font-semibold">Role</th>
+                    <th className="p-3 text-left text-sm font-semibold">Stats</th>
+                    <th className="p-3 text-left text-sm font-semibold">
+                      <button
+                        onClick={handleSortByReport}
+                        className="flex items-center gap-1.5 hover:text-primary transition-colors"
+                      >
+                        Report Stats
+                        {sortByReport === "desc" ? (
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        ) : sortByReport === "asc" ? (
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="p-3 text-left text-sm font-semibold">Created</th>
+                    <th className="p-3 text-left text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.users.map((user) => (
+                  {(sortedUsers.length > 0 ? sortedUsers : data?.users || []).map((user) => (
                     <tr key={user.id} className="border-b hover:bg-muted/50">
-                      <td className="p-4">
+                      <td className="p-3">
                         <Link
                           href={`/users/${user.username}`}
-                          className="font-medium hover:underline"
+                          className="font-medium hover:underline text-sm"
                         >
                           {user.displayName}
                         </Link>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           @{user.username}
                         </div>
                       </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          {user.email}
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <span className="truncate max-w-[150px]">{user.email}</span>
                           {user.emailVerified ? (
-                            <MailCheck className="h-4 w-4 text-green-500" />
+                            <MailCheck className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
                           ) : (
-                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                           )}
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3">
                         <Badge
                           variant="outline"
                           className={cn(
-                            "rounded-full font-semibold",
+                            "rounded-full font-semibold text-xs",
                             user.role === "ADMIN"
                               ? "border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300"
                               : "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
@@ -223,40 +375,242 @@ export default function AdminUsersPage() {
                           {user.role}
                         </Badge>
                       </td>
-                      <td className="p-4 text-sm">
+                      <td className="p-3 text-xs">
                         <div>Posts: {user._count.posts}</div>
                         <div>Followers: {user._count.followers}</div>
                         <div>Following: {user._count.following}</div>
-                        <div className="mt-1">
-                          <Link
-                            href={`/admin/posts?tab=reports&reportedUser=${user.id}`}
-                            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400"
-                          >
-                            <Flag className="h-3.5 w-3.5" />
-                            Reports: {user._count.reportsReceived}
-                            <ExternalLink className="h-3 w-3" />
-                          </Link>
-                        </div>
                       </td>
-                      <td className="p-4 text-sm text-muted-foreground">
+                      <td className="p-3">
+                        {user.reportStats ? (
+                          <div className="space-y-2 min-w-[200px] max-w-[240px]">
+                            {/* Header */}
+                            <div className="flex items-baseline justify-between gap-2">
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-lg font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                                  {user.reportStats.reportPercentage.toFixed(1)}%
+                                </span>
+                                <span className="text-[10px] font-medium text-muted-foreground">
+                                  bài viết bị report
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            {user.reportStats.totalPosts > 0 ? (
+                              <div className="group relative h-5 w-full overflow-hidden rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 border border-border/30 shadow-inner" style={{ fontSize: 0 }}>
+                                {(() => {
+                                  const totalPosts = user.reportStats.totalPosts;
+                                  const aiOnly =
+                                    user.reportStats.aiDetectedPosts -
+                                    user.reportStats.bothDetectedPosts;
+                                  const userOnly =
+                                    user.reportStats.userReportedPosts -
+                                    user.reportStats.bothDetectedPosts;
+                                  const both = user.reportStats.bothDetectedPosts;
+
+                                  // Calculate percentages and round to avoid long decimals
+                                  const aiOnlyPercent = Math.max(0, Math.round((aiOnly / totalPosts) * 100 * 100) / 100);
+                                  const bothPercent = Math.max(0, Math.round((both / totalPosts) * 100 * 100) / 100);
+                                  const userOnlyPercent = Math.max(0, Math.round((userOnly / totalPosts) * 100 * 100) / 100);
+                                  const totalReportedPercent = Math.round((aiOnlyPercent + bothPercent + userOnlyPercent) * 100) / 100;
+
+                                  let currentLeft = 0;
+
+                                  return (
+                                    <div className="relative h-full w-full" style={{ fontSize: 0, lineHeight: 0, textIndent: '-9999px' }}>
+                                      {/* AI Only (Pink) - leftmost */}
+                                      {aiOnly > 0 && aiOnlyPercent > 0 && (
+                                        <div
+                                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 dark:from-pink-500 dark:via-pink-600 dark:to-pink-700 transition-all duration-500 ease-out shadow-sm"
+                                          style={{
+                                            left: `${currentLeft}%`,
+                                            width: `${aiOnlyPercent}%`,
+                                            fontSize: 0,
+                                            lineHeight: 0,
+                                            color: 'transparent',
+                                          }}
+                                          title={`AI phát hiện: ${user.reportStats.aiDetectedPosts} bài`}
+                                        />
+                                      )}
+                                      {aiOnly > 0 && aiOnlyPercent > 0 && (currentLeft += aiOnlyPercent)}
+
+                                      {/* Both (Purple-Pink) - overlap */}
+                                      {both > 0 && bothPercent > 0 && (
+                                        <div
+                                          className="absolute top-0 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 dark:from-purple-600 dark:via-pink-600 dark:to-purple-700 transition-all duration-500 ease-out shadow-sm z-10"
+                                          style={{
+                                            left: `${currentLeft}%`,
+                                            width: `${bothPercent}%`,
+                                            fontSize: 0,
+                                            lineHeight: 0,
+                                            color: 'transparent',
+                                          }}
+                                          title={`Cả AI và User: ${both} bài`}
+                                        />
+                                      )}
+                                      {both > 0 && bothPercent > 0 && (currentLeft += bothPercent)}
+
+                                      {/* User Only (Pink-Orange) - rightmost */}
+                                      {userOnly > 0 && userOnlyPercent > 0 && (
+                                        <div
+                                          className="absolute top-0 h-full bg-gradient-to-r from-pink-500 via-pink-400 to-orange-500 dark:from-pink-600 dark:via-pink-500 dark:to-orange-600 transition-all duration-500 ease-out shadow-sm"
+                                          style={{
+                                            left: `${currentLeft}%`,
+                                            width: `${userOnlyPercent}%`,
+                                            fontSize: 0,
+                                            lineHeight: 0,
+                                            color: 'transparent',
+                                          }}
+                                          title={`User report: ${user.reportStats.userReportedPosts} bài`}
+                                        />
+                                      )}
+
+                                      {/* Text overlay - only show on the filled portion if percentage >= 30% */}
+                                      {user.reportStats && user.reportStats.reportedPosts > 0 && totalReportedPercent >= 30 && (
+                                        <div 
+                                          className="absolute top-0 h-full flex items-center justify-center z-20 pointer-events-none select-none"
+                                          style={{
+                                            left: '0%',
+                                            width: `${totalReportedPercent}%`,
+                                            fontSize: '0.625rem',
+                                            lineHeight: '1',
+                                          }}
+                                        >
+                                          <span className="font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] tracking-tight">
+                                            {Math.round(user.reportStats.reportPercentage)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div className="h-5 w-full rounded-lg bg-gradient-to-br from-muted/30 to-muted/20 flex items-center justify-center text-[9px] font-medium text-muted-foreground border border-border/20">
+                                Chưa có bài viết
+                              </div>
+                            )}
+                            
+                            {/* Legend */}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[9px]">
+                              <div className="flex items-center gap-1.5 group/legend">
+                                <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700 shadow-sm ring-1.5 ring-pink-200/50 dark:ring-pink-800/50 group-hover/legend:ring-pink-300/70 dark:group-hover/legend:ring-pink-700/70 transition-all" />
+                                <span className="font-semibold text-pink-600 dark:text-pink-400">
+                                  AI: <span className="font-bold">{user.reportStats.aiDetectedPosts}</span>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 group/legend">
+                                <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-500 to-orange-500 dark:from-pink-600 dark:to-orange-600 shadow-sm ring-1.5 ring-pink-200/50 dark:ring-pink-800/50 group-hover/legend:ring-pink-300/70 dark:group-hover/legend:ring-pink-700/70 transition-all" />
+                                <span className="font-semibold text-pink-600 dark:text-pink-400">
+                                  User: <span className="font-bold">{user.reportStats.userReportedPosts}</span>
+                                </span>
+                              </div>
+                              {user.reportStats.bothDetectedPosts > 0 && (
+                                <div className="flex items-center gap-1.5 group/legend">
+                                  <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 dark:from-purple-600 dark:to-pink-600 shadow-sm ring-1.5 ring-purple-200/50 dark:ring-purple-800/50 group-hover/legend:ring-purple-300/70 dark:group-hover/legend:ring-purple-700/70 transition-all" />
+                                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                    Cả hai: <span className="font-bold">{user.reportStats.bothDetectedPosts}</span>
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Summary */}
+                            <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground pt-1.5 border-t border-border/40">
+                              <span className="flex items-center gap-1">
+                                <span className="font-medium">Tổng:</span>
+                                <span className="font-bold text-foreground">{user.reportStats.totalPosts}</span>
+                                <span>bài</span>
+                              </span>
+                              <span className="text-border">•</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-medium">Bị report:</span>
+                                <span className="font-bold text-foreground">{user.reportStats.reportedPosts}</span>
+                                <span>bài</span>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                            <div className="h-2 w-2 animate-pulse rounded-full bg-current" />
+                            <span>Đang tải...</span>
+                        </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">
                         {formatRelativeDate(user.createdAt)}
                       </td>
-                      <td className="p-4">
+                      <td className="p-3">
+                        <div className="flex flex-col gap-2 min-w-[140px]">
                         <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleWarnUser(user)}
+                            disabled={
+                              warnUserMutation.isPending ||
+                              (user.warningCount || 0) >= 3 ||
+                              user.status === false ||
+                              isWarningOnCooldown(user) ||
+                              !!(user.bannedUntil && new Date(user.bannedUntil) > new Date())
+                            }
+                            className={cn(
+                                "relative flex items-center gap-1.5",
+                                (user.warningCount || 0) >= 3 || user.status === false
+                                  ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
+                                  : (user.warningCount || 0) >= 2
+                                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-950/30 dark:text-red-400"
+                                : (user.warningCount || 0) >= 1
+                                ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
+                                : "text-orange-600 hover:text-orange-700 dark:text-orange-400"
+                            )}
+                            title={
+                              isWarningOnCooldown(user)
+                                ? `Đang trong thời gian chờ (3 ngày). Có thể dùng lại sau: ${formatDateTime(user.lastWarningAt ? new Date(new Date(user.lastWarningAt).getTime() + 3 * 24 * 60 * 60 * 1000) : null)}`
+                                : (user.warningCount || 0) >= 3
+                                ? "Đã hết lượt cảnh báo"
+                                : `Cảnh báo (Còn lại: ${3 - (user.warningCount || 0)}/3)`
+                            }
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                              <span className="text-xs font-semibold">
+                                {3 - (user.warningCount || 0)}
+                              </span>
+                          </Button>
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={deleteUserMutation.isPending}
+                              onClick={() => handleBanUser(user)}
+                              disabled={banUserMutation.isPending || user.status === false}
+                              title="Khóa người dùng"
+                              className="flex items-center gap-1.5"
                           >
                             <UserX className="h-4 w-4" />
+                              <span className="text-xs">Ban</span>
                           </Button>
+                        </div>
+                        {user.bannedUntil && new Date(user.bannedUntil) > new Date() && (
+                            <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
+                              Bị khóa đến: {formatDateTime(user.bannedUntil)}
+                            </div>
+                          )}
+                          {isWarningOnCooldown(user) && (
+                            <div className="text-[9px] font-semibold text-orange-600 dark:text-orange-400">
+                              Có thể cảnh báo lại sau: {formatDateTime(user.lastWarningAt ? new Date(new Date(user.lastWarningAt).getTime() + 3 * 24 * 60 * 60 * 1000) : null)}
+                            </div>
+                          )}
+                          {user.status === false && (
+                            <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
+                              Đã bị khóa vĩnh viễn
+                          </div>
+                        )}
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </CardContent>
           </Card>
 
@@ -296,11 +650,25 @@ export default function AdminUsersPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xóa người dùng</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmDialog.type === "ban"
+                ? "Khóa người dùng"
+                : "Xóa người dùng"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
+              {confirmDialog.type === "ban" ? (
+                <>
+                  Bạn có chắc chắn muốn khóa người dùng{" "}
+                  <strong>{confirmDialog.user?.displayName}</strong>? Tài khoản
+                  sẽ bị vô hiệu hóa và không thể đăng nhập.
+                </>
+              ) : (
+                <>
               Bạn có chắc chắn muốn xóa người dùng{" "}
-              <strong>{confirmDialog.user?.displayName}</strong>? Hành động này
-              không thể hoàn tác.
+                  <strong>{confirmDialog.user?.displayName}</strong>? Hành động
+                  này không thể hoàn tác.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -308,7 +676,7 @@ export default function AdminUsersPage() {
             <AlertDialogAction
               onClick={handleConfirmAction}
               className={
-                confirmDialog.type === "delete"
+                confirmDialog.type === "delete" || confirmDialog.type === "ban"
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : ""
               }

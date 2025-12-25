@@ -32,6 +32,7 @@ import PostDetailModal from "./PostDetailModal";
 import { Button } from "../ui/button";
 import BlockPostButton from "./BlockPostButton";
 import ReportPostDialog from "./ReportPostDialog";
+import AppealPostButton from "./AppealPostButton";
 const privacyBadgeColors = {
   PUBLIC: "bg-green-100 text-green-800",
   FOLLOWERS: "bg-blue-100 text-blue-800",
@@ -205,6 +206,21 @@ export default function Post({ post }: PostProps) {
                 <Flag className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500" />
               </button>
             </ReportPostDialog>
+          )}
+
+          {/* Show appeal button for own posts with AI flags */}
+          {user.id === post.userId && (
+            <AppealPostButton postId={post.id}>
+              <button
+                title="Kháng cáo bài viết"
+                className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
+              >
+                <AlertTriangle className="size-5 text-orange-500 transition-all duration-300" />
+                <span className="hidden sm:inline text-sm font-medium text-orange-500">
+                  Kháng cáo
+                </span>
+              </button>
+            </AppealPostButton>
           )}
 
           <BookmarkButton

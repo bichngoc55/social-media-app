@@ -14,6 +14,8 @@ import {
   CheckCircle,
   Shield,
   AlertCircle,
+  AlertTriangle,
+  Ban,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -79,28 +81,50 @@ export default function Notification({ notification }: NotificationProps) {
       icon: <AlertCircle className="size-7 text-orange-500" />,
       href: `/posts/${notification.postId || ""}`,
     },
+    WARNING: {
+      message: "sent you a warning",
+      icon: <AlertTriangle className="size-7 text-orange-500 fill-orange-500" />,
+      href: `/warnings`,
+    },
+    BAN_NOTICE: {
+      message: "banned your account",
+      icon: <Ban className="size-7 text-red-500 fill-red-500" />,
+      href: `/warnings`,
+    },
   } as Record<
     NotificationType,
     { message: string; icon: JSX.Element; href: string }
   >;
 
   const { message, icon, href } = notificationTypeMap[notification.type];
+  
+  // Check if notification has customMessage (for warnings and bans)
+  const customMessage = (notification as any).customMessage;
+  const showCustomMessage = customMessage && (notification.type === "WARNING" || notification.type === "BAN_NOTICE");
 
   return (
     <Link href={href} className="block">
       <article
         className={cn(
           "flex gap-3 rounded-2xl bg-card p-5 shadow-sm transition-colors hover:bg-card/70",
-          !notification.read && "bg-primary/10"
+          !notification.read && "bg-primary/10",
+          (notification.type === "WARNING" || notification.type === "BAN_NOTICE") && "border-l-4 border-orange-500"
         )}
       >
         <div className="my-1">{icon}</div>
-        <div className="inline-flex gap-2 space-y-3">
+        <div className="flex-1 space-y-2">
+          <div className="inline-flex gap-2">
           <UserAvatar avatarUrl={notification.issuer.avatarUrl} size={33} />
-          <div className="mb-3">
+            <div>
             <span className="font-bold">{notification.issuer.displayName}</span>{" "}
             <span>{message}</span>
+            </div>
           </div>
+          {showCustomMessage && (
+            <div className="ml-11 rounded-lg bg-muted/50 p-3 text-sm whitespace-pre-line">
+              {customMessage}
+            </div>
+          )}
         </div>
       </article>
     </Link>

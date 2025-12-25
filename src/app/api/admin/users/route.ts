@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
           role: true, // Type will be inferred after Prisma regenerate
           emailVerified: true,
           createdAt: true,
+          warningCount: true,
+          bannedUntil: true,
+          lastWarningAt: true, // Uncomment after running: npx prisma generate
+          status: true,
           _count: {
             select: {
               posts: true,
@@ -61,8 +65,114 @@ export async function GET(req: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
+    // Calculate report statistics for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        // Get all posts by this user
+        const totalPosts = await prisma.post.count({
+          where: { userId: user.id },
+        } as any);
+
+        if (totalPosts === 0) {
+          return {
+            ...user,
+            reportStats: {
+              totalPosts: 0,
+              reportedPosts: 0,
+              aiDetectedPosts: 0,
+              userReportedPosts: 0,
+              bothDetectedPosts: 0,
+              reportPercentage: 0,
+            },
+          };
+        }
+
+        // Get all unique post IDs that have moderation cases
+        const aiDetectedCases = await prisma.moderationCase.findMany({
+          where: {
+            userId: user.id,
+            source: "AI",
+            postId: { not: null },
+          },
+          select: { postId: true },
+        } as any);
+
+        const userReportedCases = await prisma.moderationCase.findMany({
+          where: {
+            userId: user.id,
+            source: "USER_REPORT",
+            postId: { not: null },
+          },
+          select: { postId: true },
+        } as any);
+
+        // Also check Report table for user reports
+        const reportTableCases = await prisma.report.findMany({
+          where: {
+            reportedId: user.id,
+            postId: { not: null },
+          },
+          select: { postId: true },
+        } as any);
+
+        // Extract and deduplicate post IDs
+        const aiPostIds = [
+          ...new Set(
+            aiDetectedCases
+              .map((c) => c.postId)
+              .filter((id): id is string => id !== null)
+          ),
+        ];
+
+        const userPostIdsFromModeration = [
+          ...new Set(
+            userReportedCases
+              .map((c) => c.postId)
+              .filter((id): id is string => id !== null)
+          ),
+        ];
+
+        const userPostIdsFromReports = [
+          ...new Set(
+            reportTableCases
+              .map((r) => r.postId)
+              .filter((id): id is string => id !== null)
+          ),
+        ];
+
+        // Combine user reported post IDs from both sources
+        const userPostIds = [
+          ...new Set([...userPostIdsFromModeration, ...userPostIdsFromReports]),
+        ];
+
+        // Find posts detected by both AI and users
+        const bothDetectedPostIds = aiPostIds.filter((id) =>
+          userPostIds.includes(id)
+        );
+
+        // Get unique reported posts (union of AI and user reports)
+        const allReportedPostIds = [...new Set([...aiPostIds, ...userPostIds])];
+
+        const reportedPostsCount = allReportedPostIds.length;
+        const reportPercentage =
+          totalPosts > 0 ? (reportedPostsCount / totalPosts) * 100 : 0;
+
+        return {
+          ...user,
+          reportStats: {
+            totalPosts,
+            reportedPosts: reportedPostsCount,
+            aiDetectedPosts: aiPostIds.length,
+            userReportedPosts: userPostIds.length,
+            bothDetectedPosts: bothDetectedPostIds.length,
+            reportPercentage: Math.round(reportPercentage * 100) / 100, // Round to 2 decimal places
+          },
+        };
+      })
+    );
+
     return NextResponse.json({
-      users,
+      users: usersWithStats,
       pagination: {
         page,
         limit,

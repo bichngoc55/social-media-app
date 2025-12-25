@@ -14,8 +14,13 @@ import { formatDate } from "date-fns";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import EditProfileButton from "./EditProfileButton";
 import UserPosts from "./UserPosts";
+import WarnedPosts from "./WarnedPosts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -72,12 +77,45 @@ export default async function Page({ params }: PageProps) {
     <main className="flex w-full min-w-0 gap-5">
       <div className="w-full min-w-0 space-y-5">
         <UserProfile user={user} loggedInUserId={loggedInUser.id} />
+        {user.id === loggedInUser.id ? (
+          <Tabs defaultValue="all-posts" className="space-y-5">
+            <TabsList className="card-glass w-full">
+              <TabsTrigger value="all-posts" className="flex-1">
+                Tất cả bài viết
+              </TabsTrigger>
+              <TabsTrigger value="warned-posts" className="flex-1">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Bài viết bị cảnh báo
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="all-posts">
+              <div className="rounded-2xl bg-card p-5 shadow-sm">
+                <h2 className="text-center text-2xl font-bold">
+                  {user.displayName}&apos;s posts
+                </h2>
+              </div>
+              <UserPosts userId={user.id} />
+            </TabsContent>
+            <TabsContent value="warned-posts">
+              <div className="rounded-2xl bg-card p-5 shadow-sm">
+                <h2 className="text-center text-2xl font-bold flex items-center justify-center gap-2">
+                  <AlertTriangle className="h-6 w-6 text-orange-500" />
+                  Bài viết bị cảnh báo
+                </h2>
+              </div>
+              <WarnedPosts userId={user.id} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <>
         <div className="rounded-2xl bg-card p-5 shadow-sm">
           <h2 className="text-center text-2xl font-bold">
             {user.displayName}&apos;s posts
           </h2>
         </div>
         <UserPosts userId={user.id} />
+          </>
+        )}
       </div>
       <TrendsSidebarClient />
     </main>
@@ -132,7 +170,15 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </div>
         </div>
         {user.id === loggedInUserId ? (
+          <div className="flex flex-col gap-2">
           <EditProfileButton user={user} />
+            <Link href="/warnings">
+              <Button variant="outline" className="w-full">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Xem cảnh báo
+              </Button>
+            </Link>
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <FollowButton userId={user.id} initialState={followerInfo} />

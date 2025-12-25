@@ -105,11 +105,6 @@ export async function GET(req: NextRequest) {
                     displayName: true,
                   },
                 },
-                _count: {
-                  select: {
-                    auditTrail: true,
-                  },
-                },
               },
               orderBy,
               skip,
@@ -191,11 +186,6 @@ export async function GET(req: NextRequest) {
               id: true,
               username: true,
               displayName: true,
-            },
-          },
-          _count: {
-            select: {
-              auditTrail: true,
             },
           },
         },

@@ -187,25 +187,26 @@ export async function createModerationCaseFromAI({
     await applyAutoAction(postId, autoAction);
   }
 
+  // TODO: Uncomment when ModerationAuditLog model is added to schema
   // Create audit log
-  await prisma.moderationAuditLog.create({
-    data: {
-      caseId: case_.id,
-      actorId: "system",
-      actorRole: "ADMIN",
-      action: "CASE_CREATED",
-      newState: {
-        status: "DETECTED",
-        autoAction,
-        severity,
-        priorityScore,
-      },
-      reason: `AI detected harmful content: ${harmfulTypes.join(", ")}`,
-      policyArea,
-      modelVersion,
-      confidence,
-    },
-  });
+  // await prisma.moderationAuditLog.create({
+  //   data: {
+  //     caseId: case_.id,
+  //     actorId: "system",
+  //     actorRole: "ADMIN",
+  //     action: "CASE_CREATED",
+  //     newState: {
+  //       status: "DETECTED",
+  //       autoAction,
+  //       severity,
+  //       priorityScore,
+  //     },
+  //     reason: `AI detected harmful content: ${harmfulTypes.join(", ")}`,
+  //     policyArea,
+  //     modelVersion,
+  //     confidence,
+  //   },
+  // });
 
   return case_;
 }
