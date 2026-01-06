@@ -41,7 +41,7 @@ export async function GET(
     const hasHarmful = post.harmful || false;
 
     // Check if there's an active warning for this post
-    const activeWarning = await (prisma as any).userWarning.findFirst({
+    const activeWarning = await prisma.userWarning.findFirst({
       where: {
         userId: user.id,
         postId: postId,

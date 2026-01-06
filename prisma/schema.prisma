@@ -122,7 +122,7 @@ model Post {
   topics                String[]                 @default([])
   wisdomOrAdviceMessage String?
   appealUserReports     AppealUserReport[]
-  bookmarks             Bookmark[]
+  bookmarks             Bookmark[] 
   comments              Comment[]
   likes                 Like[]
   mentions              Mention[]
@@ -139,7 +139,6 @@ model Post {
   @@index([privacy, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@index([content(ops: raw("gist_trgm_ops"))], map: "posts_content_trgm_idx", type: Gist)
-  @@index([embedding])
   @@map("posts")
 }
 

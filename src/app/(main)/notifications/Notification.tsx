@@ -83,12 +83,14 @@ export default function Notification({ notification }: NotificationProps) {
     },
     WARNING: {
       message: "sent you a warning",
-      icon: <AlertTriangle className="size-7 text-orange-500 fill-orange-500" />,
+      icon: (
+        <AlertTriangle className="size-7 fill-orange-500 text-orange-500" />
+      ),
       href: `/warnings`,
     },
     BAN_NOTICE: {
       message: "banned your account",
-      icon: <Ban className="size-7 text-red-500 fill-red-500" />,
+      icon: <Ban className="size-7 fill-red-500 text-red-500" />,
       href: `/warnings`,
     },
   } as Record<
@@ -97,10 +99,13 @@ export default function Notification({ notification }: NotificationProps) {
   >;
 
   const { message, icon, href } = notificationTypeMap[notification.type];
-  
+  const isAdmin = notification.issuer.username === "sam.white";
+
   // Check if notification has customMessage (for warnings and bans)
   const customMessage = (notification as any).customMessage;
-  const showCustomMessage = customMessage && (notification.type === "WARNING" || notification.type === "BAN_NOTICE");
+  const showCustomMessage =
+    customMessage &&
+    (notification.type === "WARNING" || notification.type === "BAN_NOTICE");
 
   return (
     <Link href={href} className="block">
@@ -108,20 +113,24 @@ export default function Notification({ notification }: NotificationProps) {
         className={cn(
           "flex gap-3 rounded-2xl bg-card p-5 shadow-sm transition-colors hover:bg-card/70",
           !notification.read && "bg-primary/10",
-          (notification.type === "WARNING" || notification.type === "BAN_NOTICE") && "border-l-4 border-orange-500"
+          (notification.type === "WARNING" ||
+            notification.type === "BAN_NOTICE") &&
+            "border-l-4 border-orange-500"
         )}
       >
         <div className="my-1">{icon}</div>
         <div className="flex-1 space-y-2">
           <div className="inline-flex gap-2">
-          <UserAvatar avatarUrl={notification.issuer.avatarUrl} size={33} />
+            <UserAvatar avatarUrl={notification.issuer.avatarUrl} size={33} />
             <div>
-            <span className="font-bold">{notification.issuer.displayName}</span>{" "}
-            <span>{message}</span>
+              <span className="font-bold">
+                {isAdmin ? "Admin" : notification.issuer.displayName}
+              </span>{" "}
+              <span>{message}</span>
             </div>
           </div>
           {showCustomMessage && (
-            <div className="ml-11 rounded-lg bg-muted/50 p-3 text-sm whitespace-pre-line">
+            <div className="ml-11 whitespace-pre-line rounded-lg bg-muted/50 p-3 text-sm">
               {customMessage}
             </div>
           )}

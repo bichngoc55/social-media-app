@@ -13,6 +13,8 @@ import {
   EyeOff,
   AlertTriangle,
   Flag,
+  Repeat,
+  Forward,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,7 +29,6 @@ import LikeButton from "./LikeButton";
 import PostMoreButton from "./PostMoreButton";
 import UserTagging from "./UserTagging";
 import TagRequestBanner from "./TagRequestBanner";
-import MediaSlider from "./MediaSlider";
 import PostDetailModal from "./PostDetailModal";
 import { Button } from "../ui/button";
 import BlockPostButton from "./BlockPostButton";
@@ -51,6 +52,58 @@ export default function Post({ post }: PostProps) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isHarmfulContentRevealed, setIsHarmfulContentRevealed] =
     useState(false);
+  const handleShare = async (post: PostDataLightweight) => {
+    const shareUrl = `${window.location.origin}/posts/${post.id}`;
+    const shareText =
+      post.content || `Check out this post by ${post.user.displayName}`;
+
+    const shareData: ShareData = {
+      title: `${post.user.displayName}'s Post`,
+      text: shareText,
+      url: shareUrl,
+    };
+
+    try {
+      if (
+        post.attachments.length > 0 &&
+        navigator.canShare &&
+        navigator.share
+      ) {
+        const filesToShare: File[] = [];
+
+        for (const attachment of post.attachments.slice(0, 3)) {
+          try {
+            const response = await fetch(attachment.url);
+            const blob = await response.blob();
+            const fileName = attachment.url.split("/").pop() || "media";
+            const file = new File([blob], fileName, { type: blob.type });
+            filesToShare.push(file);
+          } catch (error) {
+            console.error("Failed to fetch attachment for sharing", error);
+          }
+        }
+
+        if (filesToShare.length > 0) {
+          const dataWithFiles = { ...shareData, files: filesToShare };
+          if (navigator.canShare(dataWithFiles)) {
+            await navigator.share(dataWithFiles);
+            return;
+          }
+        }
+      }
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+        alert("Link copied to clipboard!");
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Error sharing:", error);
+      }
+    }
+  };
 
   return (
     <article className="group/post card-glass post-hover-lift space-y-3 rounded-2xl p-6 fade-in">
@@ -174,7 +227,10 @@ export default function Post({ post }: PostProps) {
               </Linkify>
             )}
             {!!post.attachments.length && (
-              <MediaSlider attachments={post.attachments} />
+              <MediaDisplay
+                attachments={post.attachments}
+                layout={post.mediaLayout || "GRID"}
+              />
             )}
           </>
         )}
@@ -195,19 +251,26 @@ export default function Post({ post }: PostProps) {
           />
         </div>
         <div className="flex items-center gap-2">
-          <BlockPostButton postId={post.id} />
-
+          <button
+            title="Share"
+            className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-purple-500/10"
+            onClick={() => handleShare(post)}
+          >
+            <Forward className="size-5 text-purple-500 transition-all duration-300" />
+          </button>
           {user.id !== post.userId && (
-            <ReportPostDialog postId={post.id}>
-              <button
-                title="Report this post"
-                className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
-              >
-                <Flag className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500" />
-              </button>
-            </ReportPostDialog>
+            <>
+              <BlockPostButton postId={post.id} />
+              <ReportPostDialog postId={post.id}>
+                <button
+                  title="Report this post"
+                  className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
+                >
+                  <Flag className="size-5 text-muted-foreground transition-all duration-300 hover:text-orange-500" />
+                </button>
+              </ReportPostDialog>
+            </>
           )}
-
           {/* Show appeal button for own posts with AI flags */}
           {user.id === post.userId && (
             <AppealPostButton postId={post.id}>
@@ -216,13 +279,12 @@ export default function Post({ post }: PostProps) {
                 className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-orange-500/10"
               >
                 <AlertTriangle className="size-5 text-orange-500 transition-all duration-300" />
-                <span className="hidden sm:inline text-sm font-medium text-orange-500">
-                  Kháng cáo
+                <span className="hidden text-sm font-medium text-orange-500 sm:inline">
+                  Appeal
                 </span>
               </button>
             </AppealPostButton>
           )}
-
           <BookmarkButton
             postId={post.id}
             initialState={{
@@ -248,7 +310,7 @@ interface MediaPreviewProps {
   layout: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME";
   showOverlay?: boolean;
   overlayCount?: number;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 function MediaPreview({
@@ -448,5 +510,86 @@ function CommentButton({ post, onClick }: CommentButtonProps) {
         <span className="hidden sm:inline">comments</span>
       </span>
     </button>
+  );
+}
+
+interface MediaDisplayProps {
+  attachments: Media[];
+  layout: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME" | null;
+}
+
+function MediaDisplay({ attachments, layout }: MediaDisplayProps) {
+  const effectiveLayout = layout || "GRID";
+  const images = attachments.filter((m) => m.type === "IMAGE");
+  const videos = attachments.filter((m) => m.type === "VIDEO");
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [initialIndex, setInitialIndex] = useState(0);
+
+  const getLayoutClasses = () => {
+    switch (effectiveLayout) {
+      case "GRID":
+        if (images.length === 1) return "flex flex-col gap-3";
+        if (images.length === 2) return "grid grid-cols-2 gap-3";
+        if (images.length === 3) return "grid grid-cols-3 gap-3";
+        if (images.length === 4) return "grid grid-cols-2 gap-3";
+        return "grid grid-cols-3 gap-3";
+      case "CAROUSEL":
+        return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
+      case "COLUMNS":
+        return "flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2";
+      case "FRAME":
+        if (images.length === 1) return "flex flex-col gap-3";
+        if (images.length === 2) return "grid grid-cols-2 gap-3";
+        if (images.length === 3) return "grid grid-cols-3 gap-3";
+        if (images.length === 4) return "grid grid-cols-2 gap-3";
+        return "grid grid-cols-3 gap-3";
+      default:
+        return "grid grid-cols-3 gap-3";
+    }
+  };
+
+  return (
+    <>
+      {images.length > 0 && (
+        <div
+          className={cn(
+            getLayoutClasses(),
+            effectiveLayout === "FRAME" &&
+              "rounded-2xl border-4 border-primary/20 bg-primary/5 p-4"
+          )}
+        >
+          {images.map((media, index) => (
+            <MediaPreview
+              key={media.id}
+              media={media}
+              layout={effectiveLayout}
+              onClick={(e) => {
+                e.stopPropagation();
+                setInitialIndex(index);
+                setViewerOpen(true);
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {videos.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {videos.map((media) => (
+            <MediaPreview
+              key={media.id}
+              media={media}
+              layout={effectiveLayout}
+            />
+          ))}
+        </div>
+      )}
+      {viewerOpen && (
+        <ImageViewer
+          images={images}
+          initialIndex={initialIndex}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
+    </>
   );
 }

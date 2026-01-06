@@ -75,6 +75,28 @@ export const validateRequest = cache(
         session: null,
       };
     }
+    if (result.user) {
+      const userStatus = await prisma.user.findUnique({
+        where: { id: result.user.id },
+        select: { status: true, bannedUntil: true },
+      });
+
+      const isPermBanned = userStatus?.status === false;
+      const isTempBanned =
+        userStatus?.bannedUntil &&
+        new Date(userStatus.bannedUntil) > new Date();
+
+      if (isPermBanned || isTempBanned) {
+        await lucia.invalidateSession(result.session.id);
+        const sessionCookie = lucia.createBlankSessionCookie();
+        (await cookies()).set(
+          sessionCookie.name,
+          sessionCookie.value,
+          sessionCookie.attributes
+        );
+        return { user: null, session: null };
+      }
+    }
 
     try {
       if (result.session && result.session.fresh) {

@@ -229,7 +229,7 @@ export default function AdminReportsPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-              Quản lý Báo cáo
+              Reports Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Review and manage user reports

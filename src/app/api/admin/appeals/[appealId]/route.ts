@@ -85,6 +85,16 @@ export async function PATCH(
           },
         },
       });
+      await prisma.moderationCase.updateMany({
+        where: { postId: appeal.post.id, status: "QUEUED" },
+        data: {
+          status: "DISMISSED",
+          decision: "DISMISS",
+          decisionAt: new Date(),
+          updatedAt: new Date(),
+          adminNotes: adminNotes || "Appeal approved by admin.",
+        },
+      });
 
       // Send via socket with custom message
       if (typeof global !== "undefined" && global.io && global.userSockets) {
@@ -92,7 +102,7 @@ export async function PATCH(
         if (socketId) {
           global.io.to(socketId).emit("notification", {
             ...notification,
-            customMessage: `Kháng cáo của bạn đã được chấp nhận. Bài viết đã được khôi phục và không còn bị cảnh báo.`,
+            customMessage: `Your appeal has been approved. The post has been restored and is no longer flagged.`,
             timestamp: new Date().toISOString(),
           });
         }
@@ -126,7 +136,7 @@ export async function PATCH(
         if (socketId) {
           global.io.to(socketId).emit("notification", {
             ...notification,
-            customMessage: `Kháng cáo của bạn đã bị từ chối. ${adminNotes ? `Lý do: ${adminNotes}` : ""}`,
+            customMessage: `Your appeal has been rejected. ${adminNotes ? `Reason: ${adminNotes}` : ""}`,
             timestamp: new Date().toISOString(),
           });
         }

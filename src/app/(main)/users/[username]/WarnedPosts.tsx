@@ -47,7 +47,7 @@ export default function WarnedPosts({ userId }: WarnedPostsProps) {
       <Card>
         <CardContent className="p-6">
           <p className="text-center text-destructive">
-            Có lỗi xảy ra khi tải bài viết bị cảnh báo
+            An error occurred while loading warned posts
           </p>
         </CardContent>
       </Card>
@@ -60,9 +60,7 @@ export default function WarnedPosts({ userId }: WarnedPostsProps) {
         <CardContent className="p-6">
           <div className="flex flex-col items-center justify-center gap-3 text-center">
             <AlertTriangle className="h-12 w-12 text-orange-500" />
-            <p className="text-muted-foreground">
-              Bạn chưa có bài viết nào bị cảnh báo
-            </p>
+            <p className="text-muted-foreground">You have no warned posts</p>
           </div>
         </CardContent>
       </Card>
@@ -76,16 +74,15 @@ export default function WarnedPosts({ userId }: WarnedPostsProps) {
     >
       {posts.map((post) => (
         <div key={post.id} className="relative">
-          <div className="absolute -left-2 top-2 z-10 rounded-full bg-orange-500 p-1.5 shadow-lg">
+          {/* <div className="absolute -left-2 top-2 z-10 rounded-full bg-orange-500 p-1.5 shadow-lg">
             <AlertTriangle className="h-4 w-4 text-white" />
-          </div>
-          <div className="border-l-4 border-orange-500 pl-4">
-            <Post post={post} />
-          </div>
+          </div> */}
+          {/* <div className=""> */}
+          <Post post={post} />
+          {/* </div> */}
         </div>
       ))}
       {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
     </InfiniteScrollContainer>
   );
 }
-

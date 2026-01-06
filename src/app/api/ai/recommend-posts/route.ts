@@ -5,14 +5,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const { user: authUser } = await validateRequest();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const excludeIdsParam = req.nextUrl.searchParams.get("excludeIds") || "";
-    const excludeIds = excludeIdsParam.split(",").filter(Boolean);
+    const body = await req.json();
+    const excludeIds = body.excludeIds || [];
 
     const userWithEmbedding = await prisma.$queryRaw<
       Array<{
@@ -317,17 +317,17 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const postMap = new Map(posts.map((p) => [p.id, p]));
+    // const postMap = new Map(posts.map((p) => [p.id, p]));
     // const sortedPosts = recommendations
     //   .map((rec) => postMap.get(rec.id))
     //   .filter(Boolean) as any[];
 
     return NextResponse.json({
       posts: posts,
-      userPreferences: {
-        preferredEmotions,
-        generalEmotion: userGeneralEmotion,
-      },
+      // userPreferences: {
+      //   preferredEmotions,
+      //   generalEmotion: userGeneralEmotion,
+      // },
     });
   } catch (error) {
     console.error("[RECOMMEND-POSTS] Error:", error);

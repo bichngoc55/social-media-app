@@ -40,7 +40,17 @@ const INTEREST_TAGS = [
   "Health",
   "Nature",
   "Pets",
-];
+  "Lifestyle",
+  "Relationships",
+  "Mental Health",
+  "Career",
+  "Finance",
+  "News",
+  "Culture",
+  "Self Improvement",
+  "Entertainment",
+  "Internet Culture",
+] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();

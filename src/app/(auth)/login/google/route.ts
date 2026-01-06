@@ -26,5 +26,5 @@ export async function GET() {
     sameSite: "lax",
   });
 
-  return Response.redirect(url);
+  return Response.redirect(url, 302);
 }

@@ -5,12 +5,13 @@ import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   try {
-    const admin = await requireAdmin();
+    await requireAdmin();
 
-    // Parse search params first (before any Prisma checks)
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+
+    const page = Math.max(parseInt(searchParams.get("page") || "1"), 1);
+    const limit = Math.max(parseInt(searchParams.get("limit") || "20"), 1);
+
     const status = searchParams.get("status");
     const severity = searchParams.get("severity");
     const source = searchParams.get("source");
@@ -35,112 +36,12 @@ export async function GET(req: NextRequest) {
           ? { createdAt: "desc" }
           : { priorityScore: "desc" };
 
-    // Debug: Check if ModerationCase exists in Prisma client
-    if (!prisma.moderationCase) {
-      const availableModels = Object.keys(prisma).filter(
-        (key) => !key.startsWith("_") && !key.startsWith("$")
-      );
-      console.error("Prisma client debug:", {
-        hasModerationCase: !!prisma.moderationCase,
-        availableModels,
-        prismaType: typeof prisma,
-      });
-
-      // Try to reload Prisma client
-      if (
-        process.env.NODE_ENV !== "production" &&
-        typeof globalThis !== "undefined"
-      ) {
-        delete (globalThis as any).prismaGlobal;
-        const { default: newPrisma } = await import("@/lib/prisma");
-        if (newPrisma.moderationCase) {
-          // Use the new instance
-          const [cases, total] = await Promise.all([
-            newPrisma.moderationCase.findMany({
-              where,
-              include: {
-                post: {
-                  select: {
-                    id: true,
-                    content: true,
-                    createdAt: true,
-                    harmful: true,
-                    harmfulTypes: true,
-                    user: {
-                      select: {
-                        id: true,
-                        username: true,
-                        displayName: true,
-                        avatarUrl: true,
-                      },
-                    },
-                    attachments: {
-                      select: {
-                        id: true,
-                        url: true,
-                        type: true,
-                      },
-                    },
-                  },
-                },
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                    displayName: true,
-                    avatarUrl: true,
-                  },
-                },
-                assignedAdmin: {
-                  select: {
-                    id: true,
-                    username: true,
-                    displayName: true,
-                  },
-                },
-                decisionAdmin: {
-                  select: {
-                    id: true,
-                    username: true,
-                    displayName: true,
-                  },
-                },
-              },
-              orderBy,
-              skip,
-              take: limit,
-            }),
-            newPrisma.moderationCase.count({ where }),
-          ]);
-
-          return NextResponse.json({
-            cases,
-            pagination: {
-              page,
-              limit,
-              total,
-              totalPages: Math.ceil(total / limit),
-            },
-          });
-        }
-      }
-
-      return NextResponse.json(
-        {
-          error: "ModerationCase model not found in Prisma client",
-          debug: {
-            availableModels,
-            message:
-              "Please run 'npx prisma generate' and restart the dev server",
-          },
-        },
-        { status: 503 }
-      );
-    }
-
     const [cases, total] = await Promise.all([
       prisma.moderationCase.findMany({
         where,
+        orderBy,
+        skip,
+        take: limit,
         include: {
           post: {
             select: {
@@ -189,9 +90,6 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        orderBy,
-        skip,
-        take: limit,
       }),
       prisma.moderationCase.count({ where }),
     ]);
@@ -207,19 +105,13 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching moderation cases:", error);
-    console.error("Error details:", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined,
-    });
+
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",
         details:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.stack
-              : String(error)
+          process.env.NODE_ENV === "development" && error instanceof Error
+            ? error.stack
             : undefined,
       },
       {

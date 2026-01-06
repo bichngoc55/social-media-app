@@ -6,7 +6,8 @@ import UserAvatar from "@/components/UserAvatar";
 import UserTooltip from "@/components/UserTooltip";
 import prisma from "@/lib/prisma";
 import { getPostDataInclude, PostData, UserData } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,6 +16,42 @@ import { cache, Suspense } from "react";
 interface PageProps {
   params: Promise<{ postId: string }>;
 }
+function AppealStatusBanner({ appeal }: { appeal: any }) {
+  const isApproved = appeal.status === "APPROVED";
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1 rounded-lg border-l-2 p-2 text-xs",
+        isApproved
+          ? "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400"
+          : "border-destructive bg-destructive/10 text-destructive"
+      )}
+    >
+      <div className="flex items-center gap-1 font-semibold">
+        {isApproved ? (
+          <CheckCircle className="size-4" />
+        ) : (
+          <AlertCircle className="size-4" />
+        )}
+        <span>Appeal {isApproved ? "Approved" : "Rejected"}</span>
+      </div>
+
+      <p className="leading-snug">
+        {isApproved
+          ? "Post restored and no longer flagged."
+          : "Appeal reviewed. Decision upheld."}
+      </p>
+
+      {appeal.adminNotes && (
+        <div className="mt-0.5 italic opacity-80">
+          <span className="font-medium not-italic">Reason:</span>{" "}
+          {appeal.adminNotes}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const getPost = cache(
   async (postId: string, loggedInUserId: string): Promise<PostData> => {
@@ -22,12 +59,11 @@ const getPost = cache(
       where: {
         id: postId,
       },
-      include: getPostDataInclude(loggedInUserId, false), // Full mode - need _count for user profile
+      include: getPostDataInclude(loggedInUserId, false),
     });
 
     if (!post) notFound();
 
-    // Type assertion needed because Prisma types don't perfectly match our PostData type
     return post as unknown as PostData;
   }
 );
@@ -59,11 +95,23 @@ export default async function Page({ params }: PageProps) {
     );
   }
 
-  const post = await getPost(postId, user.id);
-
+  const [post, appeal] = await Promise.all([
+    getPost(postId, user.id),
+    prisma.appealUserReport.findFirst({
+      where: {
+        postId: postId,
+        userId: user.id,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   return (
     <main className="flex w-full min-w-0 gap-5">
       <div className="w-full min-w-0 space-y-5">
+        {appeal &&
+          (appeal.status === "APPROVED" || appeal.status === "REJECTED") && (
+            <AppealStatusBanner appeal={appeal} />
+          )}
         <Post post={post} />
       </div>
       <div className="sticky top-[5.25rem] hidden h-fit w-80 flex-none lg:block">

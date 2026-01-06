@@ -58,20 +58,23 @@ export default function AppealPostButton({
     },
     onSuccess: () => {
       toast({
-        title: "Kháng cáo đã được gửi",
-        description: "Kháng cáo của bạn đã được gửi thành công và đang chờ xem xét.",
+        title: "Appeal Submitted",
+        description:
+          "Your appeal has been successfully submitted and is pending review.",
       });
       setOpen(false);
       setAppealReason("");
-      queryClient.invalidateQueries({ queryKey: ["post-ai-flag-status", postId] });
+      queryClient.invalidateQueries({
+        queryKey: ["post-ai-flag-status", postId],
+      });
     },
     onError: (error: any) => {
       const message =
         error?.response?.json?.then?.((e: any) => e.error) ||
         error?.message ||
-        "Không thể gửi kháng cáo";
+        "Unable to submit appeal";
       toast({
-        title: "Lỗi",
+        title: "Error",
         description: message,
         variant: "destructive",
       });
@@ -107,19 +110,20 @@ export default function AppealPostButton({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Kháng cáo bài viết
+              Appeal form
             </DialogTitle>
             <DialogDescription>
-              Bài viết này đã bị AI cảnh báo (Sensitive Content). Bạn có thể gửi kháng cáo
-              nếu bạn cho rằng đây là nhầm lẫn. Vui lòng cung cấp lý do chi tiết.
+              This post has been flagged by AI (Sensitive Content). You can
+              submit an appeal if you believe this is a mistake. Please provide
+              a detailed reason.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="appeal-reason">Lý do kháng cáo *</Label>
+              <Label htmlFor="appeal-reason">Appeal Reason *</Label>
               <Textarea
                 id="appeal-reason"
-                placeholder="Vui lòng giải thích tại sao bạn cho rằng bài viết này không vi phạm..."
+                placeholder="Please explain why you believe this post does not violate the guidelines..."
                 value={appealReason}
                 onChange={(e) => setAppealReason(e.target.value)}
                 rows={5}
@@ -127,24 +131,24 @@ export default function AppealPostButton({
               />
             </div>
             {flagStatus?.hasActiveWarning && (
-              <div className="rounded-lg bg-orange-50 dark:bg-orange-900/20 p-3 text-sm text-orange-800 dark:text-orange-200">
-                <p className="font-semibold">Lưu ý:</p>
+              <div className="rounded-lg bg-orange-50 p-3 text-sm text-orange-800 dark:bg-orange-900/20 dark:text-orange-200">
+                <p className="font-semibold">Note:</p>
                 <p>
-                  Bạn có một cảnh báo đang hoạt động cho bài viết này. Kháng cáo
-                  sẽ được xem xét trong vòng 72 giờ.
+                  You have an active warning for this post. Appeals will be
+                  reviewed within 72 hours.
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={appealMutation.isPending || !appealReason.trim()}
             >
-              {appealMutation.isPending ? "Đang gửi..." : "Gửi kháng cáo"}
+              {appealMutation.isPending ? "Sending..." : "Submit Appeal"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -152,4 +156,3 @@ export default function AppealPostButton({
     </>
   );
 }
-

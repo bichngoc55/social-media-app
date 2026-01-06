@@ -45,7 +45,7 @@ export default async function AdminLayout({
 
     // Log actual errors
     console.error("Admin layout error:", err);
-    
+
     // Check if it's a database connection error
     const errorMessage = err instanceof Error ? err.message : String(err);
     if (

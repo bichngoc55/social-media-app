@@ -35,7 +35,7 @@ const getUser = cache(
           mode: "insensitive",
         },
       },
-      select: getUserDataSelect(loggedInUserId, false), // Full mode - need _count for profile
+      select: getUserDataSelect(loggedInUserId, false),
     });
 
     if (!user) notFound();
@@ -77,17 +77,19 @@ export default async function Page({ params }: PageProps) {
     <main className="flex w-full min-w-0 gap-5">
       <div className="w-full min-w-0 space-y-5">
         <UserProfile user={user} loggedInUserId={loggedInUser.id} />
+
         {user.id === loggedInUser.id ? (
           <Tabs defaultValue="all-posts" className="space-y-5">
             <TabsList className="card-glass w-full">
               <TabsTrigger value="all-posts" className="flex-1">
-                Tất cả bài viết
+                All posts
               </TabsTrigger>
               <TabsTrigger value="warned-posts" className="flex-1">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Bài viết bị cảnh báo
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Warned posts
               </TabsTrigger>
             </TabsList>
+
             <TabsContent value="all-posts">
               <div className="rounded-2xl bg-card p-5 shadow-sm">
                 <h2 className="text-center text-2xl font-bold">
@@ -96,11 +98,12 @@ export default async function Page({ params }: PageProps) {
               </div>
               <UserPosts userId={user.id} />
             </TabsContent>
+
             <TabsContent value="warned-posts">
               <div className="rounded-2xl bg-card p-5 shadow-sm">
-                <h2 className="text-center text-2xl font-bold flex items-center justify-center gap-2">
+                <h2 className="flex items-center justify-center gap-2 text-center text-2xl font-bold">
                   <AlertTriangle className="h-6 w-6 text-orange-500" />
-                  Bài viết bị cảnh báo
+                  Warned posts
                 </h2>
               </div>
               <WarnedPosts userId={user.id} />
@@ -108,15 +111,16 @@ export default async function Page({ params }: PageProps) {
           </Tabs>
         ) : (
           <>
-        <div className="rounded-2xl bg-card p-5 shadow-sm">
-          <h2 className="text-center text-2xl font-bold">
-            {user.displayName}&apos;s posts
-          </h2>
-        </div>
-        <UserPosts userId={user.id} />
+            <div className="rounded-2xl bg-card p-5 shadow-sm">
+              <h2 className="text-center text-2xl font-bold">
+                {user.displayName}&apos;s posts
+              </h2>
+            </div>
+            <UserPosts userId={user.id} />
           </>
         )}
       </div>
+
       <TrendsSidebarClient />
     </main>
   );
@@ -142,18 +146,22 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
         size={250}
         className="mx-auto size-full max-h-60 max-w-60 rounded-full"
       />
+
       <div className="flex flex-wrap gap-3 sm:flex-nowrap">
         <div className="me-auto space-y-3">
           <div>
             <h1 className="text-3xl font-bold">{user.displayName}</h1>
             <div className="text-muted-foreground">@{user.username}</div>
           </div>
+
           <div>Member since {formatDate(user.createdAt, "MMM d, yyyy")}</div>
+
           <UserLocation
             countryCode={user.countryCode}
             provinceCode={user.provinceCode}
             districtCode={user.districtCode}
           />
+
           <div className="flex items-center gap-3">
             <span>
               Posts:{" "}
@@ -161,6 +169,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
                 {formatNumber(user._count.posts)}
               </span>
             </span>
+
             <FollowerCount
               userId={user.id}
               username={user.username}
@@ -169,13 +178,14 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
             />
           </div>
         </div>
+
         {user.id === loggedInUserId ? (
           <div className="flex flex-col gap-2">
-          <EditProfileButton user={user} />
+            <EditProfileButton user={user} />
             <Link href="/warnings">
               <Button variant="outline" className="w-full">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Xem cảnh báo
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                View warnings
               </Button>
             </Link>
           </div>
@@ -190,6 +200,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </div>
         )}
       </div>
+
       {user.bio && (
         <>
           <hr />
@@ -200,6 +211,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </Linkify>
         </>
       )}
+
       {user.interests && user.interests.length > 0 && (
         <>
           <hr />

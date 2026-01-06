@@ -180,7 +180,7 @@ export default function AdminModerationPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-              Quản lý Moderation
+              Moderation Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Review and manage content moderation cases
@@ -379,7 +379,7 @@ function ReportsTab() {
 
   return (
     <>
-      <Card className="card-glass">
+      <Card className="card-glass mb-1">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex w-full items-center gap-4 sm:w-auto">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -417,7 +417,7 @@ function ReportsTab() {
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="mb-1">
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-2">

@@ -187,3 +187,75 @@ export async function sendWelcomeEmail(
     };
   }
 }
+
+// Send permanent ban email after 3 warnings
+export async function sendPermanentBanEmail(
+  to: string,
+  displayName: string,
+  warningCount: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const banDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to,
+      subject: "Account Permanently Banned - Loopy Social Media",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">⛔ Account Permanently Banned</h1>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin-top: 0;">Hello ${displayName},</h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.5;">
+              Your account has been permanently banned from Loopy Social Media after receiving <strong>${warningCount} warnings</strong> for violating our community guidelines.
+            </p>
+            
+            <div style="background: #fee2e2; border: 2px solid #dc2626; padding: 20px; margin: 20px 0; border-radius: 8px;">
+              <h3 style="margin: 0 0 10px 0; color: #991b1b;">📋 Ban Details:</h3>
+              <p style="margin: 5px 0; color: #7f1d1d;"><strong>Warning Count:</strong> ${warningCount}/3</p>
+              <p style="margin: 5px 0; color: #7f1d1d;"><strong>Ban Date:</strong> ${banDate}</p>
+              <p style="margin: 5px 0; color: #7f1d1d;"><strong>Status:</strong> Permanent Ban</p>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; line-height: 1.6;">
+              After receiving 3 warnings for community guideline violations, your account has been permanently suspended. 
+              This decision was made to maintain a safe and respectful environment for all Loopy users.
+            </p>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #856404; font-size: 14px;">
+                <strong>ℹ️ Important:</strong> This ban is permanent and cannot be appealed. Your account and all associated data will remain inaccessible.
+              </p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #999; font-size: 12px;">
+            <p>If you believe this was a mistake, please contact our support team.</p>
+            <p>© 2024 Loopy Social Media. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error("Error sending permanent ban email:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to send permanent ban email",
+    };
+  }
+}

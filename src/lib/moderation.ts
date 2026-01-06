@@ -60,15 +60,33 @@ export function determineAutoAction(
 export function mapHarmfulTypeToPolicyArea(
   harmfulType: string
 ): ModerationPolicyArea {
+  const normalized = harmfulType.toUpperCase().trim();
+
+  // Map Vertex AI harmful types to ModerationPolicyArea enum
+  // Vertex AI types: VIOLENCE, HATE_SPEECH, NUDITY, SPAM, HARASSMENT, SELF_HARM,
+  // SUICIDE, DESPAIR, MISINFORMATION, DANGEROUS_BEHAVIOR, PSYCHOLOGICAL_HARM,
+  // MANIPULATION, COMMUNITY_HARM, OTHER
   const mapping: Record<string, ModerationPolicyArea> = {
+    // Direct mappings from Vertex AI
     VIOLENCE: ModerationPolicyArea.VIOLENCE,
     HATE_SPEECH: ModerationPolicyArea.HATE_SPEECH,
     NUDITY: ModerationPolicyArea.NUDITY,
     SPAM: ModerationPolicyArea.SPAM,
     HARASSMENT: ModerationPolicyArea.HARASSMENT,
+    SELF_HARM: ModerationPolicyArea.SELF_HARM,
+
+    // Map Vertex AI types to closest policy area
+    SUICIDE: ModerationPolicyArea.SELF_HARM,
+    DESPAIR: ModerationPolicyArea.SELF_HARM,
+    MISINFORMATION: ModerationPolicyArea.SCAM,
+    DANGEROUS_BEHAVIOR: ModerationPolicyArea.OTHER,
+    PSYCHOLOGICAL_HARM: ModerationPolicyArea.HARASSMENT,
+    MANIPULATION: ModerationPolicyArea.SCAM,
+    COMMUNITY_HARM: ModerationPolicyArea.OTHER,
+    OTHER: ModerationPolicyArea.OTHER,
   };
 
-  return mapping[harmfulType.toUpperCase()] || ModerationPolicyArea.OTHER;
+  return mapping[normalized] || ModerationPolicyArea.OTHER;
 }
 
 /**
@@ -77,17 +95,34 @@ export function mapHarmfulTypeToPolicyArea(
 export function determineSeverityFromHarmfulTypes(
   harmfulTypes: string[]
 ): ModerationSeverity {
-  const criticalTypes = ["VIOLENCE", "SELF_HARM"];
-  const highTypes = ["HATE_SPEECH", "HARASSMENT"];
-  const mediumTypes = ["NUDITY", "SPAM"];
+  const types = harmfulTypes.map((t) => t.toUpperCase());
 
-  if (harmfulTypes.some((t) => criticalTypes.includes(t.toUpperCase()))) {
+  const CRITICAL = ["VIOLENCE", "SELF_HARM", "SUICIDE"];
+
+  const HIGH = [
+    "HATE_SPEECH",
+    "HARASSMENT",
+    "DANGEROUS_BEHAVIOR",
+    "PSYCHOLOGICAL_HARM",
+  ];
+
+  const MEDIUM = [
+    "NUDITY",
+    "SPAM",
+    "MISINFORMATION",
+    "MANIPULATION",
+    "COMMUNITY_HARM",
+  ];
+
+  if (types.some((t) => CRITICAL.includes(t))) {
     return ModerationSeverity.CRITICAL;
   }
-  if (harmfulTypes.some((t) => highTypes.includes(t.toUpperCase()))) {
+
+  if (types.some((t) => HIGH.includes(t))) {
     return ModerationSeverity.HIGH;
   }
-  if (harmfulTypes.some((t) => mediumTypes.includes(t.toUpperCase()))) {
+
+  if (types.some((t) => MEDIUM.includes(t))) {
     return ModerationSeverity.MEDIUM;
   }
 
@@ -117,9 +152,16 @@ export async function createModerationCaseFromAI({
   if (!harmful || harmfulTypes.length === 0) {
     return null;
   }
+  console.log(
+    "Creating moderation case for post ID:",
+    postId,
+    "with harmful types:",
+    harmfulTypes
+  );
 
   const severity = determineSeverityFromHarmfulTypes(harmfulTypes);
   const policyArea = mapHarmfulTypeToPolicyArea(harmfulTypes[0]);
+  console.log("Determined severity:", severity, "and policy area:", policyArea);
   const virality =
     postEngagement.likes + postEngagement.comments + postEngagement.shares;
   const priorityScore = calculatePriorityScore(
@@ -178,7 +220,7 @@ export async function createModerationCaseFromAI({
       priorityScore,
       slaDueAt,
       evidence: evidence as any,
-      status: "QUEUED", // Auto-queue after detection
+      status: "QUEUED", // Directly queue for review
     },
   });
 
@@ -221,4 +263,36 @@ async function applyAutoAction(postId: string, action: ModerationAutoAction) {
   // - TEMP_REMOVE / AUTO_REMOVE: Set visibility flag or actually hide
   // The UI already handles harmful=true with blur, so we don't need to do much here
   // But we could add a moderationVisibility field to Post model if needed
+}
+/**
+ * Calculate user violation rate based on posts from last 30 days
+ * Only counts QUEUED and IN_REVIEW statuses as active violations
+ * DISMISSED, RESTORED, and CONFIRMED are not counted (user already took action)
+ */
+export async function calculateUserViolationRate(userId: string) {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const totalPosts = await prisma.post.count({
+    where: { userId, createdAt: { gte: thirtyDaysAgo } },
+  });
+
+  if (totalPosts === 0) return 0;
+
+  // Only count active violations (QUEUED, IN_REVIEW)
+  // DISMISSED = user appealed and was cleared
+  // RESTORED = admin restored the post
+  // CONFIRMED = post was removed (user already took action or admin confirmed)
+  const violationCount = await prisma.moderationCase.count({
+    where: {
+      userId,
+      source: "AI",
+      status: { in: ["QUEUED", "IN_REVIEW"] },
+      createdAt: { gte: thirtyDaysAgo },
+    },
+  });
+  console.log(
+    `User ID: ${userId} - Total Posts: ${totalPosts}, Violations: ${violationCount}`
+  );
+
+  return (violationCount / totalPosts) * 100;
 }

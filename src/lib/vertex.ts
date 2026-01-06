@@ -114,6 +114,53 @@ const safetySettings = [
   { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ];
+export const VALID_HARMFUL_TYPES = [
+  "VIOLENCE",
+  "HATE_SPEECH",
+  "NUDITY",
+  "SPAM",
+  "HARASSMENT",
+  "SELF_HARM",
+  "SUICIDE",
+  "DESPAIR",
+  "MISINFORMATION",
+  "DANGEROUS_BEHAVIOR",
+  "PSYCHOLOGICAL_HARM",
+  "MANIPULATION",
+  "COMMUNITY_HARM",
+  "OTHER",
+] as const;
+
+const INTEREST_TAGS = [
+  "Technology",
+  "Sports",
+  "Music",
+  "Art",
+  "Travel",
+  "Food",
+  "Fashion",
+  "Photography",
+  "Gaming",
+  "Fitness",
+  "Books",
+  "Movies",
+  "Science",
+  "Business",
+  "Education",
+  "Health",
+  "Nature",
+  "Pets",
+  "Lifestyle",
+  "Relationships",
+  "Mental Health",
+  "Career",
+  "Finance",
+  "News",
+  "Culture",
+  "Self Improvement",
+  "Entertainment",
+  "Internet Culture",
+] as const;
 
 export async function analyzePostWithGemini(
   text?: string,
@@ -133,22 +180,34 @@ export async function analyzePostWithGemini(
   const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
 
   const parts: any[] = [];
-
+  const tagList = INTEREST_TAGS.join(", ");
+  const harmfulList = VALID_HARMFUL_TYPES.join(", ");
   const prompt = `Analyze this social media post (caption + image/video if present). Return ONLY a single valid JSON object, no markdown, no explanation, no extra text.
+CRITICAL INSTRUCTION FOR "topics":
+The "topics" array must contain 2-5 items. 
+- At least ONE item MUST be chosen exactly from this list: [${tagList}]. 
+- The other items should be specific sub-topics or themes found in the post.
+- "harmfulTypes": If harmful is true, choose the closest match(es) from: [${harmfulList}].
+CRITICAL INSTRUCTION FOR "wisdomOrAdviceMessage":
+The message must be deeply contextual and empathetic. Do NOT use generic platitudes like "stay positive." 
+Instead, acknowledge the specific situation mentioned (e.g., if they mention a car breaking down, mention the car/transportation). 
+Write as a supportive, wise friend. 
+Max 100 characters. 
 
-Required JSON format:
-{
-  "sentimentScore": number between 0.0 (extremely negative) and 1.0 (extremely positive),
-  "emotion": "POSITIVE" | "NEGATIVE" | "NEUTRAL",           // >= 0.6 → POSITIVE, <= 0.4 → NEGATIVE, else NEUTRAL
-  "primaryEmotion": string,                                 // specific emotion in lowercase, e.g. "joy", "sadness", "anger", "excitement", "gratitude", "loneliness", "pride", "relief", "fear", "disappointment", "neutral"
-  "topics": string[],                                       // 1-5 main topics/themes, short lowercase phrases, e.g. ["beach vacation", "new job", "breakup", "food", "gym"]
-  "wisdomOrAdviceMessage": string,                             // Regardless of safety, write a brief piece of wisdom, philosophical insight, or practical advice related to the post context. (Max 150 chars). e.g. "You have been through so much today like your car breaking down and your breakup, but remember that every ending is a new beginning. Take time for self-care and embrace the fresh start ahead."
-  "harmful": boolean,
-  "harmfulTypes": string[],                                 // only if harmful=true
-  "flags": string[]                                         // optional, e.g. ["sarcasm", "dark_humor"]
-}
+  Required JSON format:
+  {
+    "sentimentScore": number between 0.0 (extremely negative) and 1.0 (extremely positive),
+    "emotion": "POSITIVE" | "NEGATIVE" | "NEUTRAL",           // >= 0.6 → POSITIVE, <= 0.4 → NEGATIVE, else NEUTRAL
+    "primaryEmotion": string,                                 // specific emotion in lowercase, e.g. "joy", "sadness", "anger", "excitement", "gratitude", "loneliness", "pride", "relief", "fear", "disappointment", "neutral"
+    "topics": string[],                                       // 1-5 main topics/themes, short lowercase phrases, e.g. ["beach vacation", "new job", "breakup", "food", "gym"]
+    "wisdomOrAdviceMessage": string,                              
+    "harmful": boolean,
+    "harmfulTypes": string[],                                 // only if harmful=true
+    "flags": string[]                                         // optional, e.g. ["sarcasm", "dark_humor"]
+  }
 
-Be very careful with subtle/aestheticized self-harm, sarcasm that flips sentiment, dark humor, etc.`;
+  Be very careful with subtle/aestheticized self-harm, sarcasm that flips sentiment, dark humor, etc.`;
+
   parts.push({ text: prompt + (text ? `\n\nPost caption: ${text}` : "") });
 
   if (imageUrl) {
@@ -237,33 +296,63 @@ export async function getTextEmbedding(text: string): Promise<number[]> {
     throw new Error("Text cannot be empty");
   }
 
-  const accessToken = await getAccessToken();
-  const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${TEXT_EMBEDDING_MODEL}:predict`;
+  const maxRetries = 3;
+  let lastError: any;
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      instances: [{ content: text, task_type: "SEMANTIC_SIMILARITY" }],
-    }),
-  });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `[getTextEmbedding] Attempt ${attempt}/${maxRetries} for text: "${text.substring(0, 50)}..."`
+      );
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Text embedding error: ${error}`);
+      const accessToken = await getAccessToken();
+      const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${TEXT_EMBEDDING_MODEL}:predict`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          instances: [{ content: text, task_type: "SEMANTIC_SIMILARITY" }],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Text embedding error: ${error}`);
+      }
+
+      const data = await response.json();
+      const embedding = data.predictions?.[0]?.embeddings?.values;
+
+      if (!embedding || !Array.isArray(embedding)) {
+        throw new Error("No embedding returned from text-embedding-004");
+      }
+
+      console.log(`[getTextEmbedding] Success on attempt ${attempt}`);
+      return embedding;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`[getTextEmbedding] Attempt ${attempt} failed:`, {
+        message: error.message,
+        code: error.code,
+        cause: error.cause,
+        errno: error.errno,
+        syscall: error.syscall,
+      });
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        console.log(`[getTextEmbedding] Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
   }
 
-  const data = await response.json();
-  const embedding = data.predictions?.[0]?.embeddings?.values;
-
-  if (!embedding || !Array.isArray(embedding)) {
-    throw new Error("No embedding returned from text-embedding-004");
-  }
-
-  return embedding;
+  console.error(`[getTextEmbedding] All ${maxRetries} attempts failed`);
+  throw lastError;
 }
 
 export interface EmotionAnalysis {
@@ -1202,96 +1291,6 @@ export async function recommendMusicForMood(
       reason: selectedSong.reason,
       albumArt: `https://i.ytimg.com/vi/${selectedSong.videoId}/hqdefault.jpg`,
     };
-
-    // Keep Gemini code below for future use
-    /* 
-    const accessToken = await getAccessToken();
-    const endpoint = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
-
-    const moodDescription =
-      emotionScore && emotionScore < 0.4
-        ? "feeling down, sad, anxious or struggling and needs deep comfort"
-        : emotionScore && emotionScore > 0.7
-          ? "feeling very happy, energetic and positive"
-          : "calm, neutral or reflective";
-
-    const excludeSongs =
-      recentSongs.length > 0
-        ? `\n\nIMPORTANT: User has already heard ${recentSongs.length} songs. Choose something COMPLETELY DIFFERENT from their recent history.`
-        : "";
-
-    const prompt = `Recommend ONE modern therapeutic song (2015-2024) for someone ${moodDescription}.
-
-Mood: ${emotion || "neutral"} (${(emotionScore || 0.5).toFixed(2)})
-${excludeSongs}
-
-CRITICAL: Only recommend songs that have VERIFIED official YouTube videos. Use EXACT video IDs from popular, accessible videos (e.g., official music videos with millions of views). Do not guess or generate video IDs.
-
-JSON only:
-{
-  "songTitle": "title",
-  "artist": "artist",
-  "url": "https://www.youtube.com/watch?v=VERIFIED_VIDEO_ID",
-  "reason": "why it helps (1 sentence)",
-  "albumArt": "https://i.ytimg.com/vi/VERIFIED_VIDEO_ID/hqdefault.jpg"
-}
-
-Examples of valid formats:
-- "Blinding Lights" by The Weeknd: https://www.youtube.com/watch?v=4NRXx6U8ABQ
-- "Levitating" by Dua Lipa: https://www.youtube.com/watch?v=TUVcZfQe-Kw`;
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 1.0,
-          topP: 0.98,
-          maxOutputTokens: 2048,
-        },
-        systemInstruction: {
-          parts: [{ text: "Respond ONLY with the requested JSON. No thinking, no explanation." }]
-        },
-      }),
-    });
-
-    if (!response.ok) throw new Error("Gemini API failed");
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) throw new Error("Empty response");
-
-    let recommendation;
-    try {
-      recommendation = JSON.parse(text);
-    } catch {
-      const cleaned = text
-        .trim()
-        .replace(/^```json?|```$/g, "")
-        .trim();
-      recommendation = JSON.parse(cleaned);
-    }
-
-    return recommendation;
-    */
   } catch (error) {
     // Fallback to Weightless
     return {

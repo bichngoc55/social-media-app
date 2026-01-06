@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     // Ensure we only get warnings for the authenticated user
     // Only include warnings that have postId (AI-flagged posts)
-    const warnings = await (prisma as any).userWarning.findMany({
+    const warnings = await prisma.userWarning.findMany({
       where: {
         userId: user.id, // Explicitly filter by authenticated user's ID
         postId: { not: null }, // Only warnings with posts (AI flags)

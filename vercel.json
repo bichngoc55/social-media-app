@@ -3,6 +3,10 @@
     {
       "path": "/api/clear-uploads",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/check-violation-rates",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

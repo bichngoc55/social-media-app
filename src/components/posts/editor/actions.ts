@@ -1,6 +1,7 @@
 "use server";
 
 import { validateRequest } from "@/auth";
+import { createModerationCaseFromAI } from "@/lib/moderation";
 import prisma from "@/lib/prisma";
 import { processMentions } from "@/lib/socket";
 import { getPostDataInclude } from "@/lib/types";
@@ -22,6 +23,7 @@ export async function submitPost(input: {
   const { user } = await validateRequest();
 
   if (!user) throw new Error("Unauthorized");
+  console.log("Submitting post for user ID:", user.id);
 
   const parsed = createPostSchema.parse(input);
   const {
@@ -91,6 +93,7 @@ export async function submitPost(input: {
     },
     include: getPostDataInclude(user.id),
   });
+  console.log("Created new post with ID:", newPost.id);
   let analysis: {
     sentimentScore: number;
     emotion: string;
@@ -135,6 +138,12 @@ export async function submitPost(input: {
             videoUrl ?? undefined
           ),
         ]);
+        console.log(
+          "Gemini analysis for post ID",
+          newPost.id,
+          ":",
+          geminiAnalysis
+        );
 
         analysis = geminiAnalysis;
         const normalizedMultimodalVector = normalizeVector(multimodalEmbedding);
@@ -149,26 +158,9 @@ export async function submitPost(input: {
         const topicEmbeddingsArray = topicEmbeddings.map(
           (emb) => `[${emb.join(",")}]`
         );
-
-        // Get recent posts for wisdom message context
-        const recentPosts = await prisma.post.findMany({
-          where: { userId: user.id },
-          select: { content: true, topics: true, primaryEmotion: true },
-          orderBy: { createdAt: "desc" },
-          take: 5,
-        });
-        const emotionContext = recentPosts
-          .map((p) => {
-            const parts = [];
-            if (p.primaryEmotion) parts.push(p.primaryEmotion);
-            if (p.topics.length > 0) parts.push(p.topics.join(", "));
-            return parts.length > 0 ? parts.join(": ") : "";
-          })
-          .filter(Boolean)
-          .join(". ");
-
-        await prisma.$executeRawUnsafe(
-          `
+        try {
+          await prisma.$executeRawUnsafe(
+            `
           UPDATE "posts"
           SET 
             embedding = $1::vector,
@@ -182,23 +174,25 @@ export async function submitPost(input: {
             "wisdomOrAdviceMessage" = $9
           WHERE id = $10
         `,
-          embeddingString,
-          topicEmbeddingsArray,
-          analysis.emotion,
-          analysis.sentimentScore,
-          analysis.primaryEmotion,
-          analysis.topics,
-          analysis.harmful,
-          analysis.harmfulTypes,
-          analysis.wisdomOrAdviceMessage,
-          newPost.id
-        );
+            embeddingString,
+            topicEmbeddingsArray,
+            analysis.emotion,
+            analysis.sentimentScore,
+            analysis.primaryEmotion,
+            analysis.topics,
+            analysis.harmful,
+            analysis.harmfulTypes,
+            analysis.wisdomOrAdviceMessage,
+            newPost.id
+          );
+          console.log("Updated post with analysis data:", newPost.id);
+        } catch (error) {
+          console.error("Error updating post with analysis data:", error);
+        }
 
         // Create moderation case if AI detected harmful content
         if (analysis.harmful && analysis.harmfulTypes.length > 0) {
           try {
-            const { createModerationCaseFromAI } =
-              await import("@/lib/moderation");
             const postEngagement = { likes: 0, comments: 0, shares: 0 }; // New post has no engagement yet
             await createModerationCaseFromAI({
               postId: newPost.id,

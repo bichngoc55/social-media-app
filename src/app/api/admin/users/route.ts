@@ -42,22 +42,22 @@ export async function GET(req: NextRequest) {
           displayName: true,
           email: true,
           avatarUrl: true,
-          role: true, // Type will be inferred after Prisma regenerate
+          role: true,
           emailVerified: true,
           createdAt: true,
           warningCount: true,
           bannedUntil: true,
-          lastWarningAt: true, // Uncomment after running: npx prisma generate
+          lastWarningAt: true,
           status: true,
           _count: {
             select: {
               posts: true,
               followers: true,
               following: true,
-              reportsReceived: true, // Count of reports against this user
+              reportsReceived: true,
             },
           },
-        } as any, // Cast to any until Prisma Client fully regenerates
+        },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
@@ -68,10 +68,15 @@ export async function GET(req: NextRequest) {
     // Calculate report statistics for each user
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
-        // Get all posts by this user
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        // Get total posts in last 30 days
         const totalPosts = await prisma.post.count({
-          where: { userId: user.id },
-        } as any);
+          where: {
+            userId: user.id,
+            createdAt: { gte: thirtyDaysAgo },
+          },
+        });
 
         if (totalPosts === 0) {
           return {
@@ -87,35 +92,29 @@ export async function GET(req: NextRequest) {
           };
         }
 
-        // Get all unique post IDs that have moderation cases
+        // Get AI-detected posts (active violations only: QUEUED, IN_REVIEW)
         const aiDetectedCases = await prisma.moderationCase.findMany({
           where: {
             userId: user.id,
             source: "AI",
+            status: { in: ["QUEUED", "IN_REVIEW"] },
             postId: { not: null },
+            createdAt: { gte: thirtyDaysAgo },
           },
           select: { postId: true },
-        } as any);
+        });
 
-        const userReportedCases = await prisma.moderationCase.findMany({
-          where: {
-            userId: user.id,
-            source: "USER_REPORT",
-            postId: { not: null },
-          },
-          select: { postId: true },
-        } as any);
-
-        // Also check Report table for user reports
-        const reportTableCases = await prisma.report.findMany({
+        // Get user-reported posts
+        const userReportedCases = await prisma.report.findMany({
           where: {
             reportedId: user.id,
             postId: { not: null },
+            createdAt: { gte: thirtyDaysAgo },
           },
           select: { postId: true },
-        } as any);
+        });
 
-        // Extract and deduplicate post IDs
+        // Extract unique post IDs
         const aiPostIds = [
           ...new Set(
             aiDetectedCases
@@ -124,25 +123,12 @@ export async function GET(req: NextRequest) {
           ),
         ];
 
-        const userPostIdsFromModeration = [
+        const userPostIds = [
           ...new Set(
             userReportedCases
-              .map((c) => c.postId)
-              .filter((id): id is string => id !== null)
-          ),
-        ];
-
-        const userPostIdsFromReports = [
-          ...new Set(
-            reportTableCases
               .map((r) => r.postId)
               .filter((id): id is string => id !== null)
           ),
-        ];
-
-        // Combine user reported post IDs from both sources
-        const userPostIds = [
-          ...new Set([...userPostIdsFromModeration, ...userPostIdsFromReports]),
         ];
 
         // Find posts detected by both AI and users
@@ -165,7 +151,7 @@ export async function GET(req: NextRequest) {
             aiDetectedPosts: aiPostIds.length,
             userReportedPosts: userPostIds.length,
             bothDetectedPosts: bothDetectedPostIds.length,
-            reportPercentage: Math.round(reportPercentage * 100) / 100, // Round to 2 decimal places
+            reportPercentage: Math.round(reportPercentage * 100) / 100,
           },
         };
       })

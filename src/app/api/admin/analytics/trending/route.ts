@@ -14,9 +14,7 @@ export async function GET(req: NextRequest) {
 
     // Get trending hashtags from posts with pagination
     const [hashtagStats, total] = await Promise.all([
-      prisma.$queryRaw<
-        Array<{ hashtag: string; count: bigint }>
-      >`
+      prisma.$queryRaw<Array<{ hashtag: string; count: bigint }>>`
         SELECT 
           LOWER(TRIM(tag)) AS hashtag,
           COUNT(*)::bigint AS count
@@ -38,9 +36,7 @@ export async function GET(req: NextRequest) {
 
     // Transform to match component format
     const topics = hashtagStats.map((stat) => ({
-      tag: stat.hashtag.startsWith("#")
-        ? stat.hashtag
-        : `#${stat.hashtag}`,
+      tag: stat.hashtag.startsWith("#") ? stat.hashtag : `#${stat.hashtag}`,
       count: Number(stat.count),
     }));
 
@@ -59,8 +55,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching trending topics:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Internal server error",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       {
         status:
@@ -73,4 +68,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

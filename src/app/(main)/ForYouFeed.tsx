@@ -19,10 +19,7 @@ export default function ForYouFeed() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(SEEN_POSTS_KEY);
-      console.log("Loaded initial cursor from localStorage:", saved);
-      if (saved) {
-        setInitialCursor(saved);
-      }
+      if (saved) setInitialCursor(saved);
       setIsReady(true);
     }
   }, []);
@@ -36,19 +33,19 @@ export default function ForYouFeed() {
     status,
   } = useInfiniteQuery({
     queryKey: ["post-feed", "for-you"],
-    // Only run query when we have checked localStorage
     enabled: isReady,
     queryFn: async ({ pageParam }) => {
       const cursorToSend = pageParam ?? initialCursor;
 
-      const response = await kyInstance.get("/api/posts/for-you", {
-        searchParams: cursorToSend ? { cursor: cursorToSend } : {},
+      const response = await kyInstance.post("/api/posts/for-you", {
+        json: { cursor: cursorToSend },
         timeout: 60000,
       });
       return response.json<PostsPage>();
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 60 * 100, // 5 minutes
   });
 
   useEffect(() => {
@@ -62,36 +59,20 @@ export default function ForYouFeed() {
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  if (!isReady || status === "pending") {
-    return <PostsLoadingSkeleton />;
-  }
+  if (!isReady || status === "pending") return <PostsLoadingSkeleton />;
 
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
       <div className="flex flex-col items-center gap-2">
-        <p className="text-center text-muted-foreground">
-          No new posts found right now.
-        </p>
+        <p className="text-center text-muted-foreground">No new posts found.</p>
         <Button
           variant="outline"
           onClick={() => {
-            // Clear history to restart
             localStorage.removeItem(SEEN_POSTS_KEY);
             window.location.reload();
           }}
         >
-          Reset Feed History
-        </Button>
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <div className="space-y-2 text-center">
-        <p className="text-destructive">An error occurred.</p>
-        <Button onClick={() => window.location.reload()} variant="outline">
-          Retry
+          Reset Feed
         </Button>
       </div>
     );
@@ -102,9 +83,8 @@ export default function ForYouFeed() {
       <InfiniteScrollContainer
         className="space-y-5"
         onBottomReached={() => {
-          if (hasNextPage && !isFetching && !isFetchingNextPage) {
+          if (hasNextPage && !isFetching && !isFetchingNextPage)
             fetchNextPage();
-          }
         }}
       >
         {posts.map((post) => (

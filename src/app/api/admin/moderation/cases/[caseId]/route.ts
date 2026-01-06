@@ -7,7 +7,6 @@ import {
   ModerationPolicyArea,
   UserRole,
 } from "@prisma/client";
-import crypto from "crypto";
 
 export async function GET(
   req: NextRequest,
@@ -97,15 +96,8 @@ export async function PATCH(
     const { caseId } = await params;
 
     const body = await req.json();
-    const {
-      status,
-      decision,
-      policyArea,
-      reasonCode,
-      adminNotes,
-      assignedTo,
-      supervisorApproved,
-    } = body;
+    const { status, decision, policyArea, reasonCode, adminNotes, assignedTo } =
+      body;
 
     // Handle assignment - if assignedTo is "current", set to current admin
     let finalAssignedTo = assignedTo;
@@ -261,15 +253,6 @@ export async function PATCH(
       }
     }
 
-    // Supervisor approval disabled - no SUPERVISOR role in system
-    // All decisions are made directly by admins
-    // if (
-    //   supervisorApproved !== undefined &&
-    //   admin.role === UserRole.SUPERVISOR
-    // ) {
-    //   ...
-    // }
-
     // Update case
     const updatedCase = await prisma.moderationCase.update({
       where: { id: caseId },
@@ -310,33 +293,6 @@ export async function PATCH(
         },
       },
     });
-
-    // Create audit logs
-    for (const log of auditLogs) {
-      // TODO: Uncomment when ModerationAuditLog model is added to schema
-      // const evidenceHash = currentCase.evidence
-      //   ? crypto
-      //       .createHash("sha256")
-      //       .update(JSON.stringify(currentCase.evidence))
-      //       .digest("hex")
-      //   : null;
-      // await prisma.moderationAuditLog.create({
-      //   data: {
-      //     caseId,
-      //     actorId: admin.id,
-      //     actorRole: admin.role,
-      //     action: log.action,
-      //     previousState: log.previousState as any,
-      //     newState: log.newState as any,
-      //     reason: log.reason,
-      //     policyArea: log.policyArea,
-      //     modelVersion: currentCase.modelVersion,
-      //     confidence: currentCase.confidence,
-      //     evidenceHash,
-      //   },
-      // });
-    }
-
     return NextResponse.json({ case: updatedCase });
   } catch (error) {
     console.error("Error updating moderation case:", error);

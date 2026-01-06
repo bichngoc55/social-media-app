@@ -168,11 +168,11 @@ export default function AdminUsersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({ description: "Cảnh báo đã được gửi thành công" });
+      toast({ description: "Warning has been sent successfully" });
     },
     onError: (error: any) => {
       toast({
-        description: error?.message || "Gửi cảnh báo thất bại",
+        description: error?.message || "Failed to send warning",
         variant: "destructive",
       });
     },
@@ -184,11 +184,11 @@ export default function AdminUsersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast({ description: "Người dùng đã bị khóa thành công" });
+      toast({ description: "User has been banned successfully" });
     },
     onError: (error: any) => {
       toast({
-        description: error?.message || "Khóa người dùng thất bại",
+        description: error?.message || "Failed to ban user",
         variant: "destructive",
       });
     },
@@ -199,6 +199,15 @@ export default function AdminUsersPage() {
   };
 
   const handleWarnUser = (user: User) => {
+    // Check violation rate before warning
+    const violationRate = user.reportStats?.reportPercentage || 0;
+    if (violationRate < 70) {
+      toast({
+        description: `Cannot warn: Violation rate is only ${violationRate.toFixed(2)}% (requires >= 70%)`,
+        variant: "destructive",
+      });
+      return;
+    }
     warnUserMutation.mutate(user.id);
   };
 
@@ -227,7 +236,7 @@ export default function AdminUsersPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-              Quản lý Người dùng
+              User Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Manage user accounts and permissions
@@ -286,12 +295,14 @@ export default function AdminUsersPage() {
         <Card className="card-glass border-2">
           <CardContent className="p-6">
             <div className="text-center">
-              <p className="text-red-500 font-semibold">Error loading users</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="font-semibold text-red-500">Error loading users</p>
+              <p className="mt-2 text-sm text-muted-foreground">
                 {error instanceof Error ? error.message : "Unknown error"}
               </p>
               <Button
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["admin-users"] })}
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["admin-users"] })
+                }
                 className="mt-4"
               >
                 Retry
@@ -312,304 +323,398 @@ export default function AdminUsersPage() {
           <Card className="card-glass overflow-hidden border-2">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-3 text-left text-sm font-semibold">User</th>
-                    <th className="p-3 text-left text-sm font-semibold">Email</th>
-                    <th className="p-3 text-left text-sm font-semibold">Role</th>
-                    <th className="p-3 text-left text-sm font-semibold">Stats</th>
-                    <th className="p-3 text-left text-sm font-semibold">
-                      <button
-                        onClick={handleSortByReport}
-                        className="flex items-center gap-1.5 hover:text-primary transition-colors"
-                      >
-                        Report Stats
-                        {sortByReport === "desc" ? (
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        ) : sortByReport === "asc" ? (
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="p-3 text-left text-sm font-semibold">Created</th>
-                    <th className="p-3 text-left text-sm font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(sortedUsers.length > 0 ? sortedUsers : data?.users || []).map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-muted/50">
-                      <td className="p-3">
-                        <Link
-                          href={`/users/${user.username}`}
-                          className="font-medium hover:underline text-sm"
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="p-3 text-left text-sm font-semibold">
+                        User
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        Email
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        Role
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        Stats
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        <button
+                          onClick={handleSortByReport}
+                          className="flex items-center gap-1.5 transition-colors hover:text-primary"
                         >
-                          {user.displayName}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">
-                          @{user.username}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <span className="truncate max-w-[150px]">{user.email}</span>
-                          {user.emailVerified ? (
-                            <MailCheck className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                          Report Stats
+                          {sortByReport === "desc" ? (
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          ) : sortByReport === "asc" ? (
+                            <ArrowUp className="h-3.5 w-3.5" />
                           ) : (
-                            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
                           )}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "rounded-full font-semibold text-xs",
-                            user.role === "ADMIN"
-                              ? "border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300"
-                              : "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
-                          )}
-                        >
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-xs">
-                        <div>Posts: {user._count.posts}</div>
-                        <div>Followers: {user._count.followers}</div>
-                        <div>Following: {user._count.following}</div>
-                      </td>
-                      <td className="p-3">
-                        {user.reportStats ? (
-                          <div className="space-y-2 min-w-[200px] max-w-[240px]">
-                            {/* Header */}
-                            <div className="flex items-baseline justify-between gap-2">
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-lg font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-                                  {user.reportStats.reportPercentage.toFixed(1)}%
-                                </span>
-                                <span className="text-[10px] font-medium text-muted-foreground">
-                                  bài viết bị report
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* Progress Bar */}
-                            {user.reportStats.totalPosts > 0 ? (
-                              <div className="group relative h-5 w-full overflow-hidden rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 border border-border/30 shadow-inner" style={{ fontSize: 0 }}>
-                                {(() => {
-                                  const totalPosts = user.reportStats.totalPosts;
-                                  const aiOnly =
-                                    user.reportStats.aiDetectedPosts -
-                                    user.reportStats.bothDetectedPosts;
-                                  const userOnly =
-                                    user.reportStats.userReportedPosts -
-                                    user.reportStats.bothDetectedPosts;
-                                  const both = user.reportStats.bothDetectedPosts;
-
-                                  // Calculate percentages and round to avoid long decimals
-                                  const aiOnlyPercent = Math.max(0, Math.round((aiOnly / totalPosts) * 100 * 100) / 100);
-                                  const bothPercent = Math.max(0, Math.round((both / totalPosts) * 100 * 100) / 100);
-                                  const userOnlyPercent = Math.max(0, Math.round((userOnly / totalPosts) * 100 * 100) / 100);
-                                  const totalReportedPercent = Math.round((aiOnlyPercent + bothPercent + userOnlyPercent) * 100) / 100;
-
-                                  let currentLeft = 0;
-
-                                  return (
-                                    <div className="relative h-full w-full" style={{ fontSize: 0, lineHeight: 0, textIndent: '-9999px' }}>
-                                      {/* AI Only (Pink) - leftmost */}
-                                      {aiOnly > 0 && aiOnlyPercent > 0 && (
-                                        <div
-                                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 dark:from-pink-500 dark:via-pink-600 dark:to-pink-700 transition-all duration-500 ease-out shadow-sm"
-                                          style={{
-                                            left: `${currentLeft}%`,
-                                            width: `${aiOnlyPercent}%`,
-                                            fontSize: 0,
-                                            lineHeight: 0,
-                                            color: 'transparent',
-                                          }}
-                                          title={`AI phát hiện: ${user.reportStats.aiDetectedPosts} bài`}
-                                        />
-                                      )}
-                                      {aiOnly > 0 && aiOnlyPercent > 0 && (currentLeft += aiOnlyPercent)}
-
-                                      {/* Both (Purple-Pink) - overlap */}
-                                      {both > 0 && bothPercent > 0 && (
-                                        <div
-                                          className="absolute top-0 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 dark:from-purple-600 dark:via-pink-600 dark:to-purple-700 transition-all duration-500 ease-out shadow-sm z-10"
-                                          style={{
-                                            left: `${currentLeft}%`,
-                                            width: `${bothPercent}%`,
-                                            fontSize: 0,
-                                            lineHeight: 0,
-                                            color: 'transparent',
-                                          }}
-                                          title={`Cả AI và User: ${both} bài`}
-                                        />
-                                      )}
-                                      {both > 0 && bothPercent > 0 && (currentLeft += bothPercent)}
-
-                                      {/* User Only (Pink-Orange) - rightmost */}
-                                      {userOnly > 0 && userOnlyPercent > 0 && (
-                                        <div
-                                          className="absolute top-0 h-full bg-gradient-to-r from-pink-500 via-pink-400 to-orange-500 dark:from-pink-600 dark:via-pink-500 dark:to-orange-600 transition-all duration-500 ease-out shadow-sm"
-                                          style={{
-                                            left: `${currentLeft}%`,
-                                            width: `${userOnlyPercent}%`,
-                                            fontSize: 0,
-                                            lineHeight: 0,
-                                            color: 'transparent',
-                                          }}
-                                          title={`User report: ${user.reportStats.userReportedPosts} bài`}
-                                        />
-                                      )}
-
-                                      {/* Text overlay - only show on the filled portion if percentage >= 30% */}
-                                      {user.reportStats && user.reportStats.reportedPosts > 0 && totalReportedPercent >= 30 && (
-                                        <div 
-                                          className="absolute top-0 h-full flex items-center justify-center z-20 pointer-events-none select-none"
-                                          style={{
-                                            left: '0%',
-                                            width: `${totalReportedPercent}%`,
-                                            fontSize: '0.625rem',
-                                            lineHeight: '1',
-                                          }}
-                                        >
-                                          <span className="font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] tracking-tight">
-                                            {Math.round(user.reportStats.reportPercentage)}%
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
+                        </button>
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        Created
+                      </th>
+                      <th className="p-3 text-left text-sm font-semibold">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(sortedUsers.length > 0
+                      ? sortedUsers
+                      : data?.users || []
+                    ).map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-muted/50">
+                        <td className="p-3">
+                          <Link
+                            href={`/users/${user.username}`}
+                            className="text-sm font-medium hover:underline"
+                          >
+                            {user.displayName}
+                          </Link>
+                          <div className="text-xs text-muted-foreground">
+                            @{user.username}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className="max-w-[150px] truncate">
+                              {user.email}
+                            </span>
+                            {user.emailVerified ? (
+                              <MailCheck className="h-3.5 w-3.5 flex-shrink-0 text-green-500" />
                             ) : (
-                              <div className="h-5 w-full rounded-lg bg-gradient-to-br from-muted/30 to-muted/20 flex items-center justify-center text-[9px] font-medium text-muted-foreground border border-border/20">
-                                Chưa có bài viết
-                              </div>
+                              <Mail className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                             )}
-                            
-                            {/* Legend */}
-                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[9px]">
-                              <div className="flex items-center gap-1.5 group/legend">
-                                <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700 shadow-sm ring-1.5 ring-pink-200/50 dark:ring-pink-800/50 group-hover/legend:ring-pink-300/70 dark:group-hover/legend:ring-pink-700/70 transition-all" />
-                                <span className="font-semibold text-pink-600 dark:text-pink-400">
-                                  AI: <span className="font-bold">{user.reportStats.aiDetectedPosts}</span>
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 group/legend">
-                                <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-500 to-orange-500 dark:from-pink-600 dark:to-orange-600 shadow-sm ring-1.5 ring-pink-200/50 dark:ring-pink-800/50 group-hover/legend:ring-pink-300/70 dark:group-hover/legend:ring-pink-700/70 transition-all" />
-                                <span className="font-semibold text-pink-600 dark:text-pink-400">
-                                  User: <span className="font-bold">{user.reportStats.userReportedPosts}</span>
-                                </span>
-                              </div>
-                              {user.reportStats.bothDetectedPosts > 0 && (
-                                <div className="flex items-center gap-1.5 group/legend">
-                                  <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 dark:from-purple-600 dark:to-pink-600 shadow-sm ring-1.5 ring-purple-200/50 dark:ring-purple-800/50 group-hover/legend:ring-purple-300/70 dark:group-hover/legend:ring-purple-700/70 transition-all" />
-                                  <span className="font-semibold text-purple-600 dark:text-purple-400">
-                                    Cả hai: <span className="font-bold">{user.reportStats.bothDetectedPosts}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-full text-xs font-semibold",
+                              user.role === "ADMIN"
+                                ? "border-purple-300 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-950/30 dark:text-purple-300"
+                                : "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
+                            )}
+                          >
+                            {user.role}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-xs">
+                          <div>Posts: {user._count.posts}</div>
+                          <div>Followers: {user._count.followers}</div>
+                          <div>Following: {user._count.following}</div>
+                        </td>
+                        <td className="p-3">
+                          {user.reportStats ? (
+                            <div className="min-w-[200px] max-w-[240px] space-y-2">
+                              {/* Header */}
+                              <div className="flex items-baseline justify-between gap-2">
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-lg font-bold text-transparent">
+                                    {user.reportStats.reportPercentage.toFixed(
+                                      1
+                                    )}
+                                    %
+                                  </span>
+                                  <span className="text-[10px] font-medium text-muted-foreground">
+                                    posts reported
                                   </span>
                                 </div>
+                              </div>
+
+                              {/* Progress Bar */}
+                              {user.reportStats.totalPosts > 0 ? (
+                                <div
+                                  className="group relative h-5 w-full overflow-hidden rounded-lg border border-border/30 bg-gradient-to-br from-muted/50 to-muted/30 shadow-inner"
+                                  style={{ fontSize: 0 }}
+                                >
+                                  {(() => {
+                                    const totalPosts =
+                                      user.reportStats.totalPosts;
+                                    const aiOnly =
+                                      user.reportStats.aiDetectedPosts -
+                                      user.reportStats.bothDetectedPosts;
+                                    const userOnly =
+                                      user.reportStats.userReportedPosts -
+                                      user.reportStats.bothDetectedPosts;
+                                    const both =
+                                      user.reportStats.bothDetectedPosts;
+
+                                    // Calculate percentages and round to avoid long decimals
+                                    const aiOnlyPercent = Math.max(
+                                      0,
+                                      Math.round(
+                                        (aiOnly / totalPosts) * 100 * 100
+                                      ) / 100
+                                    );
+                                    const bothPercent = Math.max(
+                                      0,
+                                      Math.round(
+                                        (both / totalPosts) * 100 * 100
+                                      ) / 100
+                                    );
+                                    const userOnlyPercent = Math.max(
+                                      0,
+                                      Math.round(
+                                        (userOnly / totalPosts) * 100 * 100
+                                      ) / 100
+                                    );
+                                    const totalReportedPercent =
+                                      Math.round(
+                                        (aiOnlyPercent +
+                                          bothPercent +
+                                          userOnlyPercent) *
+                                          100
+                                      ) / 100;
+
+                                    let currentLeft = 0;
+
+                                    return (
+                                      <div
+                                        className="relative h-full w-full"
+                                        style={{
+                                          fontSize: 0,
+                                          lineHeight: 0,
+                                          textIndent: "-9999px",
+                                        }}
+                                      >
+                                        {/* AI Only (Pink) - leftmost */}
+                                        {aiOnly > 0 && aiOnlyPercent > 0 && (
+                                          <div
+                                            className="absolute left-0 top-0 h-full bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 shadow-sm transition-all duration-500 ease-out dark:from-pink-500 dark:via-pink-600 dark:to-pink-700"
+                                            style={{
+                                              left: `${currentLeft}%`,
+                                              width: `${aiOnlyPercent}%`,
+                                              fontSize: 0,
+                                              lineHeight: 0,
+                                              color: "transparent",
+                                            }}
+                                            title={`AI detected: ${user.reportStats.aiDetectedPosts} posts`}
+                                          />
+                                        )}
+                                        {aiOnly > 0 &&
+                                          aiOnlyPercent > 0 &&
+                                          (currentLeft += aiOnlyPercent)}
+
+                                        {/* Both (Purple-Pink) - overlap */}
+                                        {both > 0 && bothPercent > 0 && (
+                                          <div
+                                            className="absolute top-0 z-10 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 shadow-sm transition-all duration-500 ease-out dark:from-purple-600 dark:via-pink-600 dark:to-purple-700"
+                                            style={{
+                                              left: `${currentLeft}%`,
+                                              width: `${bothPercent}%`,
+                                              fontSize: 0,
+                                              lineHeight: 0,
+                                              color: "transparent",
+                                            }}
+                                            title={`Cả AI và User: ${both} bài`}
+                                          />
+                                        )}
+                                        {both > 0 &&
+                                          bothPercent > 0 &&
+                                          (currentLeft += bothPercent)}
+
+                                        {/* User Only (Pink-Orange) - rightmost */}
+                                        {userOnly > 0 &&
+                                          userOnlyPercent > 0 && (
+                                            <div
+                                              className="absolute top-0 h-full bg-gradient-to-r from-pink-500 via-pink-400 to-orange-500 shadow-sm transition-all duration-500 ease-out dark:from-pink-600 dark:via-pink-500 dark:to-orange-600"
+                                              style={{
+                                                left: `${currentLeft}%`,
+                                                width: `${userOnlyPercent}%`,
+                                                fontSize: 0,
+                                                lineHeight: 0,
+                                                color: "transparent",
+                                              }}
+                                              title={`User report: ${user.reportStats.userReportedPosts} bài`}
+                                            />
+                                          )}
+
+                                        {/* Text overlay - only show on the filled portion if percentage >= 30% */}
+                                        {user.reportStats &&
+                                          user.reportStats.reportedPosts > 0 &&
+                                          totalReportedPercent >= 30 && (
+                                            <div
+                                              className="pointer-events-none absolute top-0 z-20 flex h-full select-none items-center justify-center"
+                                              style={{
+                                                left: "0%",
+                                                width: `${totalReportedPercent}%`,
+                                                fontSize: "0.625rem",
+                                                lineHeight: "1",
+                                              }}
+                                            >
+                                              <span className="font-extrabold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+                                                {Math.round(
+                                                  user.reportStats
+                                                    .reportPercentage
+                                                )}
+                                                %
+                                              </span>
+                                            </div>
+                                          )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              ) : (
+                                <div className="flex h-5 w-full items-center justify-center rounded-lg border border-border/20 bg-gradient-to-br from-muted/30 to-muted/20 text-[9px] font-medium text-muted-foreground">
+                                  No posts
+                                </div>
                               )}
+
+                              {/* Legend */}
+                              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[9px]">
+                                <div className="group/legend flex items-center gap-1.5">
+                                  <div className="ring-1.5 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 shadow-sm ring-pink-200/50 transition-all group-hover/legend:ring-pink-300/70 dark:from-pink-500 dark:to-pink-700 dark:ring-pink-800/50 dark:group-hover/legend:ring-pink-700/70" />
+                                  <span className="font-semibold text-pink-600 dark:text-pink-400">
+                                    AI:{" "}
+                                    <span className="font-bold">
+                                      {user.reportStats.aiDetectedPosts}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="group/legend flex items-center gap-1.5">
+                                  <div className="ring-1.5 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-pink-500 to-orange-500 shadow-sm ring-pink-200/50 transition-all group-hover/legend:ring-pink-300/70 dark:from-pink-600 dark:to-orange-600 dark:ring-pink-800/50 dark:group-hover/legend:ring-pink-700/70" />
+                                  <span className="font-semibold text-pink-600 dark:text-pink-400">
+                                    User:{" "}
+                                    <span className="font-bold">
+                                      {user.reportStats.userReportedPosts}
+                                    </span>
+                                  </span>
+                                </div>
+                                {user.reportStats.bothDetectedPosts > 0 && (
+                                  <div className="group/legend flex items-center gap-1.5">
+                                    <div className="ring-1.5 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-sm ring-purple-200/50 transition-all group-hover/legend:ring-purple-300/70 dark:from-purple-600 dark:to-pink-600 dark:ring-purple-800/50 dark:group-hover/legend:ring-purple-700/70" />
+                                    <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                      Both:{" "}
+                                      <span className="font-bold">
+                                        {user.reportStats.bothDetectedPosts}
+                                      </span>
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Summary */}
+                              <div className="flex items-center gap-2.5 border-t border-border/40 pt-1.5 text-[10px] text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <span className="font-medium">Tổng:</span>
+                                  <span className="font-bold text-foreground">
+                                    {user.reportStats.totalPosts}
+                                  </span>
+                                  <span>posts</span>
+                                </span>
+                                <span className="text-border">•</span>
+                                <span className="flex items-center gap-1">
+                                  <span className="font-medium">Reported:</span>
+                                  <span className="font-bold text-foreground">
+                                    {user.reportStats.reportedPosts}
+                                  </span>
+                                  <span>posts</span>
+                                </span>
+                              </div>
                             </div>
-                            
-                            {/* Summary */}
-                            <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground pt-1.5 border-t border-border/40">
-                              <span className="flex items-center gap-1">
-                                <span className="font-medium">Tổng:</span>
-                                <span className="font-bold text-foreground">{user.reportStats.totalPosts}</span>
-                                <span>bài</span>
-                              </span>
-                              <span className="text-border">•</span>
-                              <span className="flex items-center gap-1">
-                                <span className="font-medium">Bị report:</span>
-                                <span className="font-bold text-foreground">{user.reportStats.reportedPosts}</span>
-                                <span>bài</span>
-                              </span>
+                          ) : (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <div className="h-2 w-2 animate-pulse rounded-full bg-current" />
+                              <span>Loading...</span>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                            <div className="h-2 w-2 animate-pulse rounded-full bg-current" />
-                            <span>Đang tải...</span>
-                        </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground">
-                        {formatRelativeDate(user.createdAt)}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-col gap-2 min-w-[140px]">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleWarnUser(user)}
-                            disabled={
-                              warnUserMutation.isPending ||
-                              (user.warningCount || 0) >= 3 ||
-                              user.status === false ||
-                              isWarningOnCooldown(user) ||
-                              !!(user.bannedUntil && new Date(user.bannedUntil) > new Date())
-                            }
-                            className={cn(
-                                "relative flex items-center gap-1.5",
-                                (user.warningCount || 0) >= 3 || user.status === false
-                                  ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
-                                  : (user.warningCount || 0) >= 2
-                                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-950/30 dark:text-red-400"
-                                : (user.warningCount || 0) >= 1
-                                ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
-                                : "text-orange-600 hover:text-orange-700 dark:text-orange-400"
+                          )}
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {formatRelativeDate(user.createdAt)}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex min-w-[140px] flex-col gap-2">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleWarnUser(user)}
+                                disabled={
+                                  warnUserMutation.isPending ||
+                                  (user.warningCount || 0) >= 3 ||
+                                  user.status === false ||
+                                  isWarningOnCooldown(user) ||
+                                  !!(
+                                    user.bannedUntil &&
+                                    new Date(user.bannedUntil) > new Date()
+                                  )
+                                }
+                                className={cn(
+                                  "relative flex items-center gap-1.5",
+                                  (user.warningCount || 0) >= 3 ||
+                                    user.status === false
+                                    ? "cursor-not-allowed bg-muted text-muted-foreground opacity-50"
+                                    : (user.warningCount || 0) >= 2
+                                      ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-950/30 dark:text-red-400"
+                                      : (user.warningCount || 0) >= 1
+                                        ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-400"
+                                        : "text-orange-600 hover:text-orange-700 dark:text-orange-400"
+                                )}
+                                title={
+                                  isWarningOnCooldown(user)
+                                    ? `In cooldown period (3 days). Can be used again after: ${formatDateTime(user.lastWarningAt ? new Date(new Date(user.lastWarningAt).getTime() + 3 * 24 * 60 * 60 * 1000) : null)}`
+                                    : (user.warningCount || 0) >= 3
+                                      ? "No warnings left"
+                                      : `Warnings (Remaining: ${3 - (user.warningCount || 0)}/3)`
+                                }
+                              >
+                                <AlertTriangle className="h-4 w-4" />
+                                <span className="text-xs font-semibold">
+                                  {3 - (user.warningCount || 0)}
+                                </span>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleBanUser(user)}
+                                disabled={
+                                  banUserMutation.isPending ||
+                                  user.status === false
+                                }
+                                title="Ban User"
+                                className="flex items-center gap-1.5"
+                              >
+                                <UserX className="h-4 w-4" />
+                                <span className="text-xs">Ban</span>
+                              </Button>
+                            </div>
+                            {user.bannedUntil &&
+                              new Date(user.bannedUntil) > new Date() && (
+                                <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
+                                  Banned until:{" "}
+                                  {formatDateTime(user.bannedUntil)}
+                                </div>
+                              )}
+                            {isWarningOnCooldown(user) && (
+                              <div className="text-[9px] font-semibold text-orange-600 dark:text-orange-400">
+                                Can warn again after:{" "}
+                                {formatDateTime(
+                                  user.lastWarningAt
+                                    ? new Date(
+                                        new Date(user.lastWarningAt).getTime() +
+                                          3 * 24 * 60 * 60 * 1000
+                                      )
+                                    : null
+                                )}
+                              </div>
                             )}
-                            title={
-                              isWarningOnCooldown(user)
-                                ? `Đang trong thời gian chờ (3 ngày). Có thể dùng lại sau: ${formatDateTime(user.lastWarningAt ? new Date(new Date(user.lastWarningAt).getTime() + 3 * 24 * 60 * 60 * 1000) : null)}`
-                                : (user.warningCount || 0) >= 3
-                                ? "Đã hết lượt cảnh báo"
-                                : `Cảnh báo (Còn lại: ${3 - (user.warningCount || 0)}/3)`
-                            }
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                              <span className="text-xs font-semibold">
-                                {3 - (user.warningCount || 0)}
-                              </span>
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                              onClick={() => handleBanUser(user)}
-                              disabled={banUserMutation.isPending || user.status === false}
-                              title="Khóa người dùng"
-                              className="flex items-center gap-1.5"
-                          >
-                            <UserX className="h-4 w-4" />
-                              <span className="text-xs">Ban</span>
-                          </Button>
-                        </div>
-                        {user.bannedUntil && new Date(user.bannedUntil) > new Date() && (
-                            <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
-                              Bị khóa đến: {formatDateTime(user.bannedUntil)}
-                            </div>
-                          )}
-                          {isWarningOnCooldown(user) && (
-                            <div className="text-[9px] font-semibold text-orange-600 dark:text-orange-400">
-                              Có thể cảnh báo lại sau: {formatDateTime(user.lastWarningAt ? new Date(new Date(user.lastWarningAt).getTime() + 3 * 24 * 60 * 60 * 1000) : null)}
-                            </div>
-                          )}
-                          {user.status === false && (
-                            <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
-                              Đã bị khóa vĩnh viễn
+                            {user.status === false && (
+                              <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
+                                Permanently banned
+                              </div>
+                            )}
                           </div>
-                        )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
@@ -651,28 +756,26 @@ export default function AdminUsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog.type === "ban"
-                ? "Khóa người dùng"
-                : "Xóa người dùng"}
+              {confirmDialog.type === "ban" ? "Ban User" : "Delete User"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDialog.type === "ban" ? (
                 <>
-                  Bạn có chắc chắn muốn khóa người dùng{" "}
-                  <strong>{confirmDialog.user?.displayName}</strong>? Tài khoản
-                  sẽ bị vô hiệu hóa và không thể đăng nhập.
+                  Are you sure you want to ban user{" "}
+                  <strong>{confirmDialog.user?.displayName}</strong>? The
+                  account will be disabled and cannot log in.
                 </>
               ) : (
                 <>
-              Bạn có chắc chắn muốn xóa người dùng{" "}
-                  <strong>{confirmDialog.user?.displayName}</strong>? Hành động
-                  này không thể hoàn tác.
+                  Are you sure you want to delete user{" "}
+                  <strong>{confirmDialog.user?.displayName}</strong>? This
+                  action cannot be undone.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmAction}
               className={
@@ -681,7 +784,7 @@ export default function AdminUsersPage() {
                   : ""
               }
             >
-              Xác nhận
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

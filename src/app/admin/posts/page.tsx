@@ -198,14 +198,14 @@ export default function AdminPostsPage() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-              Quản lý Bài viết
+              Posts Report Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Review and manage content moderation
             </p>
           </div>
         </div>
-        {activeTab === "ai-flags" && (
+        {/* {activeTab === "ai-flags" && (
           <Button
             variant="outline"
             onClick={handleMigrateCases}
@@ -214,7 +214,7 @@ export default function AdminPostsPage() {
           >
             {isMigrating ? "Migrating..." : "Migrate Existing Posts"}
           </Button>
-        )}
+        )} */}
       </div>
 
       <Tabs
@@ -1229,22 +1229,22 @@ function AIFlagsTab() {
                         {getSeverityBadge(case_.severity)}
                         {getAutoActionBadge(case_.autoAction)}
                         {case_.slaDueAt && getSLABadge(case_.slaDueAt)}
-                        {case_.source === "AI" && (
+                        {/* {case_.source === "AI" && (
                           <Badge
                             variant="outline"
                             className="rounded-full border-purple-300 bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300"
                           >
                             AI Detected
                           </Badge>
-                        )}
-                        {case_.confidence && (
+                        )} */}
+                        {/* {case_.confidence && (
                           <Badge
                             variant="outline"
                             className="rounded-full text-xs"
                           >
                             {Math.round(case_.confidence * 100)}% confidence
                           </Badge>
-                        )}
+                        )} */}
                         <span className="text-sm text-muted-foreground">
                           {formatRelativeDate(case_.createdAt)}
                         </span>
@@ -1439,12 +1439,12 @@ function AIFlagsTab() {
                                       AI Detection Details
                                     </p>
                                     <div className="mt-1 space-y-1 text-xs text-blue-800 dark:text-blue-300">
-                                      <p>
+                                      {/* <p>
                                         <span className="font-medium">
                                           Model:
                                         </span>{" "}
                                         {selectedCase.modelVersion || "N/A"}
-                                      </p>
+                                      </p> */}
                                       <p>
                                         <span className="font-medium">
                                           Confidence:

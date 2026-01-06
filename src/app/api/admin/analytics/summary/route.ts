@@ -25,8 +25,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching dashboard summary:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Internal server error",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       {
         status:
@@ -39,4 +38,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

@@ -62,92 +62,128 @@ export async function GET() {
       });
     }
 
+    // const userTasteStr = `[${tasteEmbedding.join(",")}]`;
+    // const userProvince = currentUser.provinceCode || "";
+    // const userEmotion = currentUser.generalEmotion || "NEUTRAL";
+    // const userInterestsSql =
+    //   currentUser.interests.length > 0 ? currentUser.interests : [];
+    // const recommendations = await prisma.$queryRaw<
+    //   Array<{
+    //     id: string;
+    //     username: string;
+    //     displayName: string;
+    //     avatarUrl: string | null;
+    //     generalEmotion: string | null;
+    //     mutual_friends: bigint;
+    //     shared_interests_count: bigint; // New field for debugging/metadata
+    //     similarity: number;
+    //     final_score: number;
+    //   }>
+    // >`
+    //   SELECT
+    //     u.id,
+    //     u.username,
+    //     u."displayName",
+    //     u."avatarUrl",
+    //     u."generalEmotion",
+
+    //     -- 1. Mutual Friends Count
+    //     (
+    //       SELECT COUNT(*)
+    //       FROM follows f1
+    //       JOIN follows f2 ON f1."followingId" = f2."followingId"
+    //       WHERE f1."followerId" = ${authUser.id}
+    //         AND f2."followerId" = u.id
+    //     ) as mutual_friends,
+
+    //     -- 2. Shared Interests Count (Intersection)
+    //     (
+    //        SELECT COUNT(*)
+    //        FROM unnest(u.interests) AS i
+    //        WHERE i = ANY(${userInterestsSql}::text[])
+    //     ) as shared_interests_count,
+
+    //     -- 3. Embedding Similarity
+    //     (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
+
+    //     -- 4. FINAL WEIGHTED SCORE
+    //     (
+    //       -- A. Behavioral Match (40%) - Reduced to make room for interests
+    //       (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.40 +
+
+    //       -- B. Interest Match (20%) - NEW
+    //       -- Formula: Min(shared_count, 4) / 4.0 * 0.20
+    //       -- If they share 4 or more interests, they get max points for this section.
+    //       (
+    //         LEAST(
+    //           (SELECT COUNT(*) FROM unnest(u.interests) AS i WHERE i = ANY(${userInterestsSql}::text[])),
+    //           4
+    //         )::float / 4.0
+    //       ) * 0.20 +
+
+    //       -- C. Social Proof (20%) - Capped at 10 mutual friends
+    //       (LEAST((
+    //         SELECT COUNT(*)
+    //         FROM follows f1
+    //         JOIN follows f2 ON f1."followingId" = f2."followingId"
+    //         WHERE f1."followerId" = ${authUser.id}
+    //           AND f2."followerId" = u.id
+    //       ), 10)::float / 10.0) * 0.20 +
+
+    //       -- D. Emotion Compatibility (10%)
+    //       (CASE
+    //         WHEN u."generalEmotion"::text = ${userEmotion} THEN 1.0
+    //         WHEN (u."generalEmotion"::text = 'POSITIVE' AND ${userEmotion} = 'NEUTRAL')
+    //           OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
+    //         ELSE 0.0
+    //       END) * 0.10 +
+
+    //       -- E. Location (10%)
+    //       (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.10
+    //     ) as final_score
+
+    //   FROM users u
+    //   WHERE u."tasteEmbedding" IS NOT NULL
+    //     AND u.id != ${authUser.id}
+    //     -- Filter out already followed users
+    //     AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${authUser.id})
+    //     -- Filter out blocked interactions
+    //     AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${authUser.id})
+    //     AND u.id NOT IN (SELECT "blockerId" FROM user_blocks WHERE "blockedId" = ${authUser.id})
+    //   ORDER BY final_score DESC
+    //   LIMIT 20
+    // `;
     const userTasteStr = `[${tasteEmbedding.join(",")}]`;
     const userProvince = currentUser.provinceCode || "";
-    const userEmotion = currentUser.generalEmotion || "NEUTRAL";
-    const userInterestsSql =
-      currentUser.interests.length > 0 ? currentUser.interests : [];
-    const recommendations = await prisma.$queryRaw<
-      Array<{
-        id: string;
-        username: string;
-        displayName: string;
-        avatarUrl: string | null;
-        generalEmotion: string | null;
-        mutual_friends: bigint;
-        shared_interests_count: bigint; // New field for debugging/metadata
-        similarity: number;
-        final_score: number;
-      }>
-    >`
+    const userInterestsSql = currentUser.interests || [];
+
+    const recommendations = await prisma.$queryRaw<any[]>`
       SELECT 
-        u.id,
-        u.username,
-        u."displayName",
-        u."avatarUrl",
-        u."generalEmotion",
+        u.id, u.username, u."displayName", u."avatarUrl",
         
-        -- 1. Mutual Friends Count
+        -- FINAL WEIGHTED SCORE (Recalibrated to 100%)
         (
-          SELECT COUNT(*)
-          FROM follows f1
-          JOIN follows f2 ON f1."followingId" = f2."followingId"
-          WHERE f1."followerId" = ${authUser.id}
-            AND f2."followerId" = u.id
-        ) as mutual_friends,
-
-        -- 2. Shared Interests Count (Intersection)
-        (
-           SELECT COUNT(*)
-           FROM unnest(u.interests) AS i
-           WHERE i = ANY(${userInterestsSql}::text[])
-        ) as shared_interests_count,
-
-        -- 3. Embedding Similarity
-        (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) as similarity,
-
-        -- 4. FINAL WEIGHTED SCORE
-        (
-          -- A. Behavioral Match (40%) - Reduced to make room for interests
-          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.40 +
+          -- A. Behavioral Match (45%) - Increased from 40%
+          (1 - (u."tasteEmbedding" <=> ${userTasteStr}::vector)) * 0.45 +
           
-          -- B. Interest Match (20%) - NEW
-          -- Formula: Min(shared_count, 4) / 4.0 * 0.20
-          -- If they share 4 or more interests, they get max points for this section.
-          (
-            LEAST(
-              (SELECT COUNT(*) FROM unnest(u.interests) AS i WHERE i = ANY(${userInterestsSql}::text[])), 
-              4
-            )::float / 4.0
-          ) * 0.20 +
+          -- B. Interest Match (25%) - Increased from 20%
+          (LEAST((SELECT COUNT(*) FROM unnest(u.interests) AS i WHERE i = ANY(${userInterestsSql}::text[])), 4)::float / 4.0) * 0.25 +
 
           -- C. Social Proof (20%) - Capped at 10 mutual friends
           (LEAST((
-            SELECT COUNT(*)
-            FROM follows f1
+            SELECT COUNT(*) FROM follows f1
             JOIN follows f2 ON f1."followingId" = f2."followingId"
-            WHERE f1."followerId" = ${authUser.id}
-              AND f2."followerId" = u.id
+            WHERE f1."followerId" = ${authUser.id} AND f2."followerId" = u.id
           ), 10)::float / 10.0) * 0.20 +
 
-          -- D. Emotion Compatibility (10%)
-          (CASE 
-            WHEN u."generalEmotion"::text = ${userEmotion} THEN 1.0
-            WHEN (u."generalEmotion"::text = 'POSITIVE' AND ${userEmotion} = 'NEUTRAL') 
-              OR (u."generalEmotion"::text = 'NEUTRAL' AND ${userEmotion} = 'POSITIVE') THEN 0.6
-            ELSE 0.0
-          END) * 0.10 +
-
-          -- E. Location (10%)
+          -- D. Location (10%)
           (CASE WHEN u."provinceCode" = ${userProvince} THEN 1.0 ELSE 0.0 END) * 0.10 
         ) as final_score
 
       FROM users u
       WHERE u."tasteEmbedding" IS NOT NULL
         AND u.id != ${authUser.id}
-        -- Filter out already followed users
         AND u.id NOT IN (SELECT "followingId" FROM follows WHERE "followerId" = ${authUser.id})
-        -- Filter out blocked interactions
         AND u.id NOT IN (SELECT "blockedId" FROM user_blocks WHERE "blockerId" = ${authUser.id})
         AND u.id NOT IN (SELECT "blockerId" FROM user_blocks WHERE "blockedId" = ${authUser.id})
       ORDER BY final_score DESC

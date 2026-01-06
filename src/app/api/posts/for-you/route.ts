@@ -3,87 +3,55 @@ import { PostsPage } from "@/lib/types";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 export const maxDuration = 30;
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    console.log("[FOR-YOU] Request received");
-    const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
+    const { user } = await validateRequest();
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    const cursor = body.cursor || "";
+    const excludePostIds = cursor.split(",").filter(Boolean);
     const pageSize = 10;
 
-    const { user } = await validateRequest();
-
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.log("[FOR-YOU] User:", user.id);
-
-    const excludePostIdsString = cursor || "";
-    const excludePostIds = excludePostIdsString.split(",").filter(Boolean);
     const baseUrl =
       process.env.NEXT_PUBLIC_BASE_URL ||
       `http://localhost:${process.env.PORT || 3000}`;
 
-    // 2. Pass 'excludeIds' to the AI service
-    const aiUrl = new URL(`${baseUrl}/api/ai/recommend-posts`);
-    if (excludePostIdsString) {
-      aiUrl.searchParams.set("excludeIds", excludePostIdsString);
-    }
-
-    const response = (await fetch(aiUrl.toString(), {
-      method: "GET",
+    // Pass 'excludeIds' via POST body to avoid long URL issues
+    const response = await fetch(`${baseUrl}/api/ai/recommend-posts`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Cookie: req.headers.get("cookie") || "",
       },
-    }).then((res) => res.json())) as { posts: any[]; metadata?: any };
-    console.log(
-      "[FOR-YOU] Response received:",
-      response.posts?.length,
-      "posts"
-    );
+      body: JSON.stringify({ excludeIds: excludePostIds }),
+      next: { revalidate: 60 }, // Cache results for 60 seconds
+    }).then((res) => res.json());
 
     if (!response.posts || response.posts.length === 0) {
-      console.log("[FOR-YOU] No posts in response");
-      return Response.json({
-        posts: [],
-        nextCursor: null,
-      });
+      return Response.json({ posts: [], nextCursor: null });
     }
 
     const filteredPosts = response.posts
-      .filter((post) => !excludePostIds.includes(post.id) && post.user)
+      .filter((post: any) => !excludePostIds.includes(post.id) && post.user)
       .slice(0, pageSize);
 
-    // const allExcludedIds = [
-    //   ...excludePostIds,
-    //   ...filteredPosts.map((p) => p.id),
-    // ];
-
-    const newPostIds = filteredPosts.map((p) => p.id);
+    const newPostIds = filteredPosts.map((p: any) => p.id);
     const allSeenIds = [...excludePostIds, ...newPostIds];
+
+    // Keep only the last 100 IDs to keep the "cursor" body size reasonable
     const trimmedSeenIds = allSeenIds.slice(-100);
     const nextCursor =
-      response.posts.length > 0 ? trimmedSeenIds.join(",") : null;
-    // const nextCursor =
-    //   response.posts.length > pageSize ? allExcludedIds.join(",") : null;
+      trimmedSeenIds.length > 0 ? trimmedSeenIds.join(",") : null;
 
-    const data: PostsPage = {
+    return Response.json({
       posts: filteredPosts,
       nextCursor: nextCursor,
-    };
-
-    console.log("[FOR-YOU] Returning", data.posts.length, "posts");
-    return Response.json(data);
+    });
   } catch (error) {
     console.error("[FOR-YOU] Error:", error);
-    return Response.json(
-      {
-        posts: [],
-        nextCursor: null,
-      },
-      { status: 200 }
-    );
+    return Response.json({ posts: [], nextCursor: null }, { status: 500 });
   }
 }

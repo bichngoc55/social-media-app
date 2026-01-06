@@ -29,6 +29,7 @@ import {
   Columns,
   Frame,
   Smile,
+  AlertCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { ClipboardEvent, useRef, useState } from "react";
@@ -42,7 +43,7 @@ import { useSubmitPostMutation } from "./mutations";
 import "./styles.css";
 import useMediaUpload, { Attachment } from "./useMediaUpload";
 import UserTaggingEditor from "./UserTaggingEditor";
-
+const MAX_CHARACTER_LIMIT = 1024;
 export default function PostEditor() {
   const { user } = useSession();
   const [privacy, setPrivacy] = useState<"DRAFT" | "FOLLOWERS" | "PUBLIC">(
@@ -88,8 +89,10 @@ export default function PostEditor() {
     editor?.getText({
       blockSeparator: "\n",
     }) || "";
+  const isTooLong = input.length > MAX_CHARACTER_LIMIT;
 
   function onSubmit() {
+    if (isTooLong) return;
     mutation.mutate(
       {
         content: input,
@@ -133,13 +136,23 @@ export default function PostEditor() {
             editor={editor}
             className={cn(
               "max-h-[20rem] w-full overflow-y-auto rounded-2xl bg-background px-5 py-3",
-              isDragActive && "outline-dashed"
+              isDragActive && "outline-dashed",
+              isTooLong && "outline outline-1 outline-destructive"
             )}
             onPaste={onPaste}
           />
           <input {...getInputProps()} />
         </div>
       </div>
+      {isTooLong && (
+        <div className="flex items-center gap-2 text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-1">
+          <AlertCircle className="size-4" />
+          <span>
+            Post is too long ({input.length}/{MAX_CHARACTER_LIMIT} characters).
+            Please shorten it to post.
+          </span>
+        </div>
+      )}
       {!!attachments.length && (
         <>
           <LayoutSelector
@@ -164,7 +177,16 @@ export default function PostEditor() {
             onTaggedUsersChange={setTaggedUsers}
           />
         </div>
+
         <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "text-xs font-medium",
+              isTooLong ? "text-destructive" : "text-muted-foreground"
+            )}
+          >
+            {input.length}/{MAX_CHARACTER_LIMIT}
+          </span>
           {isUploading && (
             <>
               <span className="text-sm">{uploadProgress ?? 0}%</span>
@@ -204,8 +226,8 @@ export default function PostEditor() {
           <LoadingButton
             onClick={onSubmit}
             loading={mutation.isPending}
-            disabled={!input.trim() || isUploading}
-            className="btn-glow min-w-20 border-0 bg-gradient-to-r from-pink-400 to-purple-500 text-white shadow-lg transition-all duration-300 hover:from-pink-500 hover:to-purple-600 hover:shadow-xl"
+            disabled={!input.trim() || isUploading || isTooLong} // Added isTooLong to disabled state
+            className="btn-glow min-w-20 border-0 bg-gradient-to-r from-pink-400 to-purple-500 text-white shadow-lg transition-all duration-300 hover:from-pink-500 hover:to-purple-600 hover:shadow-xl disabled:opacity-50"
           >
             Post
           </LoadingButton>

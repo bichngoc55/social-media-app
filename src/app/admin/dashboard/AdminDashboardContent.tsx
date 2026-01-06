@@ -119,13 +119,13 @@ function EmotionAnalytics() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-        <CardTitle>Emotion Overview</CardTitle>
-        <CardDescription>Tỉ lệ cảm xúc từ bài viết</CardDescription>
+            <CardTitle>Emotion Overview</CardTitle>
+            <CardDescription>Emotions ratio from posts</CardDescription>
           </div>
           <div className="flex gap-2">
             <Select value={selectedYear} onValueChange={setSelectedYear}>
               <SelectTrigger className="w-32">
-                <SelectValue placeholder="Năm" />
+                <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
                 {yearOptions.map((year) => (
@@ -137,13 +137,13 @@ function EmotionAnalytics() {
             </Select>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-32">
-                <SelectValue placeholder="Tất cả tháng" />
+                <SelectValue placeholder="All months" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả tháng</SelectItem>
+                <SelectItem value="all">All months</SelectItem>
                 {monthOptions.map((month) => (
                   <SelectItem key={month} value={month.toString()}>
-                    Tháng {month}
+                    Month {month}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -342,9 +342,9 @@ function EmotionGrowthChart() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Tốc Độ Tăng Trưởng Cảm Xúc</CardTitle>
+            <CardTitle>Emotion Growth Rate</CardTitle>
             <CardDescription>
-              Xu hướng thay đổi tỉ lệ cảm xúc theo thời gian
+              Trend of emotion ratio changes over time
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -365,9 +365,9 @@ function EmotionGrowthChart() {
                 <SelectValue placeholder="Số tháng" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="3">3 tháng</SelectItem>
-                <SelectItem value="6">6 tháng</SelectItem>
-                <SelectItem value="12">12 tháng</SelectItem>
+                <SelectItem value="3">3 months</SelectItem>
+                <SelectItem value="6">6 months</SelectItem>
+                <SelectItem value="12">12 months</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -537,7 +537,7 @@ export default function AdminDashboardContent() {
       } catch (error) {
         console.error("Error fetching dashboard summary:", error);
         // Return fallback values
-      return {
+        return {
           totalUsers: 0,
           totalAdmins: 0,
           totalPosts: 0,
@@ -554,10 +554,10 @@ export default function AdminDashboardContent() {
           <Shield className="h-6 w-6 text-pink-600 dark:text-pink-400" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-            Tổng Quan
+          <h1 className="bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
+            Overview
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Overview of platform statistics and analytics
           </p>
         </div>
@@ -619,13 +619,13 @@ function TrendingAnalytics() {
         const res = await kyInstance
           .get("/api/admin/analytics/trending", {
             searchParams: { page, limit: 10 },
-              })
-              .json<{
+          })
+          .json<{
             topics: { tag: string; count: number }[];
             pagination: {
               page: number;
               limit: number;
-                total: number;
+              total: number;
               totalPages: number;
             };
           }>();
@@ -645,7 +645,7 @@ function TrendingAnalytics() {
     <Card className="card-glass">
       <CardHeader>
         <CardTitle>Trending Topics</CardTitle>
-        <CardDescription>Top hashtags/keywords trên hệ thống</CardDescription>
+        <CardDescription>Top hashtags/keywords on the system</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -660,21 +660,21 @@ function TrendingAnalytics() {
           </div>
         ) : data && data.topics && data.topics.length > 0 ? (
           <>
-          <div className="grid gap-2 md:grid-cols-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {data.topics.map((t, idx) => {
                 const globalIndex = (page - 1) * 10 + idx;
                 return (
-              <div
-                key={t.tag}
-                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  <div
+                    key={t.tag}
+                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/40"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                       {globalIndex + 1}
-                </div>
-                <div className="font-medium">{t.tag}</div>
-                <div className="ms-auto text-sm text-muted-foreground">
-                  {t.count.toLocaleString()} posts
-                </div>
+                    </div>
+                    <div className="font-medium">{t.tag}</div>
+                    <div className="ms-auto text-sm text-muted-foreground">
+                      {t.count.toLocaleString()} posts
+                    </div>
                   </div>
                 );
               })}
@@ -682,7 +682,7 @@ function TrendingAnalytics() {
             {data.pagination && data.pagination.totalPages > 1 && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Trang {data.pagination.page} / {data.pagination.totalPages} (
+                  Page {data.pagination.page} / {data.pagination.totalPages} (
                   {data.pagination.total} topics)
                 </div>
                 <Pagination
@@ -695,7 +695,7 @@ function TrendingAnalytics() {
           </>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            Không có dữ liệu trending topics
+            No trending topics data available
           </div>
         )}
       </CardContent>

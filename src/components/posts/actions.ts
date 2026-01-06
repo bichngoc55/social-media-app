@@ -1,6 +1,7 @@
 "use server";
 
 import { validateRequest } from "@/auth";
+import { createModerationCaseFromAI } from "@/lib/moderation";
 import prisma from "@/lib/prisma";
 import { processMentions, sendNotification } from "@/lib/socket";
 import { getPostDataInclude } from "@/lib/types";
@@ -24,10 +25,16 @@ export async function deletePost(id: string) {
 
   if (post.userId !== user.id) throw new Error("Unauthorized");
 
-  const deletedPost = await prisma.post.delete({
-    where: { id },
-    include: getPostDataInclude(user.id),
-  });
+  const [deletedPost] = await prisma.$transaction([
+    prisma.post.delete({
+      where: { id },
+      include: getPostDataInclude(user.id),
+    }),
+    prisma.moderationCase.deleteMany({
+      where: { postId: id },
+    }),
+  ]);
+  console.log("Deleted post ID:", id);
 
   return deletedPost;
 }
@@ -101,6 +108,7 @@ export async function updatePost(input: {
 }) {
   const { user } = await validateRequest();
   if (!user) throw new Error("Unauthorized");
+  console.log("Updating post for user ID:", user.id);
 
   const post = await prisma.post.findUnique({
     where: { id: input.postId },
@@ -277,6 +285,53 @@ export async function updatePost(input: {
               emotionScore: avg,
             },
           });
+        }
+        const latestCase = await prisma.moderationCase.findFirst({
+          where: { postId: updatedPost.id, source: "AI" },
+          select: { id: true, status: true },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (geminiAnalysis.harmful) {
+          // CASE: HARMFUL -> Mark as QUEUED
+          console.log("harmful when edit: ");
+          if (latestCase) {
+            await prisma.moderationCase.update({
+              where: { id: latestCase.id },
+              data: {
+                status: "QUEUED",
+                harmfulTypes: geminiAnalysis.harmfulTypes,
+                updatedAt: new Date(),
+              },
+            });
+          } else {
+            await createModerationCaseFromAI({
+              postId: updatedPost.id,
+              userId: user.id,
+              harmful: geminiAnalysis.harmful,
+              harmfulTypes: geminiAnalysis.harmfulTypes,
+              confidence: 0.8,
+              postEngagement: {
+                likes: updatedPost._count.likes,
+                comments: updatedPost._count.comments,
+                shares: 0,
+              },
+            });
+          }
+        } else {
+          console.log("not harmful when edit: ");
+          if (latestCase && latestCase.status === "QUEUED") {
+            await prisma.moderationCase.update({
+              where: { id: latestCase.id },
+              data: {
+                status: "DISMISSED",
+                decision: "DISMISS",
+                decisionAt: new Date(),
+                updatedAt: new Date(),
+                adminNotes: "Self-corrected via post edit.",
+              },
+            });
+          }
         }
 
         // await processMentions(content, user.id, updatedPost.id);

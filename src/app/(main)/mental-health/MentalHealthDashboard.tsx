@@ -11,12 +11,19 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   Legend,
+  Tooltip as RechartsTooltip,
 } from "recharts";
 import kyInstance from "@/lib/ky";
 import { useMusicPlayer } from "../MusicPlayerContext";
+import { AlertCircle, Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface EmotionData {
   currentEmotion: string | null;
@@ -27,6 +34,7 @@ interface EmotionData {
     date: Date;
     message: string;
     postId: string;
+    harmfulTypes?: string[];
   }>;
   recentPostsCount: number;
   countryCode: string | null;
@@ -80,7 +88,6 @@ export default function MentalHealthDashboard() {
         })
         .json<MusicRecommendation>();
 
-      // Track this song to prevent repetition
       const songKey = `${response.songTitle} - ${response.artist}`;
       setRecentSongs((prev) => {
         const updated = [...prev, songKey];
@@ -102,29 +109,6 @@ export default function MentalHealthDashboard() {
       setCurrentMusic(musicRecommendation);
       setIsPlaying(true);
     }
-  };
-
-  const handleAddToQueue = () => {
-    if (!data) return;
-    setMusicLoading(true);
-    kyInstance
-      .post("/api/recommend-music", {
-        json: {
-          emotion: data.currentEmotion,
-          emotionScore: data.currentScore,
-          countryCode: data.countryCode,
-        },
-      })
-      .json<MusicRecommendation>()
-      .then((response) => {
-        setMusicRecommendation(response);
-      })
-      .catch((error) => {
-        console.error("Error recommending music:", error);
-      })
-      .finally(() => {
-        setMusicLoading(false);
-      });
   };
 
   if (loading) {
@@ -163,6 +147,16 @@ export default function MentalHealthDashboard() {
         return "text-gray-600";
     }
   };
+
+  // Ensure these match the casing returned by your AI/Backend logic
+  const crisisTypes = [
+    "SELF_HARM",
+    "SUICIDE",
+    "EXTREME_DESPAIR",
+    "self_harm",
+    "suicide",
+    "extreme_despair",
+  ];
 
   return (
     <div className="w-full space-y-5">
@@ -212,9 +206,7 @@ export default function MentalHealthDashboard() {
             <CardTitle>Message for You</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <Skeleton className="h-20 w-full" />
-            ) : data?.wisdomMessage ? (
+            {data?.wisdomMessage ? (
               <p className="text-lg leading-relaxed">{data.wisdomMessage}</p>
             ) : (
               <p className="text-muted-foreground">
@@ -262,7 +254,6 @@ export default function MentalHealthDashboard() {
                     {musicRecommendation.reason}
                   </p>
                 </div>
-
                 <div className="flex gap-2">
                   {currentMusic?.url !== musicRecommendation.url && (
                     <Button
@@ -293,92 +284,79 @@ export default function MentalHealthDashboard() {
             <CardTitle>Alerts & Concerns</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {data.alerts.slice(0, 5).map((alert, index) => (
-                <Alert
-                  key={index}
-                  variant={alert.type === "harmful" ? "destructive" : "default"}
-                >
-                  <AlertDescription>
-                    <span className="font-medium">
-                      {new Date(alert.date).toLocaleDateString()}:
-                    </span>{" "}
-                    {alert.message}
-                  </AlertDescription>
-                </Alert>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            <TooltipProvider>
+              <div className="space-y-3">
+                {data.alerts.slice(0, 5).map((alert, index) => {
+                  const isCrisisAlert =
+                    alert.type === "harmful" &&
+                    alert.harmfulTypes?.some((t) => crisisTypes.includes(t));
 
-      {data.alerts.some((alert) => alert.type === "harmful") && (
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              You&apos;re Not Alone - Support & Resources
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="text-base leading-relaxed">
-                We noticed you might be going through a difficult time. It takes
-                courage to express how you&apos;re feeling, and we want you to
-                know that help is available.
-              </p>
+                  const alertElement = (
+                    <Alert
+                      variant={
+                        alert.type === "harmful" ? "destructive" : "default"
+                      }
+                      className={
+                        isCrisisAlert ? "cursor-pointer border-primary/50" : ""
+                      }
+                    >
+                      <AlertDescription className="flex items-center justify-between">
+                        <span>
+                          <span className="font-medium">
+                            {new Date(alert.date).toLocaleDateString()}:
+                          </span>{" "}
+                          {alert.message}
+                        </span>
+                        {isCrisisAlert && (
+                          <Info className="size-4 animate-pulse text-primary" />
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  );
 
-              <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/50 p-4">
-                <h4 className="mb-2 text-lg font-semibold">
-                  Crisis Support (24/7)
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-lg font-bold text-primary">
-                      988
-                    </span>
-                    <span>- Suicide & Crisis Lifeline (Call/Text)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-lg font-bold text-primary">
-                      741741
-                    </span>
-                    <span>- Crisis Text Line (Text &quot;HELLO&quot;)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-lg font-bold text-primary">
-                      1-800-273-8255
-                    </span>
-                    <span>- National Suicide Prevention Lifeline</span>
-                  </div>
-                </div>
+                  return isCrisisAlert ? (
+                    <Tooltip key={index} delayDuration={0}>
+                      <TooltipTrigger asChild>{alertElement}</TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="w-80 border-primary/20 bg-card p-4 text-card-foreground shadow-xl"
+                      >
+                        <div className="space-y-3">
+                          <p className="flex items-center gap-2 font-bold text-primary">
+                            <AlertCircle className="size-4" />
+                            Help is Available
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            We noticed you&apos;re going through a hard time.
+                            Consider reach out to these 24/7 resources:
+                          </p>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between rounded bg-muted p-2">
+                              <span className="font-mono font-bold">988</span>
+                              <span className="text-xs">Suicide Lifeline</span>
+                            </div>
+                            <div className="flex items-center justify-between rounded bg-muted p-2">
+                              <span className="font-mono font-bold">
+                                741741
+                              </span>
+                              <span className="text-right text-xs">
+                                Text &quot;HELLO&quot;
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-[10px] italic text-muted-foreground">
+                            We care about your well-being and your existence
+                            matters.
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <div key={index}>{alertElement}</div>
+                  );
+                })}
               </div>
-
-              <div className="mt-4 space-y-2">
-                <h4 className="text-base font-semibold">Remember:</h4>
-                <ul className="ml-2 list-inside list-disc space-y-1">
-                  <li>
-                    Your feelings are valid, and it&apos;s okay to ask for help
-                  </li>
-                </ul>
-              </div>
-
-              <p className="mt-4 text-sm italic">
-                If you&apos;re in immediate danger, please call 911 or go to
-                your nearest emergency room.
-              </p>
-            </div>
+            </TooltipProvider>
           </CardContent>
         </Card>
       )}
@@ -402,7 +380,7 @@ export default function MentalHealthDashboard() {
                 domain={[0, 1]}
                 tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
               />
-              <Tooltip
+              <RechartsTooltip
                 labelFormatter={(date) => new Date(date).toLocaleDateString()}
                 formatter={(value: number) => [
                   `${(value * 100).toFixed(1)}%`,

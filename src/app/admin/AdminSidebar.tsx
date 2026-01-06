@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, FileText, Flag, AlertTriangle } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  Flag,
+  AlertTriangle,
+} from "lucide-react";
 
 const items = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/posts", label: "Posts", icon: FileText },
-  { href: "/admin/reports", label: "Reports", icon: Flag },
+  // { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/appeals", label: "Appeals", icon: AlertTriangle },
 ];
 

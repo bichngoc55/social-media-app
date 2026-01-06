@@ -141,6 +141,7 @@ export async function GET(req: NextRequest) {
               "Content-Type": "application/json",
               Cookie: req.headers.get("cookie") || "",
             },
+            next: { revalidate: 60 },
           }).then((res) => res.json())) as { users: any[] };
 
           console.log(

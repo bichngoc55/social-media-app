@@ -51,7 +51,9 @@ export default function WarningsPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["user-warnings"],
     queryFn: async () => {
-      const response = await kyInstance.get("/api/users/warnings").json<{ warnings: Warning[] }>();
+      const response = await kyInstance
+        .get("/api/users/warnings")
+        .json<{ warnings: Warning[] }>();
       // Additional client-side validation: ensure all warnings belong to current user
       // (This is a safety check, server should already filter correctly)
       return response;
@@ -79,7 +81,7 @@ export default function WarningsPage() {
   const handleAppeal = async () => {
     if (!appealDialog.warning || !appealReason.trim()) {
       toast({
-        description: "Vui lòng nhập lý do kháng cáo",
+        description: "Please enter an appeal reason",
         variant: "destructive",
       });
       return;
@@ -87,16 +89,19 @@ export default function WarningsPage() {
 
     try {
       if (appealDialog.warning.postId) {
-        await kyInstance.post(`/api/posts/${appealDialog.warning.postId}/appeal`, {
-          json: { appealReason },
-        });
-        toast({ description: "Kháng cáo đã được gửi thành công" });
+        await kyInstance.post(
+          `/api/posts/${appealDialog.warning.postId}/appeal`,
+          {
+            json: { appealReason },
+          }
+        );
+        toast({ description: "Appeal submitted successfully" });
         setAppealDialog({ open: false, warning: null });
         setAppealReason("");
       }
     } catch (error: any) {
       toast({
-        description: error?.message || "Gửi kháng cáo thất bại",
+        description: error?.message || "Failed to submit appeal",
         variant: "destructive",
       });
     }
@@ -124,7 +129,7 @@ export default function WarningsPage() {
       <Card>
         <CardContent className="p-6">
           <p className="text-center text-destructive">
-            Có lỗi xảy ra khi tải danh sách cảnh báo
+            An error occurred while loading the warnings list
           </p>
         </CardContent>
       </Card>
@@ -139,13 +144,13 @@ export default function WarningsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-orange-500" />
-            Danh sách cảnh báo
+            Warning List
           </CardTitle>
         </CardHeader>
         <CardContent>
           {warnings.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Bạn chưa có cảnh báo nào
+            <p className="py-8 text-center text-muted-foreground">
+              You have no warnings
             </p>
           ) : (
             <div className="space-y-4">
@@ -159,10 +164,10 @@ export default function WarningsPage() {
                       : "border-l-orange-500"
                   )}
                 >
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="space-y-3 p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="mb-2 flex items-center gap-2">
                           <Badge
                             variant="outline"
                             className={cn(
@@ -171,24 +176,24 @@ export default function WarningsPage() {
                                 : "border-orange-500 text-orange-700 dark:text-orange-400"
                             )}
                           >
-                            <Clock className="h-3 w-3 mr-1" />
+                            <Clock className="mr-1 h-3 w-3" />
                             {warning.deadline
                               ? isDeadlinePassed(warning.deadline)
-                                ? "Đã hết hạn"
-                                : `Còn ${Math.ceil(
+                                ? "Expired"
+                                : `Remaining ${Math.ceil(
                                     (new Date(warning.deadline).getTime() -
                                       new Date().getTime()) /
                                       (1000 * 60 * 60)
-                                  )} giờ`
-                              : "Không có deadline"}
+                                  )} hours`
+                              : "No deadline"}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Cảnh báo từ: {warning.admin.displayName}
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          Warning from: {warning.admin.displayName}
                           {warning.admin.role === "ADMIN" && " (Admin)"} (@
                           {warning.admin.username})
                         </p>
-                        <p className="text-sm mb-2 whitespace-pre-line">
+                        <p className="mb-2 whitespace-pre-line text-sm">
                           {warning.message}
                         </p>
                         {warning.deadline && (
@@ -197,17 +202,17 @@ export default function WarningsPage() {
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                          Ngày cảnh báo: {formatDateTime(warning.createdAt)}
+                          Warning date: {formatDateTime(warning.createdAt)}
                         </p>
                       </div>
                     </div>
 
                     {warning.post && (
                       <div className="mt-4 space-y-3">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="mb-2 flex items-center gap-2">
                           <FileText className="h-4 w-4 text-orange-500" />
                           <span className="text-sm font-semibold text-orange-500">
-                            Bài viết bị cảnh báo:
+                            Warned post:
                           </span>
                         </div>
                         <div className="relative">
@@ -228,13 +233,12 @@ export default function WarningsPage() {
                               }
                               className="bg-orange-600 hover:bg-orange-700"
                             >
-                              Kháng cáo bài viết này
+                              Appeal this post
                             </Button>
                           </div>
                         )}
                       </div>
                     )}
-
                   </CardContent>
                 </Card>
               ))}
@@ -253,18 +257,18 @@ export default function WarningsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Kháng cáo cảnh báo</DialogTitle>
+            <DialogTitle>Appeal Warning</DialogTitle>
             <DialogDescription>
-              Vui lòng nhập lý do kháng cáo cho cảnh báo này. Bạn có 72 giờ để
-              kháng cáo.
+              Please enter your reason for appealing this warning. You have 72
+              hours to submit an appeal.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="appeal-reason">Lý do kháng cáo</Label>
+              <Label htmlFor="appeal-reason">Appeal reason</Label>
               <Textarea
                 id="appeal-reason"
-                placeholder="Nhập lý do kháng cáo..."
+                placeholder="Enter your appeal reason..."
                 value={appealReason}
                 onChange={(e) => setAppealReason(e.target.value)}
                 rows={4}
@@ -279,13 +283,12 @@ export default function WarningsPage() {
                 setAppealReason("");
               }}
             >
-              Hủy
+              Cancel
             </Button>
-            <Button onClick={handleAppeal}>Gửi kháng cáo</Button>
+            <Button onClick={handleAppeal}>Submit appeal</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-

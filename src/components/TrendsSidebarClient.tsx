@@ -43,15 +43,16 @@ export default function TrendsSidebarClient() {
     queryKey: ["trends"],
     queryFn: async () => {
       const response = await fetch("/api/trends", {
-        cache: "no-store", // Không cache để luôn lấy data mới nhất
+        // cache: "no-store", // Không cache để luôn lấy data mới nhất
+        next: { revalidate: 60 },
       });
       if (!response.ok) {
         throw new Error("Failed to fetch trends");
       }
       return response.json();
     },
-    staleTime: 0, // Luôn fetch data mới (không cache)
-    gcTime: 0, // Không cache (React Query v5: gcTime thay cho cacheTime)
+    staleTime: 60 * 1000, // Cache for 60 seconds
+    gcTime: 60 * 1000,
   });
 
   if (isLoading) {

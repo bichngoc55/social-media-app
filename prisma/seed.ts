@@ -7,6 +7,8 @@ import {
   normalizeVector,
   analyzePostWithGemini,
 } from "../src/lib/vertex";
+import { createModerationCaseFromAI } from "../src/lib/moderation";
+import { sendPermanentBanEmail } from "../src/lib/email";
 import { Storage } from "@google-cloud/storage";
 import * as fs from "fs";
 import * as path from "path";
@@ -208,8 +210,17 @@ const INTEREST_TAGS = [
   "Health",
   "Nature",
   "Pets",
+  "Lifestyle",
+  "Relationships",
+  "Mental Health",
+  "Career",
+  "Finance",
+  "News",
+  "Culture",
+  "Self Improvement",
+  "Entertainment",
+  "Internet Culture",
 ];
-
 // Load location data// --- LOCATION HANDLING ---
 interface LocationData {
   id: number;
@@ -652,6 +663,114 @@ const SAMPLE_POSTS = {
       image:
         "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0",
     },
+    {
+      content:
+        "Just witnessed the most amazing aurora borealis in Iceland! Nature is the ultimate artist. #Travel #Nature #BucketList",
+      image:
+        "https://images.unsplash.com/photo-1579033461380-adb47c3eb938?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXVyb3JhfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Finally solved that complex bug in the backend! The feeling of seeing all tests pass is unmatched. #Technology #Coding #DevLife",
+      image:
+        "https://images.unsplash.com/photo-1555099962-4199c345e5dd?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Y29kaW5nfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Adopted this little furball today! Welcome home, Luna. You are so loved already. #Pets #CatLover #Adoption",
+      image:
+        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2F0fGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Scored the winning goal in the final minute! What a match, what a team! #Sports #Soccer #Victory",
+      image:
+        "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9vdGJhbGx8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Freshly baked croissants for breakfast. The smell of butter and yeast is heaven. #Food #Baking #Morning",
+      image:
+        "https://images.unsplash.com/photo-1509440159596-0249088772ff?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmFrc3J5fGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Just bought my dream camera! Ready to capture every moment in high resolution. #Photography #Canon #NewGear",
+      image:
+        "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2FtZXJhfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Front row seats at the concert! The energy here is electric! #Music #Live #Rock",
+      image:
+        "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uY2VydHxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Hit a new personal best on the bench press! 100kg let's go! #Fitness #Gym #Gains",
+      image:
+        "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Z3ltfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "The graphics on this new RPG are insane. Goodbye social life for the next week! #Gaming #PS5 #Gamer",
+      image:
+        "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Z2FtaW5nfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Published my first research paper on renewable energy! A small step for science. #Science #Research #Academic",
+      image:
+        "https://images.unsplash.com/photo-1532094349884-543bc11b234d?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2NpZW5jZXxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Closing a major deal with a new client. Hard work and persistence pay off! #Business #Entrepreneur #Success",
+      image:
+        "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnVzaW5lc3N8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Graduation day! So proud of everyone in the Class of 2024. We did it! #Education #Graduation #Future",
+      image:
+        "https://images.unsplash.com/photo-1627556704290-2b1f5853ff78?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Z3JhZHVhdGlvbnxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Found the perfect vintage jacket at the thrift store. Style on a budget! #Fashion #Thrifting #Style",
+      image:
+        "https://images.unsplash.com/photo-1483985988355-763728e1935b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZmFzaGlvbnxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "A quiet afternoon with a cup of tea and a classic novel. Pure bliss. #Books #Reading #Relax",
+      image:
+        "https://images.unsplash.com/photo-1512820790803-83ca734da794?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Ym9va3N8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Watching the new sci-fi blockbuster in IMAX. The sound design is incredible! #Movies #Cinema #Film",
+      image:
+        "https://images.unsplash.com/photo-1536440136628-849c177e76a1?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2luZW1hfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Completed my first 10-minute meditation without losing focus. Mind feels so clear. #Health #Wellness #Mindfulness",
+      image:
+        "https://images.unsplash.com/photo-1506126613408-eca07ce68773?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8eW9nYXxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Road tripping down Route 66. The landscapes change every hour. #Travel #USA #RoadTrip",
+      image:
+        "https://images.unsplash.com/photo-1532339142463-fd0a8979791a?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cm9hZHRyaXB8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Volunteering at the animal shelter. These dogs have so much love to give. #Pets #Community #Love",
+      image:
+        "https://images.unsplash.com/photo-1593134257782-e89567b7718a?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZG9nc3xlbnwwfHwwfHx8MA%3D%3D",
+    },
   ],
   NEUTRAL: [
     {
@@ -971,6 +1090,120 @@ const SAMPLE_POSTS = {
       image:
         "https://images.unsplash.com/photo-1522012188892-24beb302783d?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0",
     },
+    {
+      content:
+        "Just updated my operating system. The new interface looks slightly different. #Technology #Update #Software",
+      image:
+        "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bGFwdG9wfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Waiting for the bus. It's scheduled to arrive in 5 minutes. #Travel #Commute #City",
+      image:
+        "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnVzJTIwc3RvcHxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "This is a photo of my lunch. Chicken and rice, standard meal prep. #Food #Lunch #Diet",
+      image:
+        "https://images.unsplash.com/photo-1596797038530-2c107229654b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bHVuY2h8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Reading a textbook for my history class. Chapter 4 covers the industrial revolution. #Education #Study #History",
+      image:
+        "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dGV4dGJvb2t8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "The sky is partly cloudy today with a temperature of 22 degrees. #Weather #Nature #Forecast",
+      image:
+        "https://images.unsplash.com/photo-1504253163759-c23fccaebb55?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2xvdWR5fGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Organizing my files on the computer. Deleted some old documents. #Business #Organization #Work",
+      image:
+        "https://images.unsplash.com/photo-1589884629038-b631346a23c0?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZmlsZXN8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Walking the dog around the block. He stopped to smell a tree. #Pets #Walk #Routine",
+      image:
+        "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZG9nJTIwd2Fsa2luZ3xlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Drinking a glass of water. Hydration is important. #Health #Water #Daily",
+      image:
+        "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8d2F0ZXIlMjBnbGFzc3xlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Saw a cat sitting on a fence. It was looking at a bird. #Animals #Observation #Street",
+      image:
+        "https://images.unsplash.com/photo-1513245543132-31f507417b26?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2F0fGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Testing out a new pen. The ink is blue. #Stationery #Writing #Office",
+      image:
+        "https://images.unsplash.com/photo-1585336261022-680e295ce3fe?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVufGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Sitting in the waiting room at the dentist. Appointment is at 2 PM. #Health #Waiting #Appointment",
+      image:
+        "https://images.unsplash.com/photo-1629909613654-28e377c37b09?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8d2FpdGluZyUyMHJvb218ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "The traffic light is red. Waiting for it to turn green. #Driving #Traffic #City",
+      image:
+        "https://images.unsplash.com/photo-1519752594763-2633d8d4ea29?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHJhZmZpYyUyMGxpZ2h0fGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Charging my phone. It is currently at 45 percent. #Technology #Battery #Phone",
+      image:
+        "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGhvbmUlMjBjaGFyZ2luZ3xlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Bought some milk and eggs at the grocery store. #Shopping #Errands #Food",
+      image:
+        "https://images.unsplash.com/photo-1578916171728-46686eac8d58?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Z3JvY2VyaWVzfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Watching the news. They are talking about the economy. #News #TV #CurrentEvents",
+      image:
+        "https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHZ8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "My new shoes fit well. They are size 10. #Fashion #Shoes #Purchase",
+      image:
+        "https://images.unsplash.com/photo-1549298916-b41d501d3772?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvZXN8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "The train is passing by. It makes a loud noise. #Transport #Train #Noise",
+      image:
+        "https://images.unsplash.com/photo-1474487548417-781cb71495f3?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHJhaW58ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Typing an email to my colleague. Asking about the meeting schedule. #Work #Communication #Office",
+      image:
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dHlwaW5nfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Looking at a map to find the street name. #Travel #Map #Navigation",
+      image:
+        "https://images.unsplash.com/photo-1524661135-423995f22d0b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWFwfGVufDB8fDB8fHww",
+    },
   ],
   NEGATIVE: [
     {
@@ -1287,6 +1520,84 @@ const SAMPLE_POSTS = {
       content: "Stepped in a puddle and my socks are soaked. Day ruined. 👞💦",
       image:
         "https://images.unsplash.com/photo-1481314673535-d26604db8492?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDE1fHx8ZW58MHx8fHx8",
+    },
+    {
+      content:
+        "Ref couldn't see a foul if it hit him in the face. We were robbed of this game! #Sports #Unfair #Angry",
+      image:
+        "https://images.unsplash.com/photo-1517747614396-d21a78b850e8?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YW5ncnl8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Ordered a 'medium rare' steak and got a shoe sole. Waste of money. #Food #BadService #Disappointed",
+      image:
+        "https://images.unsplash.com/photo-1557008075-7f2c5efa4cfd?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnVpbnQlMjBmb29kfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "My expensive headphones just snapped in half. Quality control is a joke these days. #Music #Broken #Annoyed",
+      image:
+        "https://images.unsplash.com/photo-1546435770-a3e426bf472b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnJva2VuJTIwaGVhZHBob25lc3xlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "Lag makes this game literally unplayable. Fix your servers! #Gaming #Lag #Rage",
+      image:
+        "https://images.unsplash.com/photo-1594652634010-275456c808d0?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Z2FtZXJ8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Got a flat tire in the middle of nowhere and it's starting to rain. Perfect. #BadLuck #CarTrouble",
+      image:
+        "https://images.unsplash.com/photo-1519752594763-2633d8d4ea29?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnJva2VuJTIwY2FyfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "This book is so boring I can't get past chapter 3. Total waste of time. #Books #Boring #Review",
+      image:
+        "https://images.unsplash.com/photo-1516979187457-637abb4f9353?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Ym9yZWQlMjByZWFkaW5nfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Failed my math exam even though I studied all week. I feel so stupid. #Education #Failure #Sad",
+      image:
+        "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZmFpbCUyMGV4YW18ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Client rejected the design again. I don't think they know what they want. #Art #FreelanceStruggles",
+      image:
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c3RyZXNzZWR8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "Gym was way too crowded to do anything. Waited 20 mins for a squat rack. #Fitness #Crowded #Annoying",
+      image:
+        "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y3Jvd2RlZCUyMGd5bXxlbnwwfHwwfHx8MA%3D%3D",
+    },
+    {
+      content:
+        "My dog chewed up my favorite pair of sneakers. I can't believe this. #Pets #Destruction #BadDog",
+      image:
+        "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmFkJTIwZG9nfGVufDB8fDB8fHww",
+    },
+    {
+      content:
+        "Movie was a total letdown. The trailer showed all the good parts. #Movies #Disappointed #BadMovie",
+      image:
+        "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Ym9yaW5nJTIwbW92aWV8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "The noise from the construction next door is driving me insane. I can't focus! #Noise #Headache #WorkFromHome",
+      image:
+        "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uc3RydWN0aW9uJTIwbm9pc2V8ZW58MHx8MHx8fDA%3D",
+    },
+    {
+      content:
+        "It's been raining for 5 days straight. My seasonal mood is taking a hit. #Weather #Gloomy #Gray",
+      image:
+        "https://images.unsplash.com/photo-1486016006115-74a41448aea2?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cmFpbnxlbnwwfHwwfHx8MA%3D%3D",
     },
   ],
   HARMFUL_SPAM: [
@@ -1917,7 +2228,6 @@ const SAMPLE_POSTS = {
     },
   ],
 };
-
 // --- HELPER FUNCTIONS ---
 
 async function downloadImage(url: string, filepath: string): Promise<void> {
@@ -2190,27 +2500,260 @@ async function createPost(
     });
   }
 
-  // 5. Update User Emotion Score (Using production logic)
-  await updateUserEmotionStats(userId, analysis);
-}
-
-async function processPost(userId: string, postData: any, tempDir: string) {
-  let imageUrls = null;
-  if (postData.image) {
+  // 5. Create moderation case if harmful
+  if (analysis.harmful && analysis.harmfulTypes.length > 0 && post) {
     try {
-      const filename = `seed-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-      const localPath = path.join(tempDir, filename);
-      const gcsPath = `seed-images/${filename}`;
-      await downloadImage(postData.image + "&fm=jpg", localPath);
-      imageUrls = await uploadToGCS(localPath, gcsPath);
-      fs.unlinkSync(localPath);
-    } catch (e) {
-      console.error("Image upload failed, posting text only");
+      const postEngagement = { likes: 0, comments: 0, shares: 0 }; // New post has no engagement yet
+      await createModerationCaseFromAI({
+        postId: post.id,
+        userId: userId,
+        harmful: analysis.harmful,
+        harmfulTypes: analysis.harmfulTypes,
+        confidence: 0.8,
+        postEngagement,
+      });
+    } catch (error) {
+      console.error("Error creating moderation case:", error);
     }
   }
 
-  const daysAgo = Math.random() * 35;
-  await createPost(userId, postData.content, imageUrls, daysAgo);
+  // 6. Update User Emotion Score (Using production logic)
+  await updateUserEmotionStats(userId, analysis);
+
+  return post;
+}
+
+async function processPost(userId: string, postData: any, tempDir: string) {
+  try {
+    let imageUrls = null;
+    if (postData.image) {
+      try {
+        const filename = `seed-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+        const localPath = path.join(tempDir, filename);
+        const gcsPath = `seed-images/${filename}`;
+        await downloadImage(postData.image + "&fm=jpg", localPath);
+        imageUrls = await uploadToGCS(localPath, gcsPath);
+        fs.unlinkSync(localPath);
+      } catch (e) {
+        console.error("Image upload failed, posting text only");
+      }
+    }
+
+    const daysAgo = Math.random() * 35;
+    return await createPost(userId, postData.content, imageUrls, daysAgo);
+  } catch (error: any) {
+    console.error(`⚠️  Failed to create post: ${error.message}`);
+    return null;
+  }
+}
+
+// HARMFUL POST SAMPLES FOR DEMO USERS
+const HARMFUL_POSTS = [
+  {
+    content:
+      "I hate all people who disagree with me. They should all be silenced. #HateSpeech",
+    image: null,
+  },
+  {
+    content: "Violence is the only answer. Fight back with force! #Violence",
+    image: null,
+  },
+  {
+    content:
+      "This group of people are inferior and don't deserve respect. #Discrimination",
+    image: null,
+  },
+  {
+    content: "I'm going to hurt anyone who crosses me. Watch out! #Threat",
+    image: null,
+  },
+  {
+    content:
+      "Spread this lie about them, they deserve to be destroyed. #Harassment",
+    image: null,
+  },
+  {
+    content: "Everyone from that country is evil and should leave. #Xenophobia",
+    image: null,
+  },
+  {
+    content: "Women/Men are all the same - worthless. #Sexism",
+    image: null,
+  },
+  {
+    content:
+      "Let's attack their reputation with false accusations. #Defamation",
+    image: null,
+  },
+  {
+    content:
+      "I encourage everyone to harm themselves. Life is meaningless. #SelfHarm",
+    image: null,
+  },
+  {
+    content: "You should feel ashamed of who you are. #Bullying",
+    image: null,
+  },
+];
+
+// Create demo user with specific warning state
+async function createDemoUser(
+  username: string,
+  displayName: string,
+  violationRate: number, // 0-100
+  warningCount: number,
+  lastWarningDaysAgo: number,
+  isPermanentlyBanned: boolean,
+  tempDir: string,
+  adminId: string
+) {
+  console.log(
+    `  📋 Creating demo user: ${username} (${warningCount} warnings, ${violationRate}% violation rate)...`
+  );
+
+  const userId = generateIdFromEntropySize(10);
+  const passwordHash = await bcrypt.hash("password123", 10);
+  const interests = ["Technology", "Music", "Sports"];
+  const location = getSingleValidLocation();
+
+  const topicEmbeddings = await Promise.all(
+    interests.map((topic) => getTextEmbedding(topic))
+  );
+
+  const dim = topicEmbeddings[0].length;
+  const avgVector = Array(dim).fill(0);
+  topicEmbeddings.forEach((emb) => {
+    emb.forEach((v, i) => (avgVector[i] += v / topicEmbeddings.length));
+  });
+
+  const normalized = normalizeVector(avgVector);
+  const topicEmbeddingsArray = topicEmbeddings.map(
+    (emb) => `[${emb.join(",")}]`
+  );
+  const tasteVectorStr = `[${normalized.join(",")}]`;
+  const bio = `Demo user for warning/ban system testing. Interests: ${interests.join(", ")}`;
+
+  const lastWarningAt = new Date();
+  lastWarningAt.setDate(lastWarningAt.getDate() - lastWarningDaysAgo);
+
+  // Create user with specific email for demo-user-ban-3
+  const userEmail =
+    username === "demo-user-ban-3"
+      ? "22520957@gm.uit.edu.vn"
+      : `${username}@example.com`;
+
+  // Calculate bannedUntil if permanently banned
+  const bannedUntil = isPermanentlyBanned ? new Date("2099-12-31") : null;
+
+  await prisma.$executeRawUnsafe(
+    `
+    INSERT INTO users (
+      id, username, "displayName", email, "passwordHash", 
+      interests, "countryCode", "provinceCode", "districtCode",
+      "topicEmbeddings", "tasteEmbedding", "emailVerified", "createdAt",
+      bio, "warningCount", "lastWarningAt", status, "bannedUntil"
+    )
+    VALUES (
+      $1, $2, $3, $4, $5, $6::text[], $7, $8, $9, $10::vector[], $11::vector, true, NOW(), $12, $13, $14, $15, $16
+    )
+    `,
+    userId,
+    username,
+    displayName,
+    userEmail,
+    passwordHash,
+    interests,
+    location.countryCode,
+    location.provinceCode,
+    location.districtCode,
+    topicEmbeddingsArray,
+    tasteVectorStr,
+    bio,
+    warningCount,
+    lastWarningAt,
+    !isPermanentlyBanned,
+    bannedUntil
+  );
+
+  // Create 10 posts (mix of harmful and normal based on violation rate)
+  const totalPosts = 10;
+  const harmfulPostCount = Math.round((violationRate / 100) * totalPosts);
+  const normalPostCount = totalPosts - harmfulPostCount;
+
+  console.log(
+    `    Creating ${totalPosts} posts (${harmfulPostCount} harmful, ${normalPostCount} normal)...`
+  );
+
+  const posts: any[] = [];
+
+  // Create harmful posts
+  for (let i = 0; i < harmfulPostCount; i++) {
+    try {
+      const harmfulPost = HARMFUL_POSTS[i % HARMFUL_POSTS.length];
+      const daysAgo = Math.floor(Math.random() * 30);
+      const post = await createPost(userId, harmfulPost.content, null, daysAgo);
+      if (post) posts.push(post);
+    } catch (error: any) {
+      console.error(`    ⚠️  Failed harmful post: ${error.message}`);
+    }
+  }
+
+  // Create normal posts
+  const normalPosts = SAMPLE_POSTS.POSITIVE.slice(0, normalPostCount);
+  for (let i = 0; i < normalPostCount; i++) {
+    try {
+      const normalPost = normalPosts[i % normalPosts.length];
+      const daysAgo = Math.floor(Math.random() * 30);
+      const post = await processPost(userId, normalPost, tempDir);
+      if (post) posts.push(post);
+    } catch (error: any) {
+      console.error(`    ⚠️  Failed normal post: ${error.message}`);
+    }
+  }
+
+  // Create UserWarning records
+  for (let i = 0; i < warningCount; i++) {
+    const warningDaysAgo = lastWarningDaysAgo + (warningCount - 1 - i) * 5; // Spread warnings over time
+    const warningDate = new Date();
+    warningDate.setDate(warningDate.getDate() - warningDaysAgo);
+
+    // Pick a random harmful post for this warning
+    const harmfulPostsForUser = posts.filter((p) => p && p.harmful);
+    const warningPost = harmfulPostsForUser[i % harmfulPostsForUser.length];
+
+    await prisma.userWarning.create({
+      data: {
+        userId: userId,
+        issuedBy: adminId,
+        message: `Warning ${i + 1}: You have violated our community guidelines. Please review and delete harmful content within 72 hours.`,
+        deadline: new Date(warningDate.getTime() + 72 * 60 * 60 * 1000),
+        postId: warningPost?.id || null,
+        createdAt: warningDate,
+      },
+    });
+  }
+
+  await updateUserTasteEmbedding(userId);
+
+  // Query actual totalViolateCounts from moderation cases
+  const totalViolateCounts = await prisma.moderationCase.count({
+    where: {
+      userId: userId,
+      status: { in: ["QUEUED", "IN_REVIEW"] },
+    },
+  });
+
+  // Update user with actual totalViolateCounts
+  await prisma.user.update({
+    where: { id: userId },
+    data: { totalViolateCounts },
+  });
+
+  console.log(
+    `    ✅ Created demo user ${username} with ${posts.length} posts, ${warningCount} warnings, ${totalViolateCounts} violations`
+  );
+
+  return { userId, posts };
 }
 
 async function main() {
@@ -2220,10 +2763,37 @@ async function main() {
   try {
     // 1. CLEANUP
     console.log("🧹 Cleaning database...");
+    await prisma.userWarning.deleteMany();
+    await prisma.appealUserReport.deleteMany();
+    await prisma.report.deleteMany();
+    await prisma.moderationCase.deleteMany();
     await prisma.media.deleteMany();
     await prisma.post.deleteMany();
     await prisma.deviceSession.deleteMany();
     await prisma.user.deleteMany();
+
+    // 1.5 CREATE ADMIN USER
+    console.log("👑 Creating Admin User...");
+    const adminId = generateIdFromEntropySize(10);
+    const adminPasswordHash = await bcrypt.hash("password123", 10);
+
+    await prisma.user.create({
+      data: {
+        id: adminId,
+        username: "admin",
+        displayName: "Admin User",
+        email: "admin@example.com",
+        passwordHash: adminPasswordHash,
+        emailVerified: true,
+        role: "ADMIN",
+        bio: "System Administrator",
+        interests: ["Technology", "Moderation", "Education"],
+      },
+    });
+    console.log(
+      "  ✅ Admin user created (username: admin, password: password123)"
+    );
+
     console.log("🌍 Generating Location Clusters...");
     const hub1 = getSingleValidLocation();
     const hub2 = getSingleValidLocation();
@@ -2338,7 +2908,7 @@ async function main() {
       allUserIds.push(uid);
     }
 
-    // 3. PREPARE POST DECK (Target 279 unique posts)
+    // 3. PREPARE POST DECK (Target 329 unique posts)
     console.log("🃏 Preparing Post Deck...");
     let deck: any[] = [];
 
@@ -2346,10 +2916,10 @@ async function main() {
     Object.values(SAMPLE_POSTS).forEach((arr) => deck.push(...arr));
 
     // Duplicate if needed to fill deck
-    while (deck.length < 279) {
+    while (deck.length < 329) {
       deck = [...deck, ...deck];
     }
-    deck = deck.slice(0, 279); // Trim to exactly 279
+    deck = deck.slice(0, 329); // Trim to exactly 329
 
     // Shuffle Deck (Fisher-Yates)
     for (let i = deck.length - 1; i > 0; i--) {
@@ -2357,12 +2927,12 @@ async function main() {
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
 
-    // 4. DISTRIBUTE POSTS
-    const specialAllocation = deck.slice(0, 90); // 90 posts for top 4
-    const regularAllocation = deck.slice(90, 279); // 189 posts for next 96
+    // 4. DISTRIBUTE POSTS (329 total: 90 for special users, 239 for regular users)
+    const specialAllocation = deck.slice(0, 90); // 90 posts for top 4 special users
+    const regularAllocation = deck.slice(90, 329); // 239 posts for 96 regular users
 
     console.log(
-      `📦 Distribution: 90 posts to 4 Special Users, 189 posts to 96 Regular Users.`
+      `📦 Distribution: 90 posts to 4 Special Users, 239 posts to 96 Regular Users.`
     );
 
     // Process Special Users (Indices 0-3 in allUserIds)
@@ -2373,9 +2943,16 @@ async function main() {
         `  > Special User ${specialUsersDef[i].username} getting ${myPosts.length} posts...`
       );
 
+      let successCount = 0;
       for (const p of myPosts) {
-        await processPost(userId, p, tempDir);
+        try {
+          const result = await processPost(userId, p, tempDir);
+          if (result) successCount++;
+        } catch (error: any) {
+          console.error(`    ⚠️  Failed: ${error.message}`);
+        }
       }
+      console.log(`    ✅ Created ${successCount}/${myPosts.length} posts`);
       await updateUserTasteEmbedding(userId);
     }
 
@@ -2386,15 +2963,206 @@ async function main() {
 
       if (i % 10 === 0) console.log(`  > Processing Regular Users batch...`);
 
+      let successCount = 0;
       for (const p of myPosts) {
-        await processPost(userId, p, tempDir);
+        try {
+          const result = await processPost(userId, p, tempDir);
+          if (result) successCount++;
+        } catch (error: any) {
+          // Silent fail to avoid log spam
+        }
+      }
+      if (i % 10 === 0 && successCount < myPosts.length) {
+        console.log(
+          `    ⚠️  Some posts failed (${successCount}/${myPosts.length} succeeded)`
+        );
       }
       await updateUserTasteEmbedding(userId);
     }
 
-    // 5. CREATE DEVICE SESSIONS
+    // 5. CREATE DEMO USERS FOR WARNING/BAN SYSTEM
+    console.log("\n🎯 Creating Demo Users for Warning/Ban System...");
+
+    // User A: 3 warnings, 80% violation rate, permanently banned
+    const userA = await createDemoUser(
+      "demo-user-ban-3",
+      "Demo User A (Banned)",
+      80, // 80% violation rate
+      3, // 3 warnings
+      4, // last warning 4 days ago
+      true, // permanently banned
+      tempDir,
+      adminId
+    );
+
+    // Send permanent ban email for demo user A
+    await sendPermanentBanEmail(
+      "22520957@gm.uit.edu.vn",
+      "Demo User A (Banned)",
+      3
+    );
+    console.log("  ✅ Sent permanent ban email to demo-user-ban-3");
+
+    // User B: 1 warning, 70% violation rate
+    const userB = await createDemoUser(
+      "demo-user-warn-1",
+      "Demo User B (1 Warning)",
+      70, // 70% violation rate
+      1, // 1 warning
+      5, // last warning 5 days ago
+      false, // not banned
+      tempDir,
+      adminId
+    );
+
+    // User C: 2 warnings, 75% violation rate
+    const userC = await createDemoUser(
+      "demo-user-warn-2",
+      "Demo User C (2 Warnings)",
+      75, // 75% violation rate
+      2, // 2 warnings
+      3, // last warning 3 days ago
+      false, // not banned
+      tempDir,
+      adminId
+    );
+
+    // Add demo users to allUserIds for device sessions
+    allUserIds.push(userA.userId, userB.userId, userC.userId);
+
+    // 6. CREATE APPEALS FOR DEMO USERS
+    console.log("\n📝 Creating Appeals for Demo Users...");
+    const allDemoPosts = [
+      ...userA.posts,
+      ...userB.posts,
+      ...userC.posts,
+    ].filter((p) => p);
+    const harmfulDemoPosts = allDemoPosts.filter((p) => p.harmful);
+
+    // Create 5-10 appeals with different statuses
+    const appealStatuses = ["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"];
+    for (let i = 0; i < Math.min(10, harmfulDemoPosts.length); i++) {
+      const post = harmfulDemoPosts[i];
+      const status = appealStatuses[i % appealStatuses.length];
+      const daysAgo = Math.floor(Math.random() * 30);
+      const createdAt = new Date();
+      createdAt.setDate(createdAt.getDate() - daysAgo);
+
+      await prisma.appealUserReport.create({
+        data: {
+          userId: post.userId,
+          postId: post.id,
+          appealReason: `I believe this post was incorrectly flagged. It does not violate community guidelines. Appeal #${i + 1}`,
+          status: status as any,
+          adminNotes:
+            status === "APPROVED"
+              ? "Upon review, this post does not violate guidelines."
+              : status === "REJECTED"
+                ? "This post clearly violates our hate speech policy."
+                : null,
+          createdAt: createdAt,
+          updatedAt:
+            status !== "PENDING"
+              ? new Date(createdAt.getTime() + 24 * 60 * 60 * 1000)
+              : createdAt,
+        },
+      });
+
+      // If appeal was approved, update moderation case status to DISMISSED
+      if (status === "APPROVED") {
+        await prisma.moderationCase.updateMany({
+          where: { postId: post.id },
+          data: { status: "DISMISSED" },
+        });
+      }
+    }
+    console.log(
+      `  ✅ Created ${Math.min(10, harmfulDemoPosts.length)} appeals`
+    );
+
+    // 7. CREATE REPORTS FOR DEMO
+    console.log("\n🚨 Creating Demo Reports...");
+
+    // Get harmful posts (posts with moderation cases) for reports
+    const harmfulModCases = await prisma.moderationCase.findMany({
+      where: {
+        postId: { not: null },
+        status: { in: ["QUEUED", "IN_REVIEW"] },
+      },
+      select: { postId: true, userId: true },
+      take: 25,
+    });
+
+    const allPosts = harmfulModCases.map((mc) => ({
+      id: mc.postId!,
+      userId: mc.userId,
+    }));
+
+    // Create 10-15 post reports
+    const reportReasons = [
+      "SPAM",
+      "HARASSMENT",
+      "HATE_SPEECH",
+      "VIOLENCE",
+      "NUDITY",
+      "OTHER",
+    ] as const;
+    const reportStatuses = [
+      "PENDING",
+      "REVIEWED",
+      "RESOLVED",
+      "DISMISSED",
+    ] as const;
+
+    for (let i = 0; i < 15 && i < allPosts.length; i++) {
+      const post = allPosts[i];
+      const reporterId =
+        allUserIds[Math.floor(Math.random() * allUserIds.length)];
+      const daysAgo = Math.floor(Math.random() * 30);
+      const createdAt = new Date();
+      createdAt.setDate(createdAt.getDate() - daysAgo);
+
+      await prisma.report.create({
+        data: {
+          reporterId: reporterId,
+          reportedId: post.userId!,
+          postId: post.id,
+          type: reportReasons[i % reportReasons.length],
+          reason: reportReasons[i % reportReasons.length],
+          status: reportStatuses[i % reportStatuses.length],
+          adminNotes:
+            i % 3 === 0 ? "Reviewed and found to violate guidelines" : null,
+          createdAt: createdAt,
+        },
+      });
+    }
+    console.log(`  ✅ Created 15 post reports`);
+
+    // Create 5-8 user reports
+    for (let i = 0; i < 8 && i < allUserIds.length; i++) {
+      const reporterId = allUserIds[i];
+      const reportedId = allUserIds[(i + 10) % allUserIds.length];
+      const daysAgo = Math.floor(Math.random() * 30);
+      const createdAt = new Date();
+      createdAt.setDate(createdAt.getDate() - daysAgo);
+
+      await prisma.report.create({
+        data: {
+          reporterId: reporterId,
+          reportedId: reportedId,
+          type: reportReasons[i % reportReasons.length],
+          reason: reportReasons[i % reportReasons.length],
+          status: reportStatuses[i % reportStatuses.length],
+          adminNotes: i % 2 === 0 ? "User behavior reviewed" : null,
+          createdAt: createdAt,
+        },
+      });
+    }
+    console.log(`  ✅ Created 8 user reports`);
+
+    // 8. CREATE DEVICE SESSIONS
     console.log("🔐 Creating trusted device sessions...");
-    const sessions = allUserIds.map((userId) => ({
+    const sessions = [...allUserIds, adminId].map((userId) => ({
       userId,
       deviceId: "seed-device-trusted",
       deviceName: "Seed Device",
@@ -2406,6 +3174,20 @@ async function main() {
     await prisma.deviceSession.createMany({ data: sessions });
 
     console.log("\n✅ Seeding completed successfully!");
+    console.log("\n📊 Summary:");
+    console.log(`   - Admin User: admin / password123`);
+    console.log(`   - All Users Password: password123`);
+    console.log(`   - Regular Users: 100`);
+    console.log(`   - Demo Users: 3`);
+    console.log(
+      `     • demo-user-ban-3: 3 warnings, 80% violation rate, BANNED (email: 22520957@gm.uit.edu.vn)`
+    );
+    console.log(`     • demo-user-warn-1: 1 warning, 70% violation rate`);
+    console.log(`     • demo-user-warn-2: 2 warnings, 75% violation rate`);
+    console.log(`   - Total Posts: ~${329 + 30} (including demo posts)`);
+    console.log(`   - Appeals: ${Math.min(10, harmfulDemoPosts.length)}`);
+    console.log(`   - Reports: 23 (15 post reports + 8 user reports)`);
+    console.log(`\n🎯 Ready for demo! See DEMO_GUIDE.md for instructions.`);
   } catch (error) {
     console.error("❌ Seeding failed:", error);
   } finally {

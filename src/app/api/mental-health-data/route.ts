@@ -75,6 +75,7 @@ export async function GET() {
       ...harmfulPosts.map((p) => ({
         type: "harmful" as const,
         date: p.createdAt,
+        harmfulTypes: p.harmfulTypes,
         message: `Harmful content detected: ${p.harmfulTypes.join(", ")}`,
         postId: p.id,
       })),
