@@ -173,12 +173,19 @@ export default function CommentInput({
                 attachment.isUploading && "opacity-50"
               )}
             >
-              <Image
-                src={URL.createObjectURL(attachment.file)}
-                alt="Preview"
-                fill
-                className="object-cover"
-              />
+              {attachment.file.type.startsWith("image/") ? (
+                <Image
+                  src={URL.createObjectURL(attachment.file)}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <video
+                  src={URL.createObjectURL(attachment.file)}
+                  className="h-full w-full object-cover"
+                />
+              )}
               {!attachment.isUploading && (
                 <button
                   type="button"
@@ -202,7 +209,7 @@ export default function CommentInput({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           multiple
           className="hidden"
           onChange={(e) => {

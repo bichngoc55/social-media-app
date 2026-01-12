@@ -18,6 +18,7 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EditProfileButton from "./EditProfileButton";
+import GeminiAnalysisToggle from "./GeminiAnalysisToggle";
 import UserPosts from "./UserPosts";
 import WarnedPosts from "./WarnedPosts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -182,6 +183,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
         {user.id === loggedInUserId ? (
           <div className="flex flex-col gap-2">
             <EditProfileButton user={user} />
+            <GeminiAnalysisToggle />
             <Link href="/warnings">
               <Button variant="outline" className="w-full">
                 <AlertTriangle className="mr-2 h-4 w-4" />

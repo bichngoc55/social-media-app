@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const maxSize = isImage ? 4 * 1024 * 1024 : 64 * 1024 * 1024;
+    const maxSize = isImage ? 20 * 1024 * 1024 : 64 * 1024 * 1024;
     if (fileSize > maxSize) {
       return Response.json(
-        { error: `File too large. Max ${isImage ? "4MB" : "64MB"}` },
+        { error: `File too large. Max ${isImage ? "20MB" : "64MB"}` },
         { status: 400 }
       );
     }

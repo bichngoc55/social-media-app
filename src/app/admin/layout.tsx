@@ -4,6 +4,8 @@ import AdminNavbar from "./AdminNavbar";
 import AdminSidebar from "./AdminSidebar";
 import SessionProvider from "../(main)/SessionProvider";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {
@@ -16,7 +18,7 @@ export default async function AdminLayout({
     }
     return (
       <SessionProvider value={session as any}>
-        <div className="min-h-screen">
+        <div className="admin-root min-h-screen">
           <AdminNavbar />
           <div className="mx-auto w-full max-w-7xl p-5">
             <div className="flex gap-5 text-[15px] sm:text-base">

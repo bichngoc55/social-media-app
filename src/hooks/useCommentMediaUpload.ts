@@ -43,7 +43,7 @@ export default function useCommentMediaUpload() {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName }),
+        body: JSON.stringify({ fileName, contentType: file.type }),
       }
     );
 
@@ -64,12 +64,64 @@ export default function useCommentMediaUpload() {
       return;
     }
 
-    if (attachments.length + files.length > 3) {
+    const currentImages = attachments.filter((a) =>
+      a.file.type.startsWith("image/")
+    ).length;
+    const currentVideos = attachments.filter((a) =>
+      a.file.type.startsWith("video/")
+    ).length;
+
+    const newImages = files.filter((f) => f.type.startsWith("image/"));
+    const newVideos = files.filter((f) => f.type.startsWith("video/"));
+
+    if (currentImages + newImages.length > 4) {
       toast({
         variant: "destructive",
-        description: "You can only upload up to 3 images per comment.",
+        description: "You can only upload up to 4 images per comment.",
       });
       return;
+    }
+
+    if (currentVideos + newVideos.length > 2) {
+      toast({
+        variant: "destructive",
+        description: "You can only upload up to 2 videos per comment.",
+      });
+      return;
+    }
+
+    // Video duration validation
+    for (const file of newVideos) {
+      try {
+        const duration = await new Promise<number>((resolve, reject) => {
+          const video = document.createElement("video");
+          video.preload = "metadata";
+          video.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(video.src);
+            resolve(video.duration);
+          };
+          video.onerror = () => {
+            window.URL.revokeObjectURL(video.src);
+            reject("Cannot load video metadata");
+          };
+          video.src = window.URL.createObjectURL(file);
+        });
+
+        if (duration > 120) {
+          toast({
+            variant: "destructive",
+            description: `Video "${file.name}" exceeds the 2-minute limit.`,
+          });
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: "destructive",
+          description: `Failed to process video "${file.name}".`,
+        });
+        return;
+      }
     }
 
     setIsUploading(true);

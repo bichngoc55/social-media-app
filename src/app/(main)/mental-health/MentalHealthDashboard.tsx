@@ -373,7 +373,7 @@ export default function MentalHealthDashboard() {
                 dataKey="date"
                 tickFormatter={(date) => {
                   const d = new Date(date);
-                  return `${d.getMonth() + 1}/${d.getDate()}`;
+                  return `${d.getDate()}/${d.getMonth() + 1}`;
                 }}
               />
               <YAxis

@@ -106,8 +106,7 @@ interface ModerationCase {
     | "TEMP_REMOVE"
     | "AUTO_REMOVE";
   autoActionAppliedAt: Date | null;
-  status:
-    | "DETECTED"
+  status: // | "DETECTED"
     | "QUEUED"
     | "IN_REVIEW"
     | "CONFIRMED"
@@ -541,7 +540,7 @@ function ReportsTab() {
                             </div>
                           </div>
                         </DialogHeader>
-                        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
+                        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-1 py-4">
                           {selectedReport?.post && (
                             <div className="space-y-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-5 dark:border-orange-900 dark:from-orange-950/30 dark:to-red-950/30">
                               <div className="flex items-center justify-between">
@@ -653,7 +652,7 @@ function ReportsTab() {
                                 selectedReport?.status === "RESOLVED" ||
                                 selectedReport?.status === "DISMISSED"
                               }
-                              className="resize-none border-2 focus:border-pink-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="resize-none focus-visible:ring-muted-foreground focus-visible:ring-offset-0"
                             />
                           </div>
 
@@ -1069,7 +1068,7 @@ function AIFlagsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All status</SelectItem>
-                <SelectItem value="DETECTED">Detected</SelectItem>
+                {/* <SelectItem value="DETECTED">Detected</SelectItem> */}
                 <SelectItem value="QUEUED">Queued</SelectItem>
                 <SelectItem value="IN_REVIEW">In Review</SelectItem>
                 <SelectItem value="CONFIRMED">Confirmed</SelectItem>
@@ -1089,7 +1088,7 @@ function AIFlagsTab() {
                 <SelectItem value="LOW">Low</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            {/* <Select value={sourceFilter} onValueChange={setSourceFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All sources" />
               </SelectTrigger>
@@ -1099,7 +1098,7 @@ function AIFlagsTab() {
                 <SelectItem value="USER_REPORT">User Report</SelectItem>
                 <SelectItem value="ADMIN_MANUAL">Admin Manual</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
             <Select
               value={policyAreaFilter}
               onValueChange={setPolicyAreaFilter}
@@ -1121,7 +1120,7 @@ function AIFlagsTab() {
                 <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            {/* <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -1130,7 +1129,7 @@ function AIFlagsTab() {
                 <SelectItem value="slaDueAt">SLA</SelectItem>
                 <SelectItem value="createdAt">Created</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
           </div>
         </CardContent>
       </Card>
@@ -1173,7 +1172,7 @@ function AIFlagsTab() {
                       : "border-pink-300 hover:border-pink-400"
                 )}
               >
-                <CardContent className="space-y-3 p-5">
+                <CardContent className="space-y-3 p-8">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1284,11 +1283,11 @@ function AIFlagsTab() {
                           Review
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col border-[rgba(195,199,244,0.4)] bg-[rgba(244,231,248,0.95)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] backdrop-blur-[20px]">
+                      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col">
                         <DialogHeader className="flex-shrink-0 space-y-2">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
-                              <AlertTriangle className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                              <AlertTriangle className="h-6 w-6 text-foreground" />
                             </div>
                             <div>
                               <DialogTitle className="text-2xl font-bold">
@@ -1302,11 +1301,11 @@ function AIFlagsTab() {
                         </DialogHeader>
                         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
                           {selectedCase?.post && (
-                            <div className="space-y-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-5 dark:border-orange-900 dark:from-orange-950/30 dark:to-red-950/30">
+                            <div className="space-y-4 rounded-xl border bg-muted/50 p-5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                                  <p className="text-base font-semibold text-orange-900 dark:text-orange-200">
+                                  <AlertTriangle className="h-5 w-5 text-foreground" />
+                                  <p className="text-base font-semibold">
                                     Flagged Post
                                   </p>
                                 </div>
@@ -1316,8 +1315,8 @@ function AIFlagsTab() {
                                 </div>
                               </div>
 
-                              <div className="rounded-lg bg-white/80 p-4 dark:bg-gray-900/50">
-                                <p className="whitespace-pre-line break-words text-sm text-gray-800 dark:text-gray-200">
+                              <div className="rounded-lg border bg-background p-4">
+                                <p className="whitespace-pre-line break-words text-sm">
                                   {selectedCase.post.content}
                                 </p>
                               </div>
@@ -1325,7 +1324,7 @@ function AIFlagsTab() {
                               {selectedCase.post.attachments &&
                                 selectedCase.post.attachments.length > 0 && (
                                   <div className="space-y-2">
-                                    <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                                    <p className="text-sm font-medium">
                                       Attachments (
                                       {selectedCase.post.attachments.length}):
                                     </p>
@@ -1346,7 +1345,7 @@ function AIFlagsTab() {
                                           <div
                                             key={attachment.id}
                                             className={cn(
-                                              "group relative overflow-hidden rounded-lg border-2 border-orange-200 bg-white dark:border-orange-800 dark:bg-gray-900",
+                                              "group relative overflow-hidden rounded-lg border bg-background",
                                               selectedCase.post &&
                                                 selectedCase.post.attachments
                                                   .length === 1
@@ -1358,8 +1357,8 @@ function AIFlagsTab() {
                                               <Image
                                                 src={attachment.url}
                                                 alt="Post attachment"
-                                                width={400}
-                                                height={400}
+                                                // width={400}
+                                                // height={400}
                                                 className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                                 unoptimized
                                               />
@@ -1377,29 +1376,21 @@ function AIFlagsTab() {
                                   </div>
                                 )}
 
-                              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+                              <div className="rounded-lg border bg-background p-3">
                                 <div className="flex items-start gap-2">
                                   <div className="mt-0.5">
-                                    <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <Shield className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                                    <p className="text-sm font-medium">
                                       AI Detection Details
                                     </p>
-                                    <div className="mt-1 space-y-1 text-xs text-blue-800 dark:text-blue-300">
+                                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
                                       <p>
                                         <span className="font-medium">
                                           Model:
                                         </span>{" "}
                                         {selectedCase.modelVersion || "N/A"}
-                                      </p>
-                                      <p>
-                                        <span className="font-medium">
-                                          Confidence:
-                                        </span>{" "}
-                                        {selectedCase.confidence
-                                          ? `${Math.round(selectedCase.confidence * 100)}%`
-                                          : "N/A"}
                                       </p>
                                       <p>
                                         <span className="font-medium">
@@ -1437,7 +1428,7 @@ function AIFlagsTab() {
                                     selectedCase.status === "DISMISSED"
                                   }
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="focus:ring-muted-foreground">
                                     <SelectValue placeholder="Select decision" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1470,7 +1461,7 @@ function AIFlagsTab() {
                                       value={policyArea}
                                       onValueChange={setPolicyArea}
                                     >
-                                      <SelectTrigger>
+                                      <SelectTrigger className="focus:ring-muted-foreground">
                                         <SelectValue placeholder="Select policy area" />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -1539,7 +1530,7 @@ function AIFlagsTab() {
                                     selectedCase.status === "RESTORED" ||
                                     selectedCase.status === "DISMISSED"
                                   }
-                                  className="resize-none border-2 focus:border-pink-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
+                                  className="resize-none focus-visible:ring-muted-foreground"
                                 />
                               </div>
                             </div>
@@ -1549,7 +1540,7 @@ function AIFlagsTab() {
                           {selectedCase?.status === "CONFIRMED" ||
                           selectedCase?.status === "RESTORED" ||
                           selectedCase?.status === "DISMISSED" ? (
-                            <div className="w-full rounded-lg border-2 border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20">
+                            <div className="w-full rounded-lg border bg-muted/50 p-3">
                               <div className="flex items-center gap-2">
                                 <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 <p className="text-sm font-medium text-green-900 dark:text-green-200">
@@ -1569,7 +1560,7 @@ function AIFlagsTab() {
                                   !decision ||
                                   (!!decision && !policyArea)
                                 }
-                                className="flex-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                                className="flex-1 rounded-full"
                               >
                                 <Check className="mr-2 h-4 w-4" />
                                 Submit Decision

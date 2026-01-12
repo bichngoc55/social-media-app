@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, LogOutIcon, Monitor, Moon, Sun, UserIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +29,26 @@ interface UserButtonProps {
 
 export default function UserButton({ className }: UserButtonProps) {
   const { user } = useSession();
-
   const { theme, setTheme } = useTheme();
-
   const queryClient = useQueryClient();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <button
+        className={cn(
+          "btn-glow flex-none rounded-full transition-all duration-300 hover:scale-110",
+          className
+        )}
+      >
+        <UserAvatar avatarUrl={user.avatarUrl} size={40} />
+      </button>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -93,6 +110,7 @@ export default function UserButton({ className }: UserButtonProps) {
           onClick={() => {
             queryClient.clear();
             localStorage.removeItem(SEEN_POSTS_KEY);
+            localStorage.removeItem("isAnalyzedPostWithGemini");
             console.log("localStorage cleared", localStorage.length);
 
             logout();

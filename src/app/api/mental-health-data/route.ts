@@ -10,12 +10,24 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user's current general emotion (updated from latest post)
     const currentUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
         generalEmotion: true,
+      },
+    });
+
+    // Get latest post's AI-analyzed emotion score
+    const latestPost = await prisma.post.findFirst({
+      where: {
+        userId: user.id,
+        emotionScore: { not: null },
+      },
+      select: {
         emotionScore: true,
       },
+      orderBy: { createdAt: "desc" },
     });
 
     const thirtyDaysAgo = new Date();
@@ -41,28 +53,31 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    // Get the newest post per day (not daily average)
     const emotionHistory = recentPosts.reduce(
       (acc, post) => {
         const dateKey = post.createdAt.toISOString().split("T")[0];
-        if (!acc[dateKey]) {
+        if (!acc[dateKey] || post.createdAt > acc[dateKey].timestamp) {
           acc[dateKey] = {
             date: dateKey,
-            scores: [],
-            emotions: [],
+            score: post.emotionScore || 0,
+            emotion: post.emotions,
+            timestamp: post.createdAt,
           };
         }
-        acc[dateKey].scores.push(post.emotionScore || 0);
-        acc[dateKey].emotions.push(post.emotions);
         return acc;
       },
-      {} as Record<string, { date: string; scores: number[]; emotions: any[] }>
+      {} as Record<
+        string,
+        { date: string; score: number; emotion: any; timestamp: Date }
+      >
     );
 
     const chartData = Object.values(emotionHistory)
       .map((day) => ({
         date: day.date,
-        avgScore: day.scores.reduce((a, b) => a + b, 0) / day.scores.length,
-        emotion: day.emotions[0],
+        avgScore: day.score,
+        emotion: day.emotion,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -108,8 +123,8 @@ export async function GET() {
     });
     // console.log("Latest post with wisdom:", latestPostWithWisdom);
     return NextResponse.json({
-      currentEmotion: currentUser?.generalEmotion,
-      currentScore: currentUser?.emotionScore,
+      currentEmotion: currentUser?.generalEmotion || "NEUTRAL",
+      currentScore: latestPost?.emotionScore || 0.5,
       chartData,
       alerts,
       recentPostsCount: recentPosts.length,

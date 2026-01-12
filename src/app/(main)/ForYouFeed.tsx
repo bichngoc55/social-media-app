@@ -59,7 +59,9 @@ export default function ForYouFeed() {
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  if (!isReady || status === "pending") return <PostsLoadingSkeleton />;
+  if (!isReady || status === "pending") {
+    return <PostsLoadingSkeleton />;
+  }
 
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
@@ -79,21 +81,16 @@ export default function ForYouFeed() {
   }
 
   return (
-    <div className="space-y-5">
-      <InfiniteScrollContainer
-        className="space-y-5"
-        onBottomReached={() => {
-          if (hasNextPage && !isFetching && !isFetchingNextPage)
-            fetchNextPage();
-        }}
-      >
-        {posts.map((post) => (
-          <Post key={post.id} post={post} />
-        ))}
-        {isFetchingNextPage && (
-          <Loader2 className="mx-auto my-3 animate-spin" />
-        )}
-      </InfiniteScrollContainer>
-    </div>
+    <InfiniteScrollContainer
+      className="space-y-5"
+      onBottomReached={() => {
+        if (hasNextPage && !isFetching && !isFetchingNextPage) fetchNextPage();
+      }}
+    >
+      {posts.map((post) => (
+        <Post key={post.id} post={post} />
+      ))}
+      {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
+    </InfiniteScrollContainer>
   );
 }

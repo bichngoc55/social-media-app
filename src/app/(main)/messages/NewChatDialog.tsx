@@ -85,7 +85,7 @@ export default function NewChatDialog({
 
         if (!mutualFollowData.isMutualFollow) {
           throw new Error(
-            `Bạn và ${selectedUser.name} cần follow lẫn nhau để nhắn tin`
+            `You and ${selectedUser.name} must follow each other to message`
           );
         }
       }
@@ -127,7 +127,12 @@ export default function NewChatDialog({
         })
       );
 
-      const channel = client.channel("messaging", {
+      const channelId =
+        selectedUsers.length === 1 && allUserIds.length === 2
+          ? [...allUserIds].sort().join("-")
+          : undefined;
+
+      const channel = client.channel("messaging", channelId, {
         members: allUserIds,
         name:
           selectedUsers.length > 1
@@ -191,8 +196,8 @@ export default function NewChatDialog({
           <div className="h-96 overflow-y-auto">
             {!searchInputDebounced || searchInputDebounced.trim().length < 2 ? (
               <p className="my-3 text-center text-muted-foreground">
-                Chỉ có thể nhắn tin với những người đã follow lẫn nhau. Hãy nhập
-                ít nhất 2 ký tự để tìm kiếm.
+                You can only message users who follow each other. Please enter
+                at least 2 characters to search.
               </p>
             ) : (
               <>
@@ -213,8 +218,8 @@ export default function NewChatDialog({
                   ))}
                 {isSuccess && streamUsers.length === 0 && (
                   <p className="my-3 text-center text-muted-foreground">
-                    Không tìm thấy user đã follow lẫn nhau. Chỉ có thể nhắn tin
-                    với những người đã follow lẫn nhau.
+                    No mutual followers found. You can only message users who
+                    follow each other.
                   </p>
                 )}
                 {isFetching && (
@@ -222,7 +227,7 @@ export default function NewChatDialog({
                 )}
                 {isError && (
                   <p className="my-3 text-center text-destructive">
-                    Có lỗi xảy ra khi tải danh sách users. Vui lòng thử lại.
+                    An error occurred while loading users. Please try again.
                   </p>
                 )}
               </>

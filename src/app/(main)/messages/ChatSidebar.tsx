@@ -59,14 +59,14 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
         showChannelSearch
         options={{ state: true, presence: true, limit: 8 }}
         sort={{ last_message_at: -1 }}
-        additionalChannelSearchProps={{
-          searchForChannels: true,
-          searchQueryParams: {
-            channelFilters: {
-              filters: { members: { $in: [user.id] } },
-            },
-          },
-        }}
+        // additionalChannelSearchProps={{
+        //   searchForChannels: true,
+        //   searchQueryParams: {
+        //     channelFilters: {
+        //       filters: { members: { $in: [user.id] } },
+        //     },
+        //   },
+        // }}
         Preview={ChannelPreviewCustom}
       />
     </div>

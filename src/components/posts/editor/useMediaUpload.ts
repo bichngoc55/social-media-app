@@ -1,6 +1,22 @@
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
 
+function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+    video.onerror = () => {
+      window.URL.revokeObjectURL(video.src);
+      reject("Cannot load video metadata");
+    };
+    video.src = window.URL.createObjectURL(file);
+  });
+}
+
 export interface Attachment {
   file: File;
   mediaId?: string;
@@ -86,6 +102,33 @@ export default function useMediaUpload() {
       });
       return;
     }
+
+    const currentImages = attachments.filter((a) =>
+      a.file.type.startsWith("image/")
+    ).length;
+    const currentVideos = attachments.filter((a) =>
+      a.file.type.startsWith("video/")
+    ).length;
+
+    const newImages = files.filter((f) => f.type.startsWith("image/")).length;
+    const newVideos = files.filter((f) => f.type.startsWith("video/")).length;
+
+    if (currentImages + newImages > 4) {
+      toast({
+        variant: "destructive",
+        description: "You can only upload up to 4 images per post.",
+      });
+      return;
+    }
+
+    if (currentVideos + newVideos > 2) {
+      toast({
+        variant: "destructive",
+        description: "You can only upload up to 2 videos per post.",
+      });
+      return;
+    }
+
     const ALLOWED_IMAGE_TYPES = [
       "image/bmp",
       "image/gif",
@@ -99,11 +142,30 @@ export default function useMediaUpload() {
         !file.type.startsWith("video/")
       ) {
         toast({
-          title: "Unsupported image format",
-          description: "Only BMP, GIF, JPG, and PNG formats are allowed.",
+          title: "Unsupported file format",
+          description: "Only BMP, GIF, JPG, PNG images and videos are allowed.",
           variant: "destructive",
         });
         return;
+      }
+
+      if (file.type.startsWith("video/")) {
+        try {
+          const duration = await getVideoDuration(file);
+          if (duration > 120) {
+            toast({
+              variant: "destructive",
+              description: `Video "${file.name}" exceeds the 2-minute limit.`,
+            });
+            return;
+          }
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            description: `Failed to check video duration for "${file.name}".`,
+          });
+          return;
+        }
       }
     }
 

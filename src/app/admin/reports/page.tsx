@@ -384,11 +384,11 @@ export default function AdminReportsPage() {
                           Review
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col border-[rgba(195,199,244,0.4)] bg-[rgba(244,231,248,0.95)] shadow-[0_8px_32px_0_rgba(227,170,221,0.25)] backdrop-blur-[20px]">
+                      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col">
                         <DialogHeader className="flex-shrink-0 space-y-2">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
-                              <Flag className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br">
+                              <Flag className="h-6 w-6 text-pink-600" />
                             </div>
                             <div>
                               <DialogTitle className="text-2xl font-bold">
@@ -498,7 +498,7 @@ export default function AdminReportsPage() {
                             </div>
                           )}
 
-                          <div className="space-y-2">
+                          <div className="">
                             <label className="text-sm font-semibold">
                               Admin Notes
                             </label>
@@ -511,7 +511,7 @@ export default function AdminReportsPage() {
                                 selectedReport?.status === "RESOLVED" ||
                                 selectedReport?.status === "DISMISSED"
                               }
-                              className="resize-none border-2 focus:border-pink-400 focus:ring-pink-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="resize-none focus-visible:ring-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
                             />
                           </div>
 

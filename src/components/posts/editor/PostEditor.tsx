@@ -93,6 +93,10 @@ export default function PostEditor() {
 
   function onSubmit() {
     if (isTooLong) return;
+
+    const storedValue = localStorage.getItem("isAnalyzedPostWithGemini");
+    const isAnalyzed = storedValue !== "false";
+
     mutation.mutate(
       {
         content: input,
@@ -100,6 +104,7 @@ export default function PostEditor() {
         privacy,
         mediaLayout: mediaLayout || undefined,
         taggedUserIds: taggedUsers.map((u) => u.id),
+        isAnalyzed,
       },
       {
         onSuccess: () => {
@@ -128,7 +133,7 @@ export default function PostEditor() {
   };
 
   return (
-    <div className="card-glass slide-up post-hover-lift flex flex-col gap-5 rounded-2xl p-6">
+    <div className="card-glass post-hover-lift flex min-h-fit flex-col gap-5 rounded-2xl p-6 pb-20 sm:pb-6">
       <div className="flex gap-5">
         <UserAvatar avatarUrl={user.avatarUrl} className="hidden sm:inline" />
         <div {...rootProps} className="w-full">
@@ -169,7 +174,7 @@ export default function PostEditor() {
           />
         </>
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse justify-between gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <PrivacySelector privacy={privacy} onPrivacyChange={setPrivacy} />
           <UserTaggingEditor
@@ -178,7 +183,7 @@ export default function PostEditor() {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-3">
           <span
             className={cn(
               "text-xs font-medium",
@@ -193,17 +198,19 @@ export default function PostEditor() {
               <Loader2 className="size-5 animate-spin text-primary" />
             </>
           )}
-          <AddAttachmentsButton
-            onFilesSelected={startUpload}
-            disabled={isUploading || attachments.length >= 5}
-          />
+          {attachments.length === 0 && (
+            <AddAttachmentsButton
+              onFilesSelected={startUpload}
+              disabled={isUploading || attachments.length >= 6}
+            />
+          )}
           <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-white/20 hover:text-primary"
+                className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
               >
                 <Smile size={20} />
               </Button>
@@ -330,7 +337,7 @@ function AddAttachmentsButton({
       <Button
         variant="ghost"
         size="icon"
-        className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-white/20 hover:text-primary"
+        className="btn-glow rounded-full text-primary transition-all duration-300 hover:bg-black/5 hover:text-primary dark:hover:bg-white/5"
         disabled={disabled}
         onClick={() => fileInputRef.current?.click()}
       >

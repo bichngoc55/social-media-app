@@ -502,7 +502,7 @@ function CommentButton({ post, onClick }: CommentButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-white/20"
+      className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5"
     >
       <MessageSquare className="size-5 transition-all duration-300" />
       <span className="text-sm font-medium tabular-nums">

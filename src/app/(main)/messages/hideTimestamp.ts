@@ -113,9 +113,17 @@ export function hideTimestamps() {
         });
       });
     });
-    observer.observe(chatContainer!, {
-      childList: true,
-      subtree: true,
-    });
+
+    // Tìm lại container nếu cần
+    const targetContainer =
+      chatContainer ||
+      document.querySelector(".str-chat__list, [class*='chat__list']");
+
+    if (targetContainer) {
+      observer.observe(targetContainer, {
+        childList: true,
+        subtree: true,
+      });
+    }
   }, 1000);
 }

@@ -183,6 +183,26 @@ export async function analyzePostWithGemini(
   const tagList = INTEREST_TAGS.join(", ");
   const harmfulList = VALID_HARMFUL_TYPES.join(", ");
   const prompt = `Analyze this social media post (caption + image/video if present). Return ONLY a single valid JSON object, no markdown, no explanation, no extra text.
+
+PRIORITY INSTRUCTION:
+1. Analyze the emotional state primarily from the text content.
+2. Use the image/video only to support, adjust, or detect inconsistencies with the text sentiment.
+3. EXCEPTION: If the text is very short, or consists mainly of emojis/hashtags, rely primarily on the image/video for sentiment analysis.
+
+CRITICAL INSTRUCTION FOR "sentimentScore":
+- For HARMFUL content: sentimentScore must be between 0.1 and 0.25 (most negative/dangerous)
+- For normal negative content (not harmful): between 0.25 and 0.45
+- For neutral content: between 0.45 and 0.6
+  * Simple questions, requests for information/recommendations
+  * Factual statements without strong emotion
+  * Polite inquiries (even with "thank you", "please", etc)
+  * Asking for help or advice without expressing happiness
+  * IMPORTANT: Politeness does NOT equal positive emotion
+- For positive content: between 0.6 and 1.0
+  * ONLY if expressing clear joy, excitement, happiness, gratitude, pride, celebration, or enthusiasm
+  * Must contain emotional indicators like "so happy", "amazing", "love", "excited", emojis like 😊🎉❤️
+  * Not just polite - must show GENUINE positive emotion
+
 CRITICAL INSTRUCTION FOR "topics":
 The "topics" array must contain 2-5 items. 
 - At least ONE item MUST be chosen exactly from this list: [${tagList}]. 

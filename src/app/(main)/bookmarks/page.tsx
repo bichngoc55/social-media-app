@@ -211,7 +211,10 @@ export default function BookmarksPage() {
               </div>
               <div className="hidden items-center gap-2 sm:flex">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
+                <span
+                  className="text-sm text-muted-foreground"
+                  suppressHydrationWarning
+                >
                   Cập nhật lần cuối: {new Date().toLocaleTimeString("vi-VN")}
                 </span>
               </div>

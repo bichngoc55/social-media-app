@@ -150,14 +150,14 @@
   }
 
   .card-glass:hover {
-    transform: scale(1.01);
-    box-shadow: 0 12px 35px 0 rgba(227, 170, 221, 0.3);
+    transform: scale(1.002);
+    box-shadow: 0 8px 30px 0 rgba(227, 170, 221, 0.25);
     background: rgba(244, 231, 248, 0.9);
     z-index: 5;
   }
 
   .dark .card-glass:hover {
-    box-shadow: 0 12px 35px 0 rgba(0, 0, 0, 0.7);
+    box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.6);
     background: rgba(0, 0, 0, 0.9);
   }
 
@@ -177,8 +177,8 @@
   }
 
   .card-elevated:hover {
-    transform: scale(1.01);
-    box-shadow: 0 12px 40px 0 rgba(227, 170, 221, 0.35);
+    transform: scale(1.005);
+    /* box-shadow: 0 12px 40px 0 rgba(227, 170, 221, 0.35); */
   }
 
   .gradient-text {
@@ -215,15 +215,16 @@
       rgba(255, 255, 255, 0.6),
       transparent
     );
-    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: left 0s;
   }
 
   .btn-glow:hover::before {
     left: 100%;
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-glow:hover {
-    transform: scale(1.05);
+    transform: scale(1.02);
   }
 
   .sidebar-item {
@@ -252,7 +253,7 @@
   }
 
   .post-hover-lift:hover {
-    transform: scale(1.02);
+    transform: scale(1);
     box-shadow: 0 15px 40px 0 rgba(227, 170, 221, 0.4);
     background: rgba(244, 231, 248, 0.95);
     z-index: 10;

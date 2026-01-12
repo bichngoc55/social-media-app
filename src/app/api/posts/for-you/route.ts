@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         Cookie: req.headers.get("cookie") || "",
       },
       body: JSON.stringify({ excludeIds: excludePostIds }),
-      next: { revalidate: 60 }, // Cache results for 60 seconds
+      cache: "no-store",
     }).then((res) => res.json());
 
     if (!response.posts || response.posts.length === 0) {

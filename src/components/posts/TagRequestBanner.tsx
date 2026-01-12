@@ -48,8 +48,11 @@ export default function TagRequestBanner({
         );
 
         setPendingTag(pending || null);
-      } catch (error) {
-        console.error("Error fetching tag requests:", error);
+      } catch (error: any) {
+        // Silently handle 401 errors (user not authenticated yet)
+        if (error?.response?.status !== 401) {
+          console.error("Error fetching tag requests:", error);
+        }
       } finally {
         setIsLoading(false);
       }

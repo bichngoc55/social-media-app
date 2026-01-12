@@ -29,6 +29,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import UserAvatar from "@/components/UserAvatar";
 
 interface Appeal {
   id: string;
@@ -236,18 +237,10 @@ export default function AdminAppealsPage() {
                     {/* User Info */}
                     <div className="flex items-center gap-3">
                       <Link href={`/users/${appeal.user.username}`}>
-                        <div className="relative h-10 w-10 overflow-hidden rounded-full">
-                          {appeal.user.avatarUrl ? (
-                            <Image
-                              src={appeal.user.avatarUrl}
-                              alt={appeal.user.displayName}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-muted" />
-                          )}
-                        </div>
+                        <UserAvatar
+                          avatarUrl={appeal.user.avatarUrl}
+                          size={40}
+                        />
                       </Link>
                       <div>
                         <Link

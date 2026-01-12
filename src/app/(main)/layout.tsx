@@ -8,14 +8,16 @@ import SocketProvider from "./SocketProvider";
 import { MusicPlayerProvider } from "./MusicPlayerContext";
 import GlobalMusicPlayer from "./GlobalMusicPlayer";
 
+import MenuBar from "./MenuBar";
+
 // Lazy load components để giảm initial bundle
 const Navbar = dynamic(() => import("./Navbar"), {
   ssr: true,
 });
 
-const MenuBar = dynamic(() => import("./MenuBar"), {
-  ssr: true,
-});
+// const MenuBar = dynamic(() => import("./MenuBar"), {
+//   ssr: true,
+// });
 
 const checkOnboarding = cache(async (userId: string) => {
   const user = await prisma.user.findUnique({

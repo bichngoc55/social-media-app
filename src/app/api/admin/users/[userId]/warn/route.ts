@@ -12,7 +12,7 @@ export async function POST(
     const admin = await requireAdmin();
     const { userId } = await params;
     const body = await req.json();
-    const { message, deadline } = body;
+    const { message, deadline, postId } = body;
 
     // Calculate violation rate and check if warning is allowed
     const violationRate = await calculateUserViolationRate(userId);
@@ -26,8 +26,9 @@ export async function POST(
     }
 
     // Use default message if not provided
+    // Updated to English
     const defaultMessage =
-      "Bạn đã bị báo cáo, hệ thống cảnh báo bạn, bạn  72 giờ để kháng nghị.";
+      "You have been reported. The system has issued a warning. You have 72 hours to appeal.";
     const warningMessage = message || defaultMessage;
 
     // Calculate deadline (72 hours from now) if not provided
@@ -81,6 +82,28 @@ export async function POST(
       ? new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 hours
       : null;
 
+    let targetPostId = postId;
+
+    // If no postId provided, try to find the most recent harmful post for this user
+    if (!targetPostId) {
+      const latestHarmfulPost = await prisma.post.findFirst({
+        where: {
+          userId: userId,
+          harmful: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (latestHarmfulPost) {
+        targetPostId = latestHarmfulPost.id;
+      }
+    }
+
     // Create warning record
     const warning = await prisma.userWarning.create({
       data: {
@@ -88,7 +111,7 @@ export async function POST(
         issuedBy: admin.id,
         message: warningMessage,
         deadline: deadlineDate,
-        postId: null,
+        postId: targetPostId || null,
       },
     });
 

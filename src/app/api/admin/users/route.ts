@@ -68,13 +68,10 @@ export async function GET(req: NextRequest) {
     // Calculate report statistics for each user
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-        // Get total posts in last 30 days
+        // Get total posts (all time)
         const totalPosts = await prisma.post.count({
           where: {
             userId: user.id,
-            createdAt: { gte: thirtyDaysAgo },
           },
         });
 
@@ -99,7 +96,6 @@ export async function GET(req: NextRequest) {
             source: "AI",
             status: { in: ["QUEUED", "IN_REVIEW"] },
             postId: { not: null },
-            createdAt: { gte: thirtyDaysAgo },
           },
           select: { postId: true },
         });
@@ -109,7 +105,6 @@ export async function GET(req: NextRequest) {
           where: {
             reportedId: user.id,
             postId: { not: null },
-            createdAt: { gte: thirtyDaysAgo },
           },
           select: { postId: true },
         });

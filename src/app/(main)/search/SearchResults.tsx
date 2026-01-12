@@ -70,7 +70,11 @@ export default function SearchResults({ query }: SearchResultsProps) {
 
   // 3. Derived Data
   const posts =
-    postsQuery.data?.pages.flatMap((page) => page.posts || []) || [];
+    postsQuery.data?.pages
+      .flatMap((page) => page.posts || [])
+      .filter(
+        (post, index, self) => index === self.findIndex((t) => t.id === post.id)
+      ) || [];
   const users = usersQuery.data?.users || [];
 
   // Get emotion analysis from the first page of results

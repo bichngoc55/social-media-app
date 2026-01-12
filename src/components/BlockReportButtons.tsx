@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   UserX,
   Flag,
@@ -63,6 +64,7 @@ export default function BlockReportButtons({
   const [reportReason, setReportReason] = useState("");
   const [currentBlockStatus, setCurrentBlockStatus] = useState(isBlocked);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleBlockUser = async () => {
     if (!blockReason.trim()) {
@@ -95,6 +97,10 @@ export default function BlockReportButtons({
       setIsBlockDialogOpen(false);
       setBlockReason("");
       setCurrentBlockStatus(true);
+
+      // Invalidate queries to refresh feed and recommendations immediately
+      queryClient.invalidateQueries({ queryKey: ["post-feed"] });
+      queryClient.invalidateQueries({ queryKey: ["trends"] });
 
       toast({
         title: "Thành công",

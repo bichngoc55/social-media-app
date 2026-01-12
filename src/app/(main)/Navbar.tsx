@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <header className="card-elevated sticky top-0 z-10">
+    <header className="card-elevated sticky top-0 z-50">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-5 px-5 py-3">
         <Link
           href="/"

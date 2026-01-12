@@ -61,7 +61,7 @@ export default function LikeButton({ postId, initialState }: LikeButtonProps) {
   return (
     <button
       onClick={() => mutate()}
-      className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-white/20"
+      className="btn-glow flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 hover:bg-black/5 dark:hover:bg-white/5"
     >
       <Heart
         className={cn(

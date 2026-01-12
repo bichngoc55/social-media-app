@@ -124,7 +124,7 @@ export default function SearchField() {
 
         // Replace '/api/search' with your actual endpoint
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(debouncedQuery)}`,
+          `/api/search/semantic?q=${encodeURIComponent(debouncedQuery)}`,
           {
             signal: abortControllerRef.current.signal,
           }
@@ -132,7 +132,8 @@ export default function SearchField() {
 
         if (!response.ok) throw new Error("Search failed");
 
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.posts || [];
 
         // Update State
         setSuggestions(data); // Assuming data is Suggestion[]

@@ -335,9 +335,9 @@ export default function AdminUsersPage() {
                       <th className="p-3 text-left text-sm font-semibold">
                         Role
                       </th>
-                      <th className="p-3 text-left text-sm font-semibold">
+                      {/* <th className="p-3 text-left text-sm font-semibold">
                         Stats
-                      </th>
+                      </th> */}
                       <th className="p-3 text-left text-sm font-semibold">
                         <button
                           onClick={handleSortByReport}
@@ -403,11 +403,11 @@ export default function AdminUsersPage() {
                             {user.role}
                           </Badge>
                         </td>
-                        <td className="p-3 text-xs">
+                        {/* <td className="p-3 text-xs">
                           <div>Posts: {user._count.posts}</div>
                           <div>Followers: {user._count.followers}</div>
                           <div>Following: {user._count.following}</div>
-                        </td>
+                        </td> */}
                         <td className="p-3">
                           {user.reportStats ? (
                             <div className="min-w-[200px] max-w-[240px] space-y-2">
@@ -500,24 +500,6 @@ export default function AdminUsersPage() {
                                           aiOnlyPercent > 0 &&
                                           (currentLeft += aiOnlyPercent)}
 
-                                        {/* Both (Purple-Pink) - overlap */}
-                                        {both > 0 && bothPercent > 0 && (
-                                          <div
-                                            className="absolute top-0 z-10 h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 shadow-sm transition-all duration-500 ease-out dark:from-purple-600 dark:via-pink-600 dark:to-purple-700"
-                                            style={{
-                                              left: `${currentLeft}%`,
-                                              width: `${bothPercent}%`,
-                                              fontSize: 0,
-                                              lineHeight: 0,
-                                              color: "transparent",
-                                            }}
-                                            title={`Cả AI và User: ${both} bài`}
-                                          />
-                                        )}
-                                        {both > 0 &&
-                                          bothPercent > 0 &&
-                                          (currentLeft += bothPercent)}
-
                                         {/* User Only (Pink-Orange) - rightmost */}
                                         {userOnly > 0 &&
                                           userOnlyPercent > 0 && (
@@ -586,17 +568,6 @@ export default function AdminUsersPage() {
                                     </span>
                                   </span>
                                 </div>
-                                {user.reportStats.bothDetectedPosts > 0 && (
-                                  <div className="group/legend flex items-center gap-1.5">
-                                    <div className="ring-1.5 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-sm ring-purple-200/50 transition-all group-hover/legend:ring-purple-300/70 dark:from-purple-600 dark:to-pink-600 dark:ring-purple-800/50 dark:group-hover/legend:ring-purple-700/70" />
-                                    <span className="font-semibold text-purple-600 dark:text-purple-400">
-                                      Both:{" "}
-                                      <span className="font-bold">
-                                        {user.reportStats.bothDetectedPosts}
-                                      </span>
-                                    </span>
-                                  </div>
-                                )}
                               </div>
 
                               {/* Summary */}
@@ -685,7 +656,8 @@ export default function AdminUsersPage() {
                               </Button>
                             </div>
                             {user.bannedUntil &&
-                              new Date(user.bannedUntil) > new Date() && (
+                              new Date(user.bannedUntil) > new Date() &&
+                              user.status !== false && (
                                 <div className="text-[9px] font-semibold text-red-600 dark:text-red-400">
                                   Banned until:{" "}
                                   {formatDateTime(user.bannedUntil)}

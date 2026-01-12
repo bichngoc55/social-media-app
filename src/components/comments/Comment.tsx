@@ -65,13 +65,21 @@ export default function Comment({
                   key={media.id}
                   className="relative h-32 w-32 overflow-hidden rounded-lg border"
                 >
-                  <Image
-                    src={media.url}
-                    alt="Comment attachment"
-                    fill
-                    className="cursor-pointer object-cover hover:opacity-90"
-                    onClick={() => window.open(media.url, "_blank")}
-                  />
+                  {media.type === "IMAGE" ? (
+                    <Image
+                      src={media.url}
+                      alt="Comment attachment"
+                      fill
+                      className="cursor-pointer object-cover hover:opacity-90"
+                      onClick={() => window.open(media.url, "_blank")}
+                    />
+                  ) : (
+                    <video
+                      src={media.url}
+                      className="h-full w-full cursor-pointer object-cover"
+                      controls
+                    />
+                  )}
                 </div>
               ))}
             </div>

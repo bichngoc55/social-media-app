@@ -21,6 +21,11 @@ export async function submitComment({
   if (!user) throw "Unauthorized";
 
   const { content: contentValidated } = createCommentSchema.parse({ content });
+
+  if (!contentValidated && mediaIds.length === 0) {
+    throw new Error("Comment cannot be empty");
+  }
+
   // Load post and its author from DB (plain JS objects) to avoid passing
   // complex objects from the client into a server action.
   const post = await prisma.post.findUnique({

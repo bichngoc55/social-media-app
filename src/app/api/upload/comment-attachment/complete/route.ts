@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { fileName } = await req.json();
+    const { fileName, contentType } = await req.json();
 
     // Try to make the file publicly accessible (best effort)
     try {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const media = await prisma.media.create({
       data: {
         url: getPublicUrl(fileName),
-        type: "IMAGE",
+        type: contentType.startsWith("video/") ? "VIDEO" : "IMAGE",
       },
     });
 

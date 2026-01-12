@@ -11,16 +11,29 @@ export async function POST(req: NextRequest) {
 
     const { contentType, fileSize } = await req.json();
 
-    if (!contentType.startsWith("image/")) {
+    const isImage = contentType.startsWith("image/");
+    const isVideo = contentType.startsWith("video/");
+
+    if (!isImage && !isVideo) {
       return Response.json(
-        { error: "Only images are allowed" },
+        { error: "Only images and videos are allowed" },
         { status: 400 }
       );
     }
 
-    if (fileSize > 2 * 1024 * 1024) {
+    const imageLimit = 20 * 1024 * 1024; // 20MB
+    const videoLimit = 64 * 1024 * 1024; // 64MB
+
+    if (isImage && fileSize > imageLimit) {
       return Response.json(
-        { error: "File too large. Max 2MB" },
+        { error: "Image too large. Max 20MB" },
+        { status: 400 }
+      );
+    }
+
+    if (isVideo && fileSize > videoLimit) {
+      return Response.json(
+        { error: "Video too large. Max 64MB" },
         { status: 400 }
       );
     }
@@ -32,7 +45,7 @@ export async function POST(req: NextRequest) {
       fileName,
       contentType,
       15,
-      2 * 1024 * 1024
+      isVideo ? videoLimit : imageLimit
     );
 
     return Response.json({ uploadUrl, fileName });

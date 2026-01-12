@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
@@ -144,7 +143,7 @@ export default function WarningsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-orange-500" />
-            Warning List
+            Warning
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -216,14 +215,11 @@ export default function WarningsPage() {
                           </span>
                         </div>
                         <div className="relative">
-                          <div className="absolute -left-2 top-2 z-10 rounded-full bg-orange-500 p-1.5 shadow-lg">
-                            <AlertTriangle className="h-4 w-4 text-white" />
-                          </div>
                           <div className="border-l-4 border-orange-500 pl-4">
                             <Post post={warning.post as PostDataLightweight} />
                           </div>
                         </div>
-                        {!isDeadlinePassed(warning.deadline) && (
+                        {/* {!isDeadlinePassed(warning.deadline) && (
                           <div className="flex justify-end">
                             <Button
                               variant="default"
@@ -236,7 +232,7 @@ export default function WarningsPage() {
                               Appeal this post
                             </Button>
                           </div>
-                        )}
+                        )} */}
                       </div>
                     )}
                   </CardContent>

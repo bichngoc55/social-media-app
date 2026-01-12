@@ -19,13 +19,17 @@ export async function submitPost(input: {
   privacy: "DRAFT" | "FOLLOWERS" | "PUBLIC";
   mediaLayout?: "GRID" | "CAROUSEL" | "COLUMNS" | "FRAME";
   taggedUserIds?: string[];
+  isAnalyzed?: boolean;
 }) {
   const { user } = await validateRequest();
 
   if (!user) throw new Error("Unauthorized");
   console.log("Submitting post for user ID:", user.id);
 
-  const parsed = createPostSchema.parse(input);
+  const { isAnalyzed = true, ...postData } = input;
+  console.log("🚀 ~ submitPost ~ isAnalyzed:", isAnalyzed);
+
+  const parsed = createPostSchema.parse(postData);
   const {
     content,
     mediaIds,
@@ -116,51 +120,53 @@ export async function submitPost(input: {
 
   // Process post analysis, embeddings, and notifications in background (non-blocking)
   Promise.all([
-    (async () => {
-      try {
-        const imageUrl = newPost.attachments.find(
-          (m) => m.type === "IMAGE"
-        )?.url;
-        const videoUrl = newPost.attachments.find(
-          (m) => m.type === "VIDEO"
-        )?.url;
+    isAnalyzed
+      ? (async () => {
+          try {
+            const imageUrl = newPost.attachments.find(
+              (m) => m.type === "IMAGE"
+            )?.url;
+            const videoUrl = newPost.attachments.find(
+              (m) => m.type === "VIDEO"
+            )?.url;
 
-        // Generate both embeddings and analysis in parallel
-        const [multimodalEmbedding, geminiAnalysis] = await Promise.all([
-          getMultimodalEmbedding(
-            content || undefined,
-            imageUrl ?? undefined,
-            videoUrl ?? undefined
-          ),
-          analyzePostWithGemini(
-            content || undefined,
-            imageUrl ?? undefined,
-            videoUrl ?? undefined
-          ),
-        ]);
-        console.log(
-          "Gemini analysis for post ID",
-          newPost.id,
-          ":",
-          geminiAnalysis
-        );
+            // Generate both embeddings and analysis in parallel
+            const [multimodalEmbedding, geminiAnalysis] = await Promise.all([
+              getMultimodalEmbedding(
+                content || undefined,
+                imageUrl ?? undefined,
+                videoUrl ?? undefined
+              ),
+              analyzePostWithGemini(
+                content || undefined,
+                imageUrl ?? undefined,
+                videoUrl ?? undefined
+              ),
+            ]);
+            console.log(
+              "Gemini analysis for post ID",
+              newPost.id,
+              ":",
+              geminiAnalysis
+            );
 
-        analysis = geminiAnalysis;
-        const normalizedMultimodalVector = normalizeVector(multimodalEmbedding);
+            analysis = geminiAnalysis;
+            const normalizedMultimodalVector =
+              normalizeVector(multimodalEmbedding);
 
-        // Generate embeddings for each topic
-        const topicEmbeddings = await Promise.all(
-          analysis.topics.map((topic) => getTextEmbedding(topic))
-        );
+            // Generate embeddings for each topic
+            const topicEmbeddings = await Promise.all(
+              analysis.topics.map((topic) => getTextEmbedding(topic))
+            );
 
-        // Format embeddings for PostgreSQL vector type
-        const embeddingString = `[${normalizedMultimodalVector.join(",")}]`;
-        const topicEmbeddingsArray = topicEmbeddings.map(
-          (emb) => `[${emb.join(",")}]`
-        );
-        try {
-          await prisma.$executeRawUnsafe(
-            `
+            // Format embeddings for PostgreSQL vector type
+            const embeddingString = `[${normalizedMultimodalVector.join(",")}]`;
+            const topicEmbeddingsArray = topicEmbeddings.map(
+              (emb) => `[${emb.join(",")}]`
+            );
+            try {
+              await prisma.$executeRawUnsafe(
+                `
           UPDATE "posts"
           SET 
             embedding = $1::vector,
@@ -174,86 +180,57 @@ export async function submitPost(input: {
             "wisdomOrAdviceMessage" = $9
           WHERE id = $10
         `,
-            embeddingString,
-            topicEmbeddingsArray,
-            analysis.emotion,
-            analysis.sentimentScore,
-            analysis.primaryEmotion,
-            analysis.topics,
-            analysis.harmful,
-            analysis.harmfulTypes,
-            analysis.wisdomOrAdviceMessage,
-            newPost.id
-          );
-          console.log("Updated post with analysis data:", newPost.id);
-        } catch (error) {
-          console.error("Error updating post with analysis data:", error);
-        }
+                embeddingString,
+                topicEmbeddingsArray,
+                analysis.emotion,
+                analysis.sentimentScore,
+                analysis.primaryEmotion,
+                analysis.topics,
+                analysis.harmful,
+                analysis.harmfulTypes,
+                analysis.wisdomOrAdviceMessage,
+                newPost.id
+              );
+            } catch (error) {
+              console.error("Error updating post with analysis data:", error);
+            }
 
-        // Create moderation case if AI detected harmful content
-        if (analysis.harmful && analysis.harmfulTypes.length > 0) {
-          try {
-            const postEngagement = { likes: 0, comments: 0, shares: 0 }; // New post has no engagement yet
-            await createModerationCaseFromAI({
-              postId: newPost.id,
-              userId: user.id,
-              harmful: analysis.harmful,
-              harmfulTypes: analysis.harmfulTypes,
-              confidence: 0.8, // Default confidence, could be improved with actual model confidence
-              postEngagement,
+            // Create moderation case if AI detected harmful content
+            if (analysis.harmful && analysis.harmfulTypes.length > 0) {
+              try {
+                const postEngagement = { likes: 0, comments: 0, shares: 0 }; // New post has no engagement yet
+                await createModerationCaseFromAI({
+                  postId: newPost.id,
+                  userId: user.id,
+                  harmful: analysis.harmful,
+                  harmfulTypes: analysis.harmfulTypes,
+                  confidence: 0.8, // Default confidence, could be improved with actual model confidence
+                  postEngagement,
+                });
+              } catch (error) {
+                console.error("Error creating moderation case:", error);
+                // Don't fail post creation if moderation case creation fails
+              }
+            }
+
+            // Use AI analysis score directly from Gemini (already ranges 0.1-0.4 for harmful)
+            const newEmotionScore = analysis.sentimentScore;
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                generalEmotion:
+                  newEmotionScore > 0.55
+                    ? "POSITIVE"
+                    : newEmotionScore < 0.45
+                      ? "NEGATIVE"
+                      : "NEUTRAL",
+                emotionScore: newEmotionScore,
+              },
             });
-          } catch (error) {
-            console.error("Error creating moderation case:", error);
-            // Don't fail post creation if moderation case creation fails
-          }
-        }
-
-        const currentUserStats = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { emotionScore: true, _count: { select: { posts: true } } },
-        });
-
-        const currentScore = currentUserStats?.emotionScore ?? 0.5;
-        const postCount = (currentUserStats?._count.posts ?? 0) || 1;
-
-        let newAverageScore;
-
-        if (analysis.harmful) {
-          // Harmful posts cause immediate drop to 0.40 (40%)
-          // Calculate penalty needed to reach target of 0.40
-          const targetScore = 0.4;
-          const requiredPenalty =
-            (currentScore * postCount - targetScore * postCount) / 1;
-          const postEmotionImpact = Math.max(
-            0.01,
-            currentScore - requiredPenalty / postCount
-          );
-
-          newAverageScore =
-            (currentScore * (postCount - 1) + postEmotionImpact) / postCount;
-          // Ensure it doesn't go above target
-          newAverageScore = Math.min(newAverageScore, targetScore);
-        } else {
-          // Normal calculation for non-harmful posts
-          newAverageScore =
-            (currentScore * (postCount - 1) + analysis.sentimentScore) /
-            postCount;
-        }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            generalEmotion:
-              newAverageScore > 0.55
-                ? "POSITIVE"
-                : newAverageScore < 0.45
-                  ? "NEGATIVE"
-                  : "NEUTRAL",
-            emotionScore: newAverageScore,
-          },
-        });
-      } catch (error) {}
-    })(),
+          } catch (error) {}
+        })()
+      : Promise.resolve(),
     taggedUserIdsFiltered.length > 0
       ? Promise.all(
           taggedUserIdsFiltered.map((userId) =>

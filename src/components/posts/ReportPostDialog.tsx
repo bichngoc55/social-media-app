@@ -92,7 +92,7 @@ export default function ReportPostDialog({
         .post(`/api/posts/${postId}/report`, { json: data })
         .json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Report submitted",
         description:
@@ -103,6 +103,8 @@ export default function ReportPostDialog({
       setReason("");
 
       // Remove post from cache immediately for instant UI update
+      await queryClient.cancelQueries({ queryKey: ["post-feed"] });
+
       queryClient.setQueriesData(
         { queryKey: ["post-feed"] },
         (oldData: any) => {
@@ -132,11 +134,10 @@ export default function ReportPostDialog({
         }
       );
 
-      // Invalidate all post-related queries to refresh feed
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
-      queryClient.invalidateQueries({ queryKey: ["post-feed"] });
-      queryClient.invalidateQueries({ queryKey: ["post-feed", "for-you"] });
-      queryClient.invalidateQueries({ queryKey: ["post-feed", "following"] });
+      // No need to invalidate queries immediately to prevent flickering
+      // Optimistic update handles the UI removal
+      // queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // queryClient.invalidateQueries({ queryKey: ["post-feed"] });
     },
     onError: (error: any) => {
       const message =

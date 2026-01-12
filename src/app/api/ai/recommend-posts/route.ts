@@ -64,8 +64,6 @@ export async function POST(req: NextRequest) {
           privacy: "PUBLIC",
           userId: { not: user.id, notIn: blockedUserIds },
           id: { notIn: excludeIds },
-          // Optional: You could filter by interests here directly if you wanted strict matching
-          // OR: { topics: { hasSome: userInterestsArr } }
         },
         include: getPostDataInclude(user.id, true),
         take: 15,
